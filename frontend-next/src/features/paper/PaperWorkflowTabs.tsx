@@ -197,7 +197,7 @@ function AutoTradingTab(props: { status: Record<string, unknown>; runs: Record<s
         </section>
         <section class="paper-overview-card">
           <div class="paper-overview-card__head">
-            <strong>今日动作</strong>
+            <strong>当前快照动作</strong>
             <span>{props.runs.length} 次</span>
           </div>
           <MetricGrid
@@ -342,19 +342,15 @@ function buildActionTimeline(status: Record<string, unknown>, runs: Record<strin
     });
   }
   if (!items.length) {
-    items.push(
-      { time: "09:30:00", title: "SYSTEM_INIT", detail: "维斯量化终端同步启动", tone: "init" },
-      { time: "09:30:05", title: "LINK", detail: "神经元连接同步率稳定在 84.2%", tone: "link" },
-      { time: "09:31:24", title: "INFO", detail: "A股沪深两市指数馈入开始...", tone: "info" },
-    );
+    items.push({ time: "--", title: "INFO", detail: "暂无后端自动交易运行记录", tone: "info" });
   }
   return items;
 }
 
 function formatPaperTime(value: unknown): string {
-  if (!value) return "09:30:00";
+  if (!value) return "--";
   const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return "09:30:00";
+  if (Number.isNaN(date.getTime())) return "--";
   return date.toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 

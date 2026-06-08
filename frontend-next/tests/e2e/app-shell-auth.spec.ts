@@ -210,7 +210,7 @@ test("mobile navigation opens, routes, and closes without desktop sidebar depend
 
   await page.getByRole("button", { name: "打开导航" }).click();
   await expect(sidebar).toHaveClass(/tq-sidebar--mobile-open/);
-  await page.locator(".tq-mobile-scrim").click({ force: true });
+  await page.getByRole("button", { name: "关闭导航" }).click();
   await expect(sidebar).not.toHaveClass(/tq-sidebar--mobile-open/);
 });
 

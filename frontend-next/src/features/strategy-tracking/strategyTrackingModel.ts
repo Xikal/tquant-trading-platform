@@ -40,6 +40,14 @@ export interface OperationConfig {
   options?: OperationPathOptions;
 }
 
+export interface DriftDisplayRow {
+  label: string;
+  value: string;
+  status: string;
+  tone: "green" | "blue" | "amber" | "slate" | "red";
+  hasData: boolean;
+}
+
 export type TableColumn = ColumnDef<TrackingRecord> & {
   meta?: {
     mobileHidden?: boolean;
@@ -104,6 +112,18 @@ export function pctValue(value: unknown, fallback = "--"): string {
   if (!Number.isFinite(numeric)) return text(value, fallback);
   const normalized = Math.abs(numeric) <= 1 ? numeric * 100 : numeric;
   return `${normalized.toFixed(1)}%`;
+}
+
+export function buildDriftRows(reviewPayload: TrackingRecord): DriftDisplayRow[] {
+  const slippage = firstValue(reviewPayload, ["slippage_pct", "avg_slippage_pct", "slippage_cost_pct", "drift.slippage_pct"]);
+  const latency = firstValue(reviewPayload, ["latency_ms", "avg_latency_ms", "signal_latency_ms", "drift.latency_ms"]);
+  const latencyText = firstValue(reviewPayload, ["latency_text", "avg_latency", "drift.latency_text"]);
+  const consistency = firstValue(reviewPayload, ["order_consistency", "shadow_consistency", "order_consistency_pct", "drift.order_consistency"]);
+  return [
+    metricRow("均化滑点损失", slippage, formatPctMetric, "slippage_status", reviewPayload, driftStatus(slippage, "slippage")),
+    metricRow("实盘信号响应延时", latency ?? latencyText, formatLatencyMetric, "latency_status", reviewPayload, driftStatus(latency ?? latencyText, "latency")),
+    metricRow("时序排序一致性", consistency, formatPctMetric, "order_consistency_status", reviewPayload, driftStatus(consistency, "consistency")),
+  ];
 }
 
 export function boolValue(record: TrackingRecord, keys: string[]): boolean | undefined {
@@ -179,6 +199,62 @@ function firstValue(record: TrackingRecord, keys: string[]): unknown {
     if (value !== null && value !== undefined && value !== "") return value;
   }
   return undefined;
+}
+
+function metricRow(
+  label: string,
+  value: unknown,
+  formatter: (value: unknown) => string,
+  statusKey: string,
+  record: TrackingRecord,
+  derived: { status: string; tone: DriftDisplayRow["tone"] },
+): DriftDisplayRow {
+  const hasData = hasMetricValue(value);
+  return {
+    label,
+    value: hasData ? formatter(value) : "--",
+    status: hasData ? text(record[statusKey], derived.status) : "暂无数据",
+    tone: hasData ? derived.tone : "slate",
+    hasData,
+  };
+}
+
+function hasMetricValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  if (typeof value === "string") return value.trim() !== "";
+  return Number.isFinite(Number(value));
+}
+
+function formatPctMetric(value: unknown): string {
+  return pctValue(value, "--");
+}
+
+function formatLatencyMetric(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "--";
+  if (Math.abs(numeric) >= 1000) return `${(numeric / 1000).toFixed(2)} 秒`;
+  return `${numeric.toFixed(0)} ms`;
+}
+
+function driftStatus(value: unknown, kind: "slippage" | "latency" | "consistency"): { status: string; tone: DriftDisplayRow["tone"] } {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return { status: "按后端数据", tone: "blue" };
+  const normalizedPct = Math.abs(numeric) <= 1 ? Math.abs(numeric) * 100 : Math.abs(numeric);
+  if (kind === "slippage") {
+    if (normalizedPct <= 0.2) return { status: "可观察", tone: "green" };
+    if (normalizedPct <= 0.8) return { status: "需复核", tone: "amber" };
+    return { status: "漂移偏高", tone: "red" };
+  }
+  if (kind === "latency") {
+    if (numeric <= 500) return { status: "响应正常", tone: "green" };
+    if (numeric <= 1500) return { status: "需观察", tone: "amber" };
+    return { status: "延时偏高", tone: "red" };
+  }
+  const ratio = Math.abs(numeric) <= 1 ? numeric : numeric / 100;
+  if (ratio >= 0.98) return { status: "一致性稳定", tone: "green" };
+  if (ratio >= 0.9) return { status: "需观察", tone: "amber" };
+  return { status: "一致性偏弱", tone: "red" };
 }
 
 function readPath(record: TrackingRecord, key: string): unknown {

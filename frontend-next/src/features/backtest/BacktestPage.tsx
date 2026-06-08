@@ -1,7 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { apiClient, requestOperation } from "../../shared/api/client";
-import { EchartsIsland } from "../../shared/charts/EchartsIsland";
+import { EquitySparklineChart } from "../../shared/charts/EquitySparklineChart";
 import { mutationClient } from "../../shared/api/mutations";
 import { queryKeys } from "../../shared/api/queryKeys";
 import type { BacktestRunDetailResponse, BacktestRunEquityResponse, BacktestRunTradesResponse } from "../../shared/api/types";
@@ -28,17 +28,23 @@ import {
 } from "./BacktestPrimitives";
 import { dateRange, dateText, exitKind, listLength, navValue, num, pct, runStatus, sideKind, sideText } from "./backtestFormatters";
 import {
+  attributionRowsFromDetail,
   backtestRunId,
   backtestSubmitFields,
   detailPairs,
   equityValues,
+  executionAssumptionRows,
   extractDetail,
   extractEquityPoints,
   extractRuns,
   extractTradeRows,
+  logRowsFromDetail,
+  oosRowsFromDetail,
+  strategyOptionsFromMeta,
   researchFields,
   taskControlFields,
   type BacktestRecord,
+  type BacktestStrategyOption,
 } from "./backtestModel";
 import "./backtest-slice.css";
 
@@ -53,21 +59,6 @@ const tabs: { key: BacktestTab; label: string }[] = [
   { key: "research", label: "研究闭环" },
 ];
 
-const strategyOptions = ["首板回调", "量能低吸", "收盘强势承接", "中军回踩", "主线首分歧", "均线通道波段", "主线涨停回调", "龙头回踩波段", "长洗N字冲高", "短洗N字冲高"];
-const defaultStrategies = ["首板回调", "收盘强势承接", "中军回踩", "主线首分歧", "主线涨停回调"];
-const attributionRows = [
-  { label: "行业: 样本分组A", signal: 40, trades: 4, winRate: 1, tone: "indigo" },
-  { label: "行业: 样本分组B", signal: 89, trades: 20, winRate: 0.45, tone: "indigo" },
-  { label: "市场: high_flyer_retreat", signal: 48, trades: 3, winRate: 1, tone: "amber" },
-  { label: "市场: repair", signal: 7, trades: 4, winRate: 0.5, tone: "amber" },
-  { label: "数据: missing_bar", signal: 272, trades: 55, winRate: 0.473, tone: "slate" },
-];
-const logRows = [
-  { time: "10:14:31", level: "WARN", message: "Sharpe ratio is below performance threshold. Recommended skip.", source: "ENGINE", tone: "amber" },
-  { time: "10:14:28", level: "INFO", message: "Completed backtest metrics calculation for selected run.", source: "METRICS", tone: "blue" },
-  { time: "10:14:15", level: "SUCC", message: "Matched transaction pairs; conservative slippage applied.", source: "MATCHER", tone: "green" },
-  { time: "10:13:58", level: "DBUG", message: "Retrieved benchmark constituent weight bar data.", source: "DATA", tone: "slate" },
-];
 const marketValidationRows = [
   { state: "牛市", title: "趋势过滤测试", desc: "趋势过滤必须避免把顺势上涨误判为均值回归。", tone: "red" },
   { state: "震荡", title: "回归期望验收", desc: "重点观察 VWAP/布林回归后的期望收益和日内次数。", tone: "blue" },
@@ -75,19 +66,12 @@ const marketValidationRows = [
   { state: "退潮", title: "降频或禁止机制", desc: "市场宽度弱或龙头断层时应降为观察/禁止执行。", tone: "amber" },
   { state: "反弹", title: "指数联动确认", desc: "避免在急反弹里过早做反T，需跟踪指数联动确认。", tone: "green" },
 ];
-const oosRows = [
-  { state: "牛市", range: "04-01 ~ 04-08", confidence: "0.78", note: "宽基趋势上行，市场宽度和成交额改善。", tone: "red" },
-  { state: "震荡", range: "04-09 ~ 04-18", confidence: "0.84", note: "指数横盘，板块轮动快，适合均值回归。", tone: "blue" },
-  { state: "熊市", range: "04-19 ~ 04-27", confidence: "0.80", note: "市场宽度下降，趋势弱化，用于验证止损。", tone: "indigo" },
-  { state: "退潮", range: "04-28 ~ 05-08", confidence: "0.86", note: "炸板率抬升，用于验证暂停和低频约束。", tone: "amber" },
-  { state: "反弹", range: "05-09 ~ 05-20", confidence: "0.79", note: "急跌后修复，用于验证信号是否追高。", tone: "green" },
-];
 
 export function BacktestPage() {
   const [selectedRunId, setSelectedRunId] = createSignal("");
   const [tab, setTab] = createSignal<BacktestTab>("submit");
   const [submitMode, setSubmitMode] = createSignal<SubmitMode>("quick");
-  const [selectedStrategies, setSelectedStrategies] = createSignal<string[]>(defaultStrategies);
+  const [selectedStrategies, setSelectedStrategies] = createSignal<string[]>([]);
   const [chartRange, setChartRange] = createSignal<ChartRange>("6M");
   const [tradeSearch, setTradeSearch] = createSignal("");
   const [exitFilter, setExitFilter] = createSignal("ALL");
@@ -99,6 +83,10 @@ export function BacktestPage() {
   const runsQuery = createQuery(() => ({
     queryKey: queryKeys.backtestRuns,
     queryFn: ({ signal }) => apiClient.backtestRuns(undefined, { signal }),
+  }));
+  const strategyMetaQuery = createQuery(() => ({
+    queryKey: queryKeys.strategiesMeta,
+    queryFn: ({ signal }) => apiClient.strategiesMeta({ signal }),
   }));
   const runs = createMemo(() => extractRuns(runsQuery.data));
   createEffect(() => {
@@ -129,6 +117,11 @@ export function BacktestPage() {
   const equity = createMemo(() => extractEquityPoints(equityQuery.data));
   const trades = createMemo(() => extractTradeRows(tradesQuery.data));
   const chartValues = createMemo(() => equityValues(equity()));
+  const strategyOptions = createMemo(() => strategyOptionsFromMeta(strategyMetaQuery.data, runs()));
+  createEffect(() => {
+    if (selectedStrategies().length || !strategyOptions().length) return;
+    setSelectedStrategies(strategyOptions().slice(0, 5).map((item) => item.key));
+  });
   const runningCount = createMemo(() => runs().filter((run) => runStatus(run) === "running").length);
   const completedCount = createMemo(() => runs().filter((run) => runStatus(run) === "completed").length);
   const filteredTrades = createMemo(() => {
@@ -173,9 +166,9 @@ export function BacktestPage() {
           </div>
         </div>
         <div class="backtest-terminal-alerts">
-          <Badge tone="red">机会 ({Math.max(1, runs().length ? 1 : 0)})</Badge>
-          <Badge tone="amber">风险 (0)</Badge>
-          <Badge tone="slate">脉冲 10:14:31</Badge>
+          <Badge tone="red">任务 ({runs().length})</Badge>
+          <Badge tone="amber">异常 ({runs().filter((run) => runStatus(run) === "other").length})</Badge>
+          <Badge tone="slate">更新 {text(pickFirst(selectedRun(), ["updated_at", "finished_at", "created_at"]), "--")}</Badge>
           <Badge tone="slate">{selectedRunId() || "等待任务"}</Badge>
         </div>
       </section>
@@ -194,11 +187,12 @@ export function BacktestPage() {
             <SubmitView
               runs={runs()}
               selectedRunId={selectedRunId()}
+              strategyOptions={strategyOptions()}
               selectedStrategies={selectedStrategies()}
               submitMode={submitMode()}
               setSubmitMode={setSubmitMode}
               toggleStrategy={toggleStrategy}
-              selectAllStrategies={(select) => setSelectedStrategies(select ? strategyOptions : [])}
+              selectAllStrategies={(select) => setSelectedStrategies(select ? strategyOptions().map((item) => item.key) : [])}
               openRun={openRun}
             />
           </Match>
@@ -236,15 +230,15 @@ export function BacktestPage() {
             />
           </Match>
           <Match when={tab() === "research"}>
-            <ResearchView selectedRunId={selectedRunId()} />
+            <ResearchView selectedRunId={selectedRunId()} detail={detail()} />
           </Match>
         </Switch>
       </div>
 
       <footer class="backtest-terminal-footer tq-page__full">
         <span>量化引擎分析工作站 v2.5</span>
-        <span><i /> 延迟: 4ms</span>
-        <span>API 状态: 正常运行</span>
+        <span><i /> 请求: {runsQuery.isFetching || detailQuery.isFetching || equityQuery.isFetching || tradesQuery.isFetching ? "同步中" : "已完成"}</span>
+        <span>API 状态: {runsQuery.isError || detailQuery.isError || equityQuery.isError || tradesQuery.isError ? "部分失败" : "按响应展示"}</span>
       </footer>
     </PageScaffold>
   );
@@ -253,6 +247,7 @@ export function BacktestPage() {
 function SubmitView(props: {
   runs: BacktestRecord[];
   selectedRunId: string;
+  strategyOptions: BacktestStrategyOption[];
   selectedStrategies: string[];
   submitMode: SubmitMode;
   setSubmitMode: (mode: SubmitMode) => void;
@@ -260,6 +255,21 @@ function SubmitView(props: {
   selectAllStrategies: (select: boolean) => void;
   openRun: (run: BacktestRecord) => void;
 }) {
+  const selectedStrategyLabels = () => props.selectedStrategies
+    .map((key) => props.strategyOptions.find((item) => item.key === key)?.label ?? key)
+    .join("、");
+  const latestRun = () => props.runs[0] ?? {};
+  const assumptionRows = () => executionAssumptionRows(latestRun());
+  const fieldDefaults = () => ({
+    strategy: props.selectedStrategies[0] ?? "",
+    start: latestRun().start_date,
+    end: latestRun().end_date,
+    capital: latestRun().initial_cash,
+    benchmark: latestRun().benchmark_symbol ?? latestRun().benchmark,
+    dataVersion: latestRun().data_version,
+    strategyVersion: latestRun().strategy_version,
+    feeModelVersion: latestRun().fee_model_version,
+  });
   return (
     <div class="backtest-submit-layout">
       <section class="backtest-card backtest-submit-card">
@@ -273,34 +283,40 @@ function SubmitView(props: {
           {props.submitMode === "quick" ? "只需要选择策略和日期，系统会用默认仓位、滑点和费用跑出结果。" : "专家模式允许配置手续费率、限制滑点和单标的最大持仓，用于贴近实盘的研究回测。"}
         </p>
         <div class="backtest-form-grid">
-          <Field label="任务名称" value="Task_#49_MultiStrategy_Backtest" wide />
-          <Field label="日期范围" value="2025-11-25 至 2026-06-18" />
-          <Field label="初始资金 (元)" value="10,000,000" />
-          <Field label="基准指数" value="沪深300 (000300)" />
-          <Field label="执行模型" value="保守滑点成交" />
+          <Field label="任务名称" value={text(latestRun().name, "等待后端任务")} wide />
+          <Field label="日期范围" value={dateRange(latestRun())} />
+          <Field label="初始资金 (元)" value={num(latestRun().initial_cash ?? latestRun().initial_capital)} />
+          <Field label="基准指数" value={text(latestRun().benchmark_symbol ?? latestRun().benchmark, "--")} />
+          <Field label="执行模型" value={text(latestRun().engine_version, "--")} />
         </div>
         <Show when={props.submitMode === "expert"}>
           <div class="backtest-expert-grid">
-            <Field label="单笔最大仓位" value="10%" />
-            <Field label="双向滑点 (bp)" value="1.5" />
-            <Field label="综合手续费率" value="0.03%" />
+            <For each={assumptionRows()}>
+              {(row) => <Field label={row.label} value={row.value} />}
+            </For>
           </div>
         </Show>
         <div class="backtest-strategy-head">
           <span>策略多选 (勾选加入回测池)</span>
-          <button type="button" onClick={() => props.selectAllStrategies(props.selectedStrategies.length !== strategyOptions.length)}>
-            {props.selectedStrategies.length === strategyOptions.length ? "清空" : "全选"}
+          <button type="button" onClick={() => props.selectAllStrategies(props.selectedStrategies.length !== props.strategyOptions.length)}>
+            {props.selectedStrategies.length === props.strategyOptions.length ? "清空" : "全选"}
           </button>
         </div>
         <div class="backtest-strategy-grid">
-          <For each={strategyOptions}>
-            {(strategy) => (
+          <Show when={props.strategyOptions.length} fallback={<div class="backtest-empty">暂无后端策略选项，等待 `/api/strategies/meta` 或历史回测任务返回。</div>}>
+            <For each={props.strategyOptions}>
+              {(strategy) => (
               <label class="backtest-strategy-tile">
-                <input type="checkbox" checked={props.selectedStrategies.includes(strategy)} onChange={(event) => props.toggleStrategy(strategy, event.currentTarget.checked)} />
-                <span>{strategy}</span>
+                <input type="checkbox" checked={props.selectedStrategies.includes(strategy.key)} onChange={(event) => props.toggleStrategy(strategy.key, event.currentTarget.checked)} />
+                <span>{strategy.label}</span>
               </label>
-            )}
-          </For>
+              )}
+            </For>
+          </Show>
+        </div>
+        <div class="backtest-readonly-note">
+          <StatusPill label="策略来源" value={props.strategyOptions.length ? "后端契约" : "缺失"} tone={props.strategyOptions.length ? "info" : "warn"} />
+          <span>{selectedStrategyLabels() || "未选择策略"}</span>
         </div>
         <ShadowActionPanel
           embedded
@@ -308,10 +324,10 @@ function SubmitView(props: {
           actionLabel="提交回测"
           resultTitle="回测状态"
           class="backtest-terminal-shadow"
-          fields={backtestSubmitFields()}
+          fields={backtestSubmitFields(fieldDefaults())}
           confirmText="回测参数已进入二次确认"
           onSubmit={async (draft) => {
-            const result = await mutationClient.createBacktestRun(backtestPayload(draft));
+            const result = await mutationClient.createBacktestRun(backtestPayload({ ...draft, strategies: props.selectedStrategies.join(",") }));
             return result.mode === "live" ? "提交回测已发送" : "提交回测已记录";
           }}
         />
@@ -338,8 +354,8 @@ function SubmitView(props: {
           </Show>
         </div>
         <div class="backtest-queue-foot">
-          <span><Icon name="cpu" /> 并行计算核数上限: 64 Core</span>
-          <span>队列资源占用: {props.runs.filter((run) => runStatus(run) === "running").length ? "18%" : "0%"}</span>
+          <span><Icon name="cpu" /> 队列深度: {text(latestRun().queue_depth, "--")}</span>
+          <span>预估等待: {text(latestRun().estimated_wait_seconds, "--")} 秒</span>
         </div>
       </section>
     </div>
@@ -353,21 +369,30 @@ function OverviewView(props: { detail: BacktestRecord; equityCount: number; char
   const winRate = () => pickFirst(summary(), ["win_rate", "win_rate_pct"]) ?? pickFirst(props.detail, ["win_rate", "win_rate_pct"]);
   const profitFactor = () => pickFirst(summary(), ["profit_factor", "pf"]) ?? pickFirst(props.detail, ["profit_factor", "pf"]);
   const pairs = () => detailPairs(props.detail).filter((item) => item.value !== "--").slice(0, 7);
+  const attributionRows = () => attributionRowsFromDetail(props.detail);
+  const logRows = () => logRowsFromDetail(props.detail);
+  const preview = () => readRecord(props.detail.execution_model_preview);
   return (
     <div class="backtest-overview-layout">
       <section class="backtest-overview-left">
         <div class="backtest-card">
           <PanelHead title={`详情摘要 #${text(props.detail.id ?? props.detail.run_id, "--")}`} badge={text(props.detail.engine_version, "conservative_slippage")} />
           <div class="backtest-tag-cloud">
-            <Badge tone="blue">一键快速回测</Badge>
-            <Badge tone="indigo">收盘强势承接</Badge>
-            <Badge tone="purple">中军回测</Badge>
-            <Badge tone="amber">主线首分歧</Badge>
-            <Badge tone="red">主线涨停回调</Badge>
+            <For each={strategyKeysForDisplay(props.detail)}>
+              {(strategy) => <Badge tone="blue">{strategy}</Badge>}
+            </For>
+            <Show when={!strategyKeysForDisplay(props.detail).length}>
+              <Badge tone="slate">暂无后端策略标签</Badge>
+            </Show>
           </div>
           <div class="backtest-warning-grid">
             <InfoBox tone={Number(totalReturn()) < 0 ? "amber" : "green"} title={Number(totalReturn()) < 0 ? "不建议使用：组合收益未达标" : "研究可继续：组合收益通过初筛"} desc="当前回测结果只作为研究展示，不直接进入生产排序。" meta={`Sharpe ${text(pickFirst(summary(), ["sharpe", "sharpe_ratio"]), "--")}`} />
-            <InfoBox tone="blue" title="执行模型预览：Preview · 非事实源" desc="portfolio_backtest_metrics; replacement_enabled=false" meta="状态: preview_not_persisted" />
+            <InfoBox
+              tone="blue"
+              title={`执行模型预览：${text(preview().status ?? preview().stage, "未返回")}`}
+              desc={`事实源仍是 ${text(preview().final_fact_source, "portfolio_backtest_metrics")}；replacement_enabled=${String(Boolean(preview().replacement_enabled))}`}
+              meta={text(preview().reason ?? preview().message, "Preview · 非事实源")}
+            />
           </div>
           <MetricTable totalReturn={totalReturn()} maxDrawdown={maxDrawdown()} winRate={winRate()} tradesCount={props.tradesCount} profitFactor={profitFactor()} />
           <div class="backtest-detail-pairs">
@@ -384,18 +409,20 @@ function OverviewView(props: { detail: BacktestRecord; equityCount: number; char
         <div class="backtest-card">
           <PanelHead icon="bar" title="分组归因分析" badge="按特征自动分组" />
           <div class="backtest-attribution-list">
-            <For each={attributionRows}>
-              {(row) => (
+            <Show when={attributionRows().length} fallback={<div class="backtest-empty">后端暂未返回归因分组，当前不展示示例归因。</div>}>
+              <For each={attributionRows()}>
+                {(row) => (
                 <div class="backtest-attribution-row">
                   <div><i class={`tone-${row.tone}`} /><span>{row.label}</span></div>
                   <div>
                     <span>信号: <strong>{row.signal}</strong></span>
                     <span>交易: <strong>{row.trades}</strong></span>
-                    <strong class={row.winRate >= 0.6 ? "is-up" : ""}>胜率 {pct(row.winRate)}</strong>
+                    <strong class={(row.winRate ?? 0) >= 0.6 ? "is-up" : ""}>胜率 {row.winRate === null ? "--" : pct(row.winRate)}</strong>
                   </div>
                 </div>
-              )}
-            </For>
+                )}
+              </For>
+            </Show>
           </div>
         </div>
       </section>
@@ -407,7 +434,7 @@ function OverviewView(props: { detail: BacktestRecord; equityCount: number; char
             <ChartMetric label="基准最终净值" value="1.0000" />
             <ChartMetric label="最大回撤值" value={pct(maxDrawdown())} tone="red" />
           </div>
-          <EchartsIsland title="回测权益曲线" values={props.chartValues} height={286} type="line" />
+          <EquitySparklineChart title="回测权益曲线" values={props.chartValues} height={286} />
           <div class="backtest-chart-foot">
             <span><Icon name="info" /> 曲线点 {props.equityCount} / 图表点 {props.chartValues.length}</span>
             <span>{dateRange(props.detail)}</span>
@@ -416,16 +443,18 @@ function OverviewView(props: { detail: BacktestRecord; equityCount: number; char
         <div class="backtest-card">
           <PanelHead icon="terminal" title="执行队列状态检测 (最新4条)" badge="系统日志" />
           <div class="backtest-log-list">
-            <For each={logRows}>
-              {(row) => (
+            <Show when={logRows().length} fallback={<div class="backtest-empty">后端暂未返回执行日志或质量说明。</div>}>
+              <For each={logRows()}>
+                {(row) => (
                 <div>
                   <span>{row.time}</span>
                   <strong class={`tone-${row.tone}`}>{row.level}</strong>
                   <p>{row.message}</p>
                   <em>{row.source}</em>
                 </div>
-              )}
-            </For>
+                )}
+              </For>
+            </Show>
           </div>
         </div>
       </section>
@@ -452,9 +481,9 @@ function TradesView(props: {
           <p>共回测过滤得到 <strong>{props.total}</strong> 笔平仓成交记录</p>
         </div>
         <div class="backtest-trade-kpis">
-          <MetricCompact label="回测周期总胜率" value="+47.27%" tone="green" />
-          <MetricCompact label="平均单笔收益" value="-0.85%" tone="red" />
-          <MetricCompact label="总成交净额" value="¥1,643,595" />
+          <MetricCompact label="回测周期总胜率" value={tradeWinRate(props.trades)} tone={tradeWinRateTone(props.trades)} />
+          <MetricCompact label="平均单笔收益" value={avgTradeReturn(props.trades)} tone={avgTradeReturnTone(props.trades)} />
+          <MetricCompact label="总成交净额" value={`¥${num(sumTrades(props.trades, ["net_amount", "amount", "notional"]))}`} />
         </div>
       </div>
       <div class="backtest-trade-filters">
@@ -583,7 +612,48 @@ function minuteLineCount(value: string): number {
   return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).length;
 }
 
-function ResearchView(props: { selectedRunId: string }) {
+function strategyKeysForDisplay(detail: BacktestRecord): string[] {
+  const raw = detail.strategy_keys ?? detail.strategies ?? detail.strategy_key;
+  if (Array.isArray(raw)) return raw.map((item) => text(item, "")).filter(Boolean).slice(0, 6);
+  return text(raw, "").split(/[,\n，、]/).map((item) => item.trim()).filter(Boolean).slice(0, 6);
+}
+
+function sumTrades(trades: BacktestRecord[], keys: string[]): number {
+  return trades.reduce((sum, trade) => {
+    const value = Number(pickFirst(trade, keys));
+    return Number.isFinite(value) ? sum + value : sum;
+  }, 0);
+}
+
+function tradeWinRate(trades: BacktestRecord[]): string {
+  if (!trades.length) return "--";
+  const wins = trades.filter((trade) => Number(trade.return_pct ?? trade.pnl_pct) > 0).length;
+  return pct(wins / trades.length);
+}
+
+function tradeWinRateTone(trades: BacktestRecord[]): string {
+  if (!trades.length) return "slate";
+  const wins = trades.filter((trade) => Number(trade.return_pct ?? trade.pnl_pct) > 0).length;
+  return wins / trades.length >= 0.5 ? "green" : "red";
+}
+
+function avgTradeReturn(trades: BacktestRecord[]): string {
+  if (!trades.length) return "--";
+  const values = trades.map((trade) => Number(trade.return_pct ?? trade.pnl_pct)).filter((value) => Number.isFinite(value));
+  if (!values.length) return "--";
+  return pct(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function avgTradeReturnTone(trades: BacktestRecord[]): string {
+  if (!trades.length) return "slate";
+  const values = trades.map((trade) => Number(trade.return_pct ?? trade.pnl_pct)).filter((value) => Number.isFinite(value));
+  if (!values.length) return "slate";
+  return values.reduce((sum, value) => sum + value, 0) / values.length >= 0 ? "green" : "red";
+}
+
+function ResearchView(props: { selectedRunId: string; detail: BacktestRecord }) {
+  const oosRows = () => oosRowsFromDetail(props.detail);
+  const summary = () => readRecord(props.detail.summary ?? props.detail.result);
   return (
     <div class="backtest-research-layout">
       <section class="backtest-card">
@@ -615,19 +685,21 @@ function ResearchView(props: { selectedRunId: string }) {
           <PanelHead icon="award" title="真实样本外验证" badge="2026q2-v1" />
           <p class="backtest-muted">样本外使用 manifest 中真实标注市场状态，不使用自动等分；结果只作为研究观察、小仓模拟、可进入生产候选的只读阶段门槛。</p>
           <div class="backtest-oos-kpis">
-            <MetricCompact label="验证质量" value="通过" tone="green" />
-            <MetricCompact label="状态覆盖率" value="5/5" tone="blue" />
-            <MetricCompact label="数据缺失率" value="+1.20%" />
-            <MetricCompact label="标的覆盖率" value="+96.00%" />
-            <MetricCompact label="最近阶段" value="未验证" tone="amber" />
-            <MetricCompact label="最近结论" value="仍需验证" tone="amber" />
+            <MetricCompact label="验证质量" value={text(summary().validation_quality ?? summary().verdict, oosRows().length ? "已返回窗口" : "未返回")} tone={oosRows().length ? "blue" : "amber"} />
+            <MetricCompact label="状态覆盖率" value={text(summary().regime_coverage ?? summary().state_coverage, "--")} tone="blue" />
+            <MetricCompact label="数据缺失率" value={pct(summary().missing_bar_ratio ?? summary().data_missing_ratio)} />
+            <MetricCompact label="标的覆盖率" value={pct(summary().symbol_coverage_ratio)} />
+            <MetricCompact label="最近阶段" value={text(summary().stage ?? summary().latest_stage, "--")} tone="amber" />
+            <MetricCompact label="最近结论" value={text(summary().latest_verdict ?? summary().verdict, "--")} tone="amber" />
           </div>
           <table class="backtest-data-table compact">
             <thead><tr><th>状态</th><th>置信区间</th><th class="num">置信度</th><th>来源说明</th></tr></thead>
             <tbody>
-              <For each={oosRows}>
-                {(row) => <tr><td class={`tone-text-${row.tone}`}>{row.state}</td><td>{row.range}</td><td class="num">{row.confidence}</td><td>{row.note}</td></tr>}
-              </For>
+              <Show when={oosRows().length} fallback={<tr><td colspan="4" class="backtest-empty-cell">后端暂未返回样本外窗口，当前不展示示例验证结果。</td></tr>}>
+                <For each={oosRows()}>
+                  {(row) => <tr><td class={`tone-text-${row.tone}`}>{row.state}</td><td>{row.range}</td><td class="num">{row.confidence}</td><td>{row.note}</td></tr>}
+                </For>
+              </Show>
             </tbody>
           </table>
         </section>

@@ -19,6 +19,11 @@ test("strategy tracking filters, detail tabs, and review shadow writes stay no-w
   await page.goto("/next/strategy-tracking");
   await expect(page.getByRole("heading", { name: "策略跟踪" }).first()).toBeVisible();
   await expect(page.getByTestId("strategy-tracking-table")).toContainText("000001");
+  await expect(page.getByText("1.82")).toHaveCount(0);
+  await expect(page.getByText("2.14 : 1")).toHaveCount(0);
+  await expect(page.getByText("1,613 次")).toHaveCount(0);
+  await expect(page.getByText("小仓试买")).toHaveCount(0);
+  await expect(page.getByText("值得重点看")).toHaveCount(0);
   expect(initialReadRequests.filter((url) => url.includes("/api/bff/v1/workspace/strategy"))).toHaveLength(1);
   expect(initialReadRequests.filter((url) => url.includes("/api/strategy-tracking/items"))).toHaveLength(0);
   expect(initialReadRequests.filter((url) => url.includes("/api/strategy-tracking/summary"))).toHaveLength(0);
@@ -38,6 +43,10 @@ test("strategy tracking filters, detail tabs, and review shadow writes stay no-w
 
   await page.getByRole("tab", { name: "持有" }).click();
   await expect(page.getByTestId("strategy-tracking-tabs")).toContainText("短线 1-3 天");
+  await expect(page.getByText("半导体科技")).toHaveCount(0);
+  await page.getByRole("tab", { name: "战绩漂移" }).click();
+  await expect(page.getByText("平均 0.85 秒")).toHaveCount(0);
+  await expect(page.getByText("99.2% (影子校验)")).toHaveCount(0);
   await page.getByRole("tab", { name: "复盘中心" }).click();
   await expect(page.getByTestId("strategy-tracking-review-center")).toContainText("交易日志");
 

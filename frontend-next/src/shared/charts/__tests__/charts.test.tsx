@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EchartsIsland } from "../EchartsIsland";
+import { EquitySparklineChart } from "../EquitySparklineChart";
 import { KlineChart } from "../KlineChart";
 
 const chartDownsampleMock = vi.hoisted(() => ({
@@ -14,11 +14,6 @@ const lightweight = vi.hoisted(() => {
   return { chart, series, createChart: vi.fn(() => chart) };
 });
 
-const echartsMock = vi.hoisted(() => {
-  const chart = { setOption: vi.fn(), dispose: vi.fn() };
-  return { chart, init: vi.fn(() => chart), use: vi.fn() };
-});
-
 vi.mock("lightweight-charts", () => ({
   CandlestickSeries: "CandlestickSeries",
   createChart: lightweight.createChart,
@@ -26,24 +21,6 @@ vi.mock("lightweight-charts", () => ({
 
 vi.mock("../chartDownsample", () => ({
   downsampleChartPoints: chartDownsampleMock.downsampleChartPoints,
-}));
-
-vi.mock("echarts/core", () => ({
-  init: echartsMock.init,
-  use: echartsMock.use,
-}));
-
-vi.mock("echarts/charts", () => ({
-  BarChart: {},
-  LineChart: {},
-}));
-
-vi.mock("echarts/components", () => ({
-  GridComponent: {},
-}));
-
-vi.mock("echarts/renderers", () => ({
-  CanvasRenderer: {},
 }));
 
 describe("frontend-next chart lifecycle", () => {
@@ -54,9 +31,6 @@ describe("frontend-next chart lifecycle", () => {
     lightweight.createChart.mockClear();
     chartDownsampleMock.downsampleChartPoints.mockReset();
     chartDownsampleMock.downsampleChartPoints.mockImplementation((points: Array<{ time: string; open: number; high: number; low: number; close: number }>) => Promise.resolve(points));
-    echartsMock.chart.setOption.mockClear();
-    echartsMock.chart.dispose.mockClear();
-    echartsMock.init.mockClear();
   });
 
   afterEach(() => {
@@ -135,13 +109,21 @@ describe("frontend-next chart lifecycle", () => {
     dispose();
   });
 
-  it("disposes the ECharts island instance on cleanup", () => {
-    const dispose = render(() => <EchartsIsland values={[1, 2, 3]} title="样本" />, document.body);
+  it("renders a lightweight equity sparkline without ECharts runtime", () => {
+    const dispose = render(() => <EquitySparklineChart values={[1, 1.05, 0.98, 1.12]} title="样本权益" />, document.body);
 
-    expect(echartsMock.init).toHaveBeenCalledTimes(1);
-    expect(echartsMock.chart.setOption).toHaveBeenCalled();
+    expect(document.querySelector("svg[aria-label='样本权益']")).not.toBeNull();
+    expect(document.querySelector(".equity-sparkline__line")?.getAttribute("d")).toContain("M");
+    expect(document.querySelectorAll(".equity-sparkline__hit")).toHaveLength(4);
 
     dispose();
-    expect(echartsMock.chart.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an explicit empty state for missing equity values", () => {
+    const dispose = render(() => <EquitySparklineChart values={[]} title="空权益" />, document.body);
+
+    expect(document.body.textContent).toContain("后端暂未返回权益曲线");
+
+    dispose();
   });
 });

@@ -71,7 +71,7 @@ export function createMonitorActionModel(data: unknown, selectedSymbol: () => st
     metrics: [
       { label: "立即处理", value: text(board.immediate_count ?? laneCount(priorityItems, "buy_now"), "0"), tone: "up" },
       { label: "观察数量", value: text(board.focus_count ?? board.track_count ?? watchItems.length, "0") },
-      { label: "市场火力", value: pctText(board.market_firepower_multiplier ?? 1), tone: board.market_gate_decision === "block" ? "down" : "neutral" },
+      { label: "市场火力", value: pctText(board.market_firepower_multiplier, "--"), tone: board.market_gate_decision === "block" ? "down" : "neutral" },
       { label: "总候选", value: text(board.total_candidates, String(priorityItems.length)) },
     ],
     laneOptions: [
@@ -91,7 +91,7 @@ export function createMonitorActionModel(data: unknown, selectedSymbol: () => st
         "action_summary",
         "summary",
       ]),
-      "按服务端生产优先榜展示，等待后台解读。",
+      "--",
     ),
     keyLevels,
     runtime,

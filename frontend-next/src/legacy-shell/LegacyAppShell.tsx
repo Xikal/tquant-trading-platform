@@ -62,10 +62,11 @@ export function LegacyAppShell(props: { children: JSX.Element }) {
         />
         <LegacyPageContent variant={shellVariant()}>{props.children}</LegacyPageContent>
       </div>
-      <div
+      <button
+        type="button"
         class={`legacy-mobile-scrim tq-mobile-scrim${mobileNavOpen() ? " legacy-mobile-scrim--open tq-mobile-scrim--open" : ""}`}
         onClick={() => setMobileNavOpen(false)}
-        aria-hidden="true"
+        aria-label="关闭导航"
       />
       <CommandPalette open={commandOpen()} onClose={() => setCommandOpen(false)} />
     </div>

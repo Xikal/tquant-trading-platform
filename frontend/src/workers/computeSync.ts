@@ -16,7 +16,6 @@ export function normalizeMonitorPrioritySync({
 }: MonitorPriorityNormalizeRequest): MonitorPriorityNormalizeResponse {
   const items = [...(board?.items ?? [])]
     .filter((item) => Boolean(item?.symbol))
-    .sort(prioritySort)
     .slice(0, Math.max(0, limit));
   return {
     items,
@@ -71,13 +70,6 @@ export function downsampleChartPointsSync({
     input_count: points.length,
     output_count: maxPoints,
   };
-}
-
-function prioritySort(
-  left: GeneratedPriorityItem,
-  right: GeneratedPriorityItem,
-): number {
-  return score(right.priority_score ?? right.production_score) - score(left.priority_score ?? left.production_score);
 }
 
 function strategySort(sort: string) {

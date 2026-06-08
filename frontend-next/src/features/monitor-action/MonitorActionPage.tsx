@@ -66,11 +66,11 @@ export function MonitorActionPage() {
         const buyCount = createMemo(() => countLane(model.priorityItems, "buy_now"));
         const observeCount = createMemo(() => countLane(model.priorityItems, "observe"));
         const riskCount = createMemo(() => countLane(model.priorityItems, "risk"));
-        const marketState = createMemo(() => compactState(text(model.board.market_state_category_text ?? model.board.market_state_text, "下跌退潮")));
-        const marketRead = createMemo(() => compactMarketRead(text(model.board.market_state_text ?? model.board.market_state_category_text, "当前环境对低吸偏谨慎")));
-        const direction = createMemo(() => text(model.board.directional_bias_text ?? model.board.market_direction_text, "观望"));
+        const marketState = createMemo(() => compactState(text(model.board.market_state_category_text ?? model.board.market_state_text, "--")));
+        const marketRead = createMemo(() => compactMarketRead(text(model.board.market_state_text ?? model.board.market_state_category_text, "--")));
+        const direction = createMemo(() => text(model.board.directional_bias_text ?? model.board.market_direction_text, "未返回"));
         const dataState = createMemo(() => text(model.board.data_quality_text ?? model.dataQuality.status, "后台刷新中"));
-        const portfolioRisk = createMemo(() => text(nested(model.board, "portfolio_risk.risk_level"), "清晰"));
+        const portfolioRisk = createMemo(() => text(nested(model.board, "portfolio_risk.risk_level"), "未返回"));
 
         return (
           <PageScaffold page="monitor" class="monitor-action-page monitor-action-page--artifact">
@@ -80,13 +80,13 @@ export function MonitorActionPage() {
                   <MonitorIcon name="info" />
                   <div>
                     <strong>{selected()?.name || "重点标的"}监控警示：</strong>
-                    <span>{selected()?.summary || "今天别动。信号处于刷新中，切勿按历史旧数据操作，待确认。"}</span>
+                    <span>{selected()?.summary || "当前交易日信号处于刷新中，切勿按历史旧数据操作，待确认。"}</span>
                   </div>
                 </div>
 
                 <div class="monitor-kpi-grid">
                   <MetricTile
-                    label="今日买入/观察"
+                    label="发布日买入/观察"
                     badge="机会分布"
                     badgeTone="green"
                     primary={`可买 ${buyCount()}`}
@@ -100,7 +100,7 @@ export function MonitorActionPage() {
                     badgeTone="red"
                     primary={`高风险 ${riskCount()}`}
                     secondary={`block:${blockRate()}%`}
-                    hint="防范高位震荡，当前开启强制防御"
+                    hint={riskCount() ? "后端返回风险候选，请先复核风险闸门" : "后端未返回高风险候选"}
                     tone="red"
                   />
                   <MetricTile
@@ -109,7 +109,7 @@ export function MonitorActionPage() {
                     badgeTone="amber"
                     primary={marketRead()}
                     secondary=""
-                    hint="严禁盲目筑底，控制试错仓位"
+                    hint={marketRead() === "未返回" ? "等待后端市场状态" : "按后端市场状态控制试错仓位"}
                     tone="amber"
                   />
                 </div>
@@ -126,17 +126,17 @@ export function MonitorActionPage() {
                   </div>
 
                   <div class="monitor-info-grid monitor-info-grid--five">
-                    <InfoTile label="今日方向" value={direction()} strong />
+                    <InfoTile label="发布日方向" value={direction()} strong />
                     <InfoTile label="市场状态" value={marketState()} tone="amber" title={marketRead()} />
                     <InfoTile label="热点板块" value={hotIndustries().join(" / ") || "暂无"} title={hotIndustries().join(" / ")} />
-                    <InfoTile label="宽度情绪" value={text(model.board.breadth_text ?? model.board.market_breadth_text, "涨+1% / --家")} tone="green" />
+                    <InfoTile label="宽度情绪" value={text(model.board.breadth_text ?? model.board.market_breadth_text, "--")} tone="green" />
                     <InfoTile label="组合风险" value={portfolioRisk()} tone="green" />
                   </div>
 
                   <div class="monitor-info-grid monitor-info-grid--three">
                     <SystemTile label="快照日期" value={snapshotDate()} meta={snapshotTime()} />
-                    <SystemTile label="数据状态" value={dataState()} meta={text(model.board.data_source_label, "使用旧版")} tone="amber" />
-                    <SystemTile label="今日分屏指标" value={`确认 ${buyCount()} / 观察 ${observeCount()} / 榜单 ${model.priorityItems.length}`} meta={`block / ${blockRate()}%`} />
+                    <SystemTile label="数据状态" value={dataState()} meta={text(model.board.data_source_label, "--")} tone="amber" />
+                    <SystemTile label="发布日分屏指标" value={`确认 ${buyCount()} / 观察 ${observeCount()} / 榜单 ${model.priorityItems.length}`} meta={`block / ${blockRate()}%`} />
                   </div>
 
                   <div class="monitor-accordion">
@@ -167,14 +167,14 @@ export function MonitorActionPage() {
                       body={
                         buyCount() > 0
                           ? "按服务端生产优先榜读取，不改变生产排序。执行前仍需核对风险闸门和成交量。"
-                          : "下跌退潮周期，不建议追高低吸。系统已将低承接、高偏离值标的过滤放弃，目前以观察为主。"
+                          : "后端未返回确认买入候选。当前仅显示观察和复盘信息，不推导额外市场判断。"
                       }
                     />
                     <WarningBox
                       tone="amber"
                       icon="clock"
                       title={model.board.snapshot_warning ? text(model.board.snapshot_warning) : "优先榜快照已进入离线复盘区"}
-                      body="前排股票池处于结算复盘时段，数据重演生成前，仅做离线对比使用。"
+                      body="按后端快照状态展示。若发布日为空或 stale，仅做离线复盘对比。"
                     />
                   </div>
 
@@ -231,7 +231,7 @@ export function MonitorActionPage() {
                 </header>
 
                 <div class="monitor-holding-alert">
-                  <span><span class="monitor-live-dot" />{selected()?.name || "重点标的"}：今天别动</span>
+                  <span><span class="monitor-live-dot" />{selected()?.name || "重点标的"}：等待发布日信号确认</span>
                   <button type="button" onClick={() => showToast("信号仍在重新校准", "warn")}>刷新确认</button>
                 </div>
 
@@ -651,7 +651,7 @@ function timePart(value: unknown): string {
 
 function compactState(value: string): string {
   const raw = value.trim();
-  if (!raw || raw === "--") return "下跌退潮";
+  if (!raw || raw === "--") return "未返回";
   if (raw.includes("下跌") || raw.includes("退潮")) return "下跌退潮";
   if (raw.includes("震荡")) return "震荡观察";
   if (raw.includes("上行") || raw.includes("强势") || raw.includes("进攻")) return "强势上行";
@@ -661,9 +661,9 @@ function compactState(value: string): string {
 
 function compactMarketRead(value: string): string {
   const raw = value.trim();
-  if (!raw || raw === "--") return "当前环境对低吸偏谨慎";
+  if (!raw || raw === "--") return "未返回";
   if (raw.length <= 14) return raw;
-  return "当前环境对低吸偏谨慎";
+  return `${raw.slice(0, 14)}...`;
 }
 
 function symbolFromSearch(search: unknown): string {

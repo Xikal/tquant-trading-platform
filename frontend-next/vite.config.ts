@@ -33,13 +33,11 @@ export default defineConfig(({ command }) => ({
 function splitVendorChunks(id: string): string | undefined {
   if (!id.includes("node_modules")) return undefined;
   const normalized = id.replace(/\\/g, "/");
-  if (normalized.includes("/echarts/core") || normalized.includes("/echarts/lib/core")) return "echarts-core";
-  if (normalized.includes("/echarts/charts") || normalized.includes("/echarts/lib/chart")) return "echarts-charts";
-  if (normalized.includes("/echarts/components") || normalized.includes("/echarts/lib/component")) return "echarts-components";
-  if (normalized.includes("/echarts/renderers") || normalized.includes("/echarts/lib/renderer")) return "echarts-renderers";
-  if (normalized.includes("/zrender/")) return "zrender";
-  if (normalized.includes("/echarts/")) return "echarts-core";
-  if (normalized.includes("/@tanstack/")) return "tanstack";
+  if (normalized.includes("/@tanstack/solid-router/")) return "tanstack-router";
+  if (normalized.includes("/@tanstack/solid-query/")) return "tanstack-query";
+  if (normalized.includes("/@tanstack/solid-table/")) return "tanstack-table";
+  if (normalized.includes("/@tanstack/solid-virtual/")) return "tanstack-virtual";
+  if (normalized.includes("/@tanstack/")) return "tanstack-misc";
   if (normalized.includes("/solid-js/")) return "solid-vendor";
   return "vendor";
 }

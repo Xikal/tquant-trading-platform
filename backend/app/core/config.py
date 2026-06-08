@@ -118,6 +118,7 @@ class AppSettings(BaseSettings):
     schema_compat_repair_enabled: bool = False
     schema_compat_verify_on_startup: bool = False
     legacy_route_compat_enabled: bool = False
+    serve_frontend_static: bool = True
     frontend_next_monitor_cutover_enabled: bool = False
     frontend_next_cutover_paths: str = ""
     max_request_body_bytes: int = 1_048_576

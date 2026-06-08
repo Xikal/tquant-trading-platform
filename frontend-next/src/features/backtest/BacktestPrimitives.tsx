@@ -47,12 +47,8 @@ export function InfoBox(props: { tone: "amber" | "blue" | "green"; title: string
 export function MetricTable(props: { totalReturn: unknown; maxDrawdown: unknown; winRate: unknown; tradesCount: number; profitFactor: unknown }) {
   const rows = [
     ["总收益", pct(props.totalReturn), "最大回撤", pct(props.maxDrawdown), "down"],
-    ["基准", "0.00%", "胜率", pct(props.winRate), "up"],
-    ["Alpha", pct(props.totalReturn), "交易数", String(props.tradesCount || "--"), "neutral"],
+    ["胜率", pct(props.winRate), "交易数", String(props.tradesCount || "--"), "up"],
     ["Sharpe", "--", "利润因子", text(props.profitFactor), "neutral"],
-    ["Sortino", "--", "队列深度", "0", "neutral"],
-    ["Calmar", "--", "等待时间", "--", "neutral"],
-    ["IR", "--", "风控", "+30% / 8仓", "neutral"],
   ];
   return (
     <div class="backtest-metric-table">

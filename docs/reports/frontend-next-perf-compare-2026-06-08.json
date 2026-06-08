@@ -1,25 +1,25 @@
 {
-  "generated_at": "2026-06-08T06:42:02.160Z",
-  "baseURL": "http://43.143.243.97:18090",
+  "generated_at": "2026-06-08T13:12:36.225Z",
+  "baseURL": "http://127.0.0.1:5175",
   "auth_status": {
     "access_token": "provided",
-    "admin_token": "provided"
+    "admin_token": "missing"
   },
   "authStatus": {
     "access_token": "provided",
-    "admin_token": "provided"
+    "admin_token": "missing"
   },
   "results": [
     {
       "route": "/next/monitor",
-      "elapsed_ms": 830,
-      "dom_nodes": 234,
+      "elapsed_ms": 1676,
+      "dom_nodes": 229,
       "dom_breakdown": null,
       "api_request_count": 2,
       "unique_api_request_count": 2,
       "api_requests": [
-        "http://43.143.243.97:18090/api/auth/me",
-        "http://43.143.243.97:18090/api/bff/v1/workspace/monitor?priority_limit=18&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=action"
+        "http://127.0.0.1:5175/api/auth/me",
+        "http://127.0.0.1:5175/api/bff/v1/workspace/monitor?priority_limit=18&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=action"
       ],
       "strategy_items_422_count": 0,
       "telemetry": {
@@ -37,28 +37,28 @@
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 32,
+            "durationMs": 267,
             "meta": {
               "method": "GET",
               "path": "/api/auth/me",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900917742,
+            "ts": 1780924350934,
             "route": "/next/monitor"
           },
           {
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 42,
+            "durationMs": 99,
             "meta": {
               "method": "GET",
               "path": "/api/bff/v1/workspace/monitor",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900917853,
+            "ts": 1780924351406,
             "route": "/next/monitor"
           }
         ]
@@ -67,14 +67,14 @@
     },
     {
       "route": "/next/monitor/market",
-      "elapsed_ms": 663,
-      "dom_nodes": 270,
+      "elapsed_ms": 793,
+      "dom_nodes": 265,
       "dom_breakdown": null,
       "api_request_count": 2,
       "unique_api_request_count": 2,
       "api_requests": [
-        "http://43.143.243.97:18090/api/auth/me",
-        "http://43.143.243.97:18090/api/bff/v1/workspace/monitor?priority_limit=10&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=market"
+        "http://127.0.0.1:5175/api/auth/me",
+        "http://127.0.0.1:5175/api/bff/v1/workspace/monitor?priority_limit=10&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=market"
       ],
       "strategy_items_422_count": 0,
       "telemetry": {
@@ -92,28 +92,28 @@
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 32,
+            "durationMs": 33,
             "meta": {
               "method": "GET",
               "path": "/api/auth/me",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900918446,
+            "ts": 1780924352042,
             "route": "/next/monitor/market"
           },
           {
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 48,
+            "durationMs": 31,
             "meta": {
               "method": "GET",
               "path": "/api/bff/v1/workspace/monitor",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900918532,
+            "ts": 1780924352235,
             "route": "/next/monitor/market"
           }
         ]
@@ -122,8 +122,8 @@
     },
     {
       "route": "/next/paper",
-      "elapsed_ms": 732,
-      "dom_nodes": 342,
+      "elapsed_ms": 1984,
+      "dom_nodes": 334,
       "dom_breakdown": {
         "mecha_descendants": 163,
         "page_descendants": 246,
@@ -134,8 +134,8 @@
       "api_request_count": 2,
       "unique_api_request_count": 2,
       "api_requests": [
-        "http://43.143.243.97:18090/api/auth/me",
-        "http://43.143.243.97:18090/api/bff/v1/workspace/paper"
+        "http://127.0.0.1:5175/api/auth/me",
+        "http://127.0.0.1:5175/api/bff/v1/workspace/paper"
       ],
       "strategy_items_422_count": 0,
       "telemetry": {
@@ -153,28 +153,28 @@
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 31,
+            "durationMs": 48,
             "meta": {
               "method": "GET",
               "path": "/api/auth/me",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900919118,
+            "ts": 1780924352863,
             "route": "/next/paper"
           },
           {
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 83,
+            "durationMs": 125,
             "meta": {
               "method": "GET",
               "path": "/api/bff/v1/workspace/paper",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900919274,
+            "ts": 1780924354216,
             "route": "/next/paper"
           }
         ]
@@ -183,14 +183,14 @@
     },
     {
       "route": "/next/strategy-tracking",
-      "elapsed_ms": 2316,
-      "dom_nodes": 1045,
+      "elapsed_ms": 1302,
+      "dom_nodes": 354,
       "dom_breakdown": null,
       "api_request_count": 2,
       "unique_api_request_count": 2,
       "api_requests": [
-        "http://43.143.243.97:18090/api/auth/me",
-        "http://43.143.243.97:18090/api/bff/v1/workspace/strategy"
+        "http://127.0.0.1:5175/api/auth/me",
+        "http://127.0.0.1:5175/api/bff/v1/workspace/strategy"
       ],
       "strategy_items_422_count": 0,
       "telemetry": {
@@ -208,28 +208,28 @@
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 31,
+            "durationMs": 11,
             "meta": {
               "method": "GET",
               "path": "/api/auth/me",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900919878,
+            "ts": 1780924354948,
             "route": "/next/strategy-tracking"
           },
           {
             "kind": "api",
             "name": "request",
             "status": "ok",
-            "durationMs": 1651,
+            "durationMs": 122,
             "meta": {
               "method": "GET",
               "path": "/api/bff/v1/workspace/strategy",
               "status_code": 200,
               "attempts": 1
             },
-            "ts": 1780900921589,
+            "ts": 1780924355669,
             "route": "/next/strategy-tracking"
           }
         ]
@@ -238,7 +238,7 @@
     }
   ],
   "strategy_tracking": {
-    "elapsed_ms": 2316,
+    "elapsed_ms": 1302,
     "api_request_count": 2,
     "items_422_count": 0,
     "forbidden_legacy_requests": [],
@@ -257,36 +257,36 @@
           "kind": "api",
           "name": "request",
           "status": "ok",
-          "durationMs": 31,
+          "durationMs": 11,
           "meta": {
             "method": "GET",
             "path": "/api/auth/me",
             "status_code": 200,
             "attempts": 1
           },
-          "ts": 1780900919878,
+          "ts": 1780924354948,
           "route": "/next/strategy-tracking"
         },
         {
           "kind": "api",
           "name": "request",
           "status": "ok",
-          "durationMs": 1651,
+          "durationMs": 122,
           "meta": {
             "method": "GET",
             "path": "/api/bff/v1/workspace/strategy",
             "status_code": 200,
             "attempts": 1
           },
-          "ts": 1780900921589,
+          "ts": 1780924355669,
           "route": "/next/strategy-tracking"
         }
       ]
     }
   },
   "paper": {
-    "elapsed_ms": 732,
-    "dom_nodes": 342,
+    "elapsed_ms": 1984,
+    "dom_nodes": 334,
     "non_mecha_descendants": 82,
     "mecha_descendants": 163,
     "workflow_panel_descendants": 0

@@ -4,6 +4,41 @@ import { readArray, readRecord, text, numberText, pickFirst, nested } from "../s
 
 export type BacktestRecord = Record<string, unknown>;
 
+export interface BacktestStrategyOption {
+  key: string;
+  label: string;
+  tier: string;
+}
+
+export interface BacktestAttributionDisplayRow {
+  label: string;
+  signal: number;
+  trades: number;
+  winRate: number | null;
+  tone: string;
+}
+
+export interface BacktestLogDisplayRow {
+  time: string;
+  level: string;
+  message: string;
+  source: string;
+  tone: string;
+}
+
+export interface BacktestOosDisplayRow {
+  state: string;
+  range: string;
+  confidence: string;
+  note: string;
+  tone: string;
+}
+
+export interface ExecutionAssumptionRow {
+  label: string;
+  value: string;
+}
+
 export function backtestRunId(run: BacktestRecord): string {
   return text(pickFirst(run, ["id", "run_id"]), "");
 }
@@ -87,17 +122,27 @@ export const tradeColumns: ColumnDef<BacktestRecord>[] = [
   { header: "原因", cell: (ctx) => text(ctx.row.original.reason ?? ctx.row.original.signal) },
 ];
 
-export function backtestSubmitFields(): ShadowActionField[] {
+export function backtestSubmitFields(defaults: {
+  name?: unknown;
+  strategy?: unknown;
+  start?: unknown;
+  end?: unknown;
+  capital?: unknown;
+  benchmark?: unknown;
+  dataVersion?: unknown;
+  strategyVersion?: unknown;
+  feeModelVersion?: unknown;
+} = {}): ShadowActionField[] {
   return [
-    { key: "name", label: "名称", value: "研究回测" },
-    { key: "strategy", label: "策略", value: "N形洗盘低吸" },
-    { key: "start", label: "开始日期", value: "2025-01-01" },
-    { key: "end", label: "结束日期", value: "2026-06-05" },
-    { key: "capital", label: "初始资金", value: "100000" },
-    { key: "benchmark", label: "基准", value: "000300" },
-    { key: "data_version", label: "数据版本", value: "default" },
-    { key: "strategy_version", label: "策略版本", value: "stable" },
-    { key: "fee_model_version", label: "费率模型", value: "cn-a-share-v1" },
+    { key: "name", label: "名称", value: text(defaults.name, "frontend-next research backtest") },
+    { key: "strategy", label: "策略", value: text(defaults.strategy, "") },
+    { key: "start", label: "开始日期", value: text(defaults.start, "") },
+    { key: "end", label: "结束日期", value: text(defaults.end, "") },
+    { key: "capital", label: "初始资金", value: text(defaults.capital, "") },
+    { key: "benchmark", label: "基准", value: text(defaults.benchmark, "") },
+    { key: "data_version", label: "数据版本", value: text(defaults.dataVersion, "") },
+    { key: "strategy_version", label: "策略版本", value: text(defaults.strategyVersion, "") },
+    { key: "fee_model_version", label: "费率模型", value: text(defaults.feeModelVersion, "") },
   ];
 }
 
@@ -145,4 +190,151 @@ function queueText(detail: BacktestRecord): string {
   const depth = text(detail.queue_depth, "");
   if (!position && !depth) return "--";
   return `位置 ${position || "--"} / 深度 ${depth || "--"}`;
+}
+
+export function strategyOptionsFromMeta(meta: unknown, runs: BacktestRecord[] = []): BacktestStrategyOption[] {
+  const root = readRecord(meta);
+  const fromMeta = readArray<Record<string, unknown>>(root.strategies)
+    .filter((item) => item.enabled !== false && text(item.visibility, "full") !== "hidden")
+    .sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0))
+    .map((item) => ({
+      key: text(item.key, ""),
+      label: text(item.display_name ?? item.name ?? item.key, ""),
+      tier: text(item.tier ?? item.category_key, ""),
+    }))
+    .filter((item) => item.key && item.label);
+  if (fromMeta.length) return uniqueStrategyOptions(fromMeta);
+
+  const fromRuns = runs.flatMap((run) => strategyKeys(run.strategy_keys ?? run.strategies ?? run.strategy_key)).map((key) => ({
+    key,
+    label: key,
+    tier: "from_backtest_run",
+  }));
+  return uniqueStrategyOptions(fromRuns);
+}
+
+export function attributionRowsFromDetail(detail: BacktestRecord): BacktestAttributionDisplayRow[] {
+  const attribution = readRecord(detail.attribution ?? nested(detail, "result.attribution") ?? nested(detail, "result.metrics.attribution"));
+  return [
+    ...attributionBucketRows("行业", readArray<Record<string, unknown>>(attribution.industry), "indigo"),
+    ...attributionBucketRows("市场", readArray<Record<string, unknown>>(attribution.market_state), "amber"),
+    ...attributionBucketRows("数据", readArray<Record<string, unknown>>(attribution.data_quality), "slate"),
+  ].slice(0, 8);
+}
+
+export function logRowsFromDetail(detail: BacktestRecord): BacktestLogDisplayRow[] {
+  const rawRows = readArray<Record<string, unknown>>(detail.logs)
+    .concat(readArray<Record<string, unknown>>(detail.events))
+    .concat(readArray<Record<string, unknown>>(nested(detail, "result.logs")))
+    .concat(readArray<Record<string, unknown>>(nested(detail, "result.events")));
+  if (rawRows.length) {
+    return rawRows.slice(0, 4).map((row) => ({
+      time: shortTime(pickFirst(row, ["time", "timestamp", "created_at", "updated_at"])),
+      level: text(pickFirst(row, ["level", "status", "kind"]), "INFO").toUpperCase(),
+      message: text(pickFirst(row, ["message", "detail", "summary", "note"]), "--"),
+      source: text(pickFirst(row, ["source", "component"]), "BACKTEST"),
+      tone: logTone(pickFirst(row, ["level", "status", "kind"])),
+    }));
+  }
+  const notes = readArray<string>(nested(detail, "result_quality.notes"))
+    .concat(readArray<string>(nested(detail, "attribution.notes")))
+    .concat(readArray<string>(nested(detail, "result.notes")));
+  return notes.slice(0, 4).map((note) => ({
+    time: shortTime(detail.updated_at ?? detail.finished_at ?? detail.created_at),
+    level: "INFO",
+    message: text(note),
+    source: "BACKTEST",
+    tone: "blue",
+  }));
+}
+
+export function oosRowsFromDetail(detail: BacktestRecord): BacktestOosDisplayRow[] {
+  const rows = readArray<Record<string, unknown>>(detail.validation_windows)
+    .concat(readArray<Record<string, unknown>>(detail.oos_windows))
+    .concat(readArray<Record<string, unknown>>(nested(detail, "result.validation_windows")))
+    .concat(readArray<Record<string, unknown>>(nested(detail, "result.oos_windows")))
+    .concat(readArray<Record<string, unknown>>(nested(detail, "result.walk_forward_windows")));
+  return rows.slice(0, 8).map((row) => ({
+    state: text(pickFirst(row, ["market_state", "regime", "state", "segment"]), "未标注"),
+    range: `${text(pickFirst(row, ["oos_start", "validation_start", "test_start", "start_date", "start"]), "--")} ~ ${text(pickFirst(row, ["oos_end", "validation_end", "test_end", "end_date", "end"]), "--")}`,
+    confidence: text(pickFirst(row, ["confidence", "score", "oos_score", "test_sharpe"]), "--"),
+    note: text(pickFirst(row, ["note", "notes", "summary", "verdict", "gate_reason"]), "后端样本外窗口"),
+    tone: oosTone(pickFirst(row, ["verdict", "status", "passed", "oos_failed"])),
+  }));
+}
+
+export function executionAssumptionRows(detail: BacktestRecord): ExecutionAssumptionRow[] {
+  const assumptions = readRecord(detail.execution_assumptions ?? nested(detail, "result.execution_assumptions") ?? nested(detail, "metrics.execution_assumptions"));
+  const feeModel = readRecord(assumptions.fee_model);
+  const slippageModel = readRecord(assumptions.slippage_model);
+  const explicitRows = [
+    { label: "费率模型", value: text(feeModel.version ?? assumptions.fee_model_version, "") },
+    { label: "佣金", value: text(feeModel.commission ?? feeModel.commission_text, "") },
+    { label: "印花税", value: text(feeModel.stamp_tax ?? feeModel.stamp_tax_text, "") },
+    { label: "过户费", value: text(feeModel.transfer_fee ?? feeModel.transfer_fee_text, "") },
+    { label: "滑点模型", value: text(slippageModel.version ?? slippageModel.name ?? assumptions.slippage_model_version, "") },
+    { label: "执行假设来源", value: text(assumptions.source, "") },
+  ].filter((row) => row.value);
+  if (explicitRows.length) return explicitRows;
+
+  const params = readRecord(detail.params);
+  return [
+    { label: "单笔最大仓位", value: text(params.max_position_pct ?? detail.max_position_pct, "--") },
+    { label: "双向滑点 (bp)", value: text(detail.slippage_bps ?? params.slippage_bps, "--") },
+    { label: "费率模型", value: text(detail.fee_model_version ?? params.fee_model_version, "--") },
+  ];
+}
+
+function attributionBucketRows(group: string, rows: Record<string, unknown>[], tone: string): BacktestAttributionDisplayRow[] {
+  return rows.map((row) => ({
+    label: `${group}: ${text(row.label ?? row.bucket, "--")}`,
+    signal: Number(pickFirst(row, ["signal_count", "signals", "candidate_count"]) ?? 0),
+    trades: Number(pickFirst(row, ["trade_count", "filled_order_count", "trades"]) ?? 0),
+    winRate: numericOrNull(pickFirst(row, ["win_rate_pct", "win_rate"])),
+    tone,
+  }));
+}
+
+function strategyKeys(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => text(item, "")).filter(Boolean);
+  return text(value, "").split(/[,\n，、]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function uniqueStrategyOptions(items: BacktestStrategyOption[]): BacktestStrategyOption[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.key)) return false;
+    seen.add(item.key);
+    return true;
+  });
+}
+
+function numericOrNull(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function shortTime(value: unknown): string {
+  const raw = text(value, "");
+  if (!raw) return "--";
+  const match = raw.match(/\d{2}:\d{2}:\d{2}/);
+  return match?.[0] ?? raw.slice(0, 19).replace("T", " ");
+}
+
+function logTone(value: unknown): string {
+  const raw = text(value, "").toLowerCase();
+  if (raw.includes("warn")) return "amber";
+  if (raw.includes("error") || raw.includes("fail")) return "red";
+  if (raw.includes("succ") || raw.includes("done")) return "green";
+  return "blue";
+}
+
+function oosTone(value: unknown): string {
+  if (value === true) return "green";
+  if (value === false) return "amber";
+  const raw = text(value, "").toLowerCase();
+  if (raw.includes("pass") || raw.includes("success")) return "green";
+  if (raw.includes("block") || raw.includes("fail")) return "red";
+  if (raw.includes("observe") || raw.includes("warn")) return "amber";
+  return "blue";
 }

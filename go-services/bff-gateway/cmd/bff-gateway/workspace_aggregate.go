@@ -116,15 +116,25 @@ func aggregateMonitorWorkspace(cfg config, client *http.Client, r *http.Request)
 			{name: "market_pulse", path: "/api/market/pulse"},
 		}
 	} else if cfg.monitorDegradedSourcesEnabled || view == "market" {
+		breadthTimeout := 250 * time.Millisecond
+		reviewTimeout := 120 * time.Millisecond
+		sectorTimeout := 250 * time.Millisecond
+		hedgeTimeout := 120 * time.Millisecond
+		if view == "market" {
+			breadthTimeout = 4 * time.Second
+			reviewTimeout = 2 * time.Second
+			sectorTimeout = 4 * time.Second
+			hedgeTimeout = 2 * time.Second
+		}
 		sources = append(
 			sources,
-			rawSource{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true"), timeout: 250 * time.Millisecond},
-			rawSource{name: "monitor_review", path: "/api/market/review-summary", timeout: 120 * time.Millisecond},
+			rawSource{name: "market_breadth", path: "/api/market/breadth", query: values("realtime", "true"), timeout: breadthTimeout},
+			rawSource{name: "monitor_review", path: "/api/market/review-summary", timeout: reviewTimeout},
 			rawSource{name: "sector_relative_strength", path: "/api/market/sector-relative-strength", query: values(
 				"limit", queryDefault(q, "sector_limit", "8"),
 				"per_sector_limit", queryDefault(q, "per_sector_limit", "8"),
-			), timeout: 250 * time.Millisecond},
-			rawSource{name: "paired_hedge", path: "/api/market/paired-hedge-research", query: values("limit", queryDefault(q, "hedge_limit", "4")), timeout: 120 * time.Millisecond},
+			), timeout: sectorTimeout},
+			rawSource{name: "paired_hedge", path: "/api/market/paired-hedge-research", query: values("limit", queryDefault(q, "hedge_limit", "4")), timeout: hedgeTimeout},
 		)
 	}
 	results, errors, timings := fetchSources(cfg, client, r, sources)

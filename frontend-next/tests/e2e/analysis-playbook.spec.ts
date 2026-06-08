@@ -67,7 +67,7 @@ test("/next/playbook reads low-buy workflow and blocks lifecycle writes", async 
   await installPlaybookRoutes(page);
 
   await page.goto("/next/playbook");
-  await expect(page.getByRole("heading", { name: "今日注目核心标的" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "发布日注目核心标的" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选分层" })).toBeVisible();
   await expect(page.getByText("载入模拟推荐")).toHaveCount(0);
   await expect(page.getByText("贵州茅台")).toHaveCount(0);

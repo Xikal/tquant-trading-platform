@@ -21,11 +21,17 @@ test("/next/backtest shows detail tabs and keeps task actions in default protect
   await page.getByRole("radio", { name: "结果概览" }).click();
   await expect(page.getByText("曲线点")).toBeVisible();
   await expect(page.getByText("图表点")).toBeVisible();
-  await expect(page.locator(".backtest-chart-card .chart-frame canvas")).toHaveCount(1);
+  await expect(page.getByRole("img", { name: "回测权益曲线" })).toBeVisible();
+  await expect(page.locator(".backtest-chart-card .chart-frame svg")).toHaveCount(1);
+  await expect(page.getByText("行业: 半导体")).toBeVisible();
+  await expect(page.getByText("preview_not_persisted")).toBeVisible();
+  await expect(page.getByText("样本分组A")).toHaveCount(0);
+  await expect(page.getByText("Sharpe ratio is below performance threshold")).toHaveCount(0);
 
   await page.getByRole("radio", { name: "成交明细" }).click();
   await expect(page.getByText("买入")).toBeVisible();
   await expect(page.getByText("突破确认")).toBeVisible();
+  await expect(page.locator(".backtest-data-table").getByText("¥10,200")).toHaveCount(1);
 
   await page.getByRole("radio", { name: "ETF T0" }).click();
   await expect(page.getByText("只读研究")).toBeVisible();
@@ -38,6 +44,8 @@ test("/next/backtest shows detail tabs and keeps task actions in default protect
 
   await page.getByRole("radio", { name: "研究闭环" }).click();
   await expect(page.getByText("对比")).toBeVisible();
+  await expect(page.getByText("2026-04-01 ~ 2026-04-30")).toBeVisible();
+  await expect(page.getByText("宽基趋势上行")).toHaveCount(0);
   await submitShadowPanel(page, "回测任务控制", "取消任务", "任务控制已进入二次确认", "取消任务已记录");
   await submitShadowPanel(page, "验证与优化", "记录验证/优化", "验证/优化已进入二次确认", "验证/优化已记录");
   expect(writeRequests).toEqual([]);
@@ -136,6 +144,17 @@ async function submitShadowPanel(page: Page, title: string, actionLabel: string,
 }
 
 async function installSliceMocks(page: Page) {
+  await page.route("**/api/strategies/meta", (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        strategies: [
+          { key: "first_board", name: "首板回调", display_name: "首板回调", enabled: true, visibility: "full", sort_order: 1, tier: "core" },
+          { key: "n_pattern_long_wash", name: "N形洗盘研究", display_name: "N形洗盘研究", enabled: true, visibility: "full", sort_order: 2, tier: "research" },
+        ],
+      },
+    }),
+  );
   await page.route("**/api/backtests/runs**", (route) =>
     route.fulfill({
       status: 200,
@@ -176,6 +195,24 @@ async function installSliceMocks(page: Page) {
         created_at: "2026-06-05T10:00:00Z",
         finished_at: "2026-06-05T10:02:00Z",
         summary: { total_return: 0.289, max_drawdown: 0.072, profit_factor: 1.82, win_rate: 0.58 },
+        execution_model_preview: {
+          status: "preview_not_persisted",
+          final_fact_source: "portfolio_backtest_metrics",
+          replacement_enabled: false,
+          reason: "only_preview",
+        },
+        attribution: {
+          industry: [{ bucket: "半导体", signal_count: 4, trade_count: 2, win_rate_pct: 0.75 }],
+          market_state: [],
+          data_quality: [],
+          notes: ["真实回测质量说明"],
+        },
+        result_quality: { notes: ["回测数据完整度通过"] },
+        result: {
+          oos_windows: [
+            { market_state: "震荡", oos_start: "2026-04-01", oos_end: "2026-04-30", confidence: 0.82, verdict: "observe", note: "后端样本外窗口" },
+          ],
+        },
       },
     }),
   );
@@ -188,7 +225,7 @@ async function installSliceMocks(page: Page) {
   await page.route("**/api/backtests/101/trades", (route) =>
     route.fulfill({
       status: 200,
-      json: { items: [{ trade_date: "2025-02-03", symbol: "000001", side: "buy", quantity: 1000, price: 10.2, return_pct: 0.08, reason: "突破确认" }] },
+      json: { items: [{ trade_date: "2025-02-03", symbol: "000001", side: "buy", quantity: 1000, price: 10.2, net_amount: 10200, return_pct: 0.08, reason: "突破确认" }] },
     }),
   );
 

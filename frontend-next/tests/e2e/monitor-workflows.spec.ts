@@ -31,7 +31,6 @@ test("/next/monitor/market renders gate, breadth, sector, ETF, review and runtim
   const writes = captureWriteRequests(page);
   await page.goto("/next/monitor/market");
 
-  await page.getByRole("button", { name: "活跃市态 (满载)" }).click();
   await expect(page.getByRole("heading", { name: "市场总闸 & 数据质量监控" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "市场状态总闸" })).toBeVisible();
   await expect(page.getByText("震荡可做").first()).toBeVisible();

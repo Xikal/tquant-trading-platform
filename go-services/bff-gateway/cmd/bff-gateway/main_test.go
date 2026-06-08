@@ -69,7 +69,7 @@ func TestMonitorAggregateReturnsPartialWhenPulseIsSlow(t *testing.T) {
 	}
 }
 
-func TestMonitorAggregateUsesShortDeadlineForHeavyOptionalSources(t *testing.T) {
+func TestMonitorAggregateUsesShortDeadlineForDegradedOptionalSources(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -110,6 +110,51 @@ func TestMonitorAggregateUsesShortDeadlineForHeavyOptionalSources(t *testing.T) 
 	}
 	if !bytes.Contains(result.body, []byte(`"monitor_snapshot"`)) {
 		t.Fatalf("expected snapshot to remain present: %s", string(result.body))
+	}
+}
+
+func TestMonitorAggregateMarketViewAllowsSlowMarketSources(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/monitor/snapshot":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-08 10:00:00","watchlist_signals":[],"priority_board":{"items":[]}}`))
+		case "/api/market/pulse":
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-08 10:00:00","pulse_text":"ok"}`))
+		case "/api/market/breadth", "/api/market/sector-relative-strength":
+			time.Sleep(700 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"updated_at":"2026-06-08 10:00:00","data_quality":"fresh"}`))
+		case "/api/market/review-summary":
+			time.Sleep(300 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"review_status":{"status":"midday_ready"},"review_reports":[{"report_slot":"midday","overall_summary":"午盘已生成"}]}`))
+		case "/api/market/paired-hedge-research":
+			time.Sleep(300 * time.Millisecond)
+			_, _ = w.Write([]byte(`{"ideas":[]}`))
+		default:
+			t.Fatalf("unexpected upstream path %s", r.URL.Path)
+		}
+	}))
+	defer upstream.Close()
+
+	cfg := config{
+		pythonAPIBase: upstream.URL,
+		timeout:       5 * time.Second,
+		sourceTimeout: 900 * time.Millisecond,
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/bff/v1/workspace/monitor?view=market", nil)
+	result := aggregateMonitorWorkspace(cfg, upstream.Client(), req)
+
+	if result.status != http.StatusOK {
+		t.Fatalf("expected ok, got %d", result.status)
+	}
+	if !bytes.Contains(result.body, []byte(`"market_breadth":{"updated_at"`)) {
+		t.Fatalf("market view should include slow breadth source: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"review_reports":[{"report_slot":"midday"`)) {
+		t.Fatalf("market view should include slow review source: %s", string(result.body))
+	}
+	if !bytes.Contains(result.body, []byte(`"partial_errors":[]`)) {
+		t.Fatalf("market view should not timeout slow-but-valid market sources: %s", string(result.body))
 	}
 }
 

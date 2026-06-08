@@ -25,14 +25,23 @@ describe("today recommendation visibility", () => {
 
     expect(filterTodayConfirmedPriorityItems(board, NOW).map((item) => item.symbol)).toEqual(["600000", "600001"]);
     expect(countTodayConfirmedPriorityItems(board, NOW)).toBe(2);
-    expect(filterTodayConfirmedPriorityItems(priorityBoardFixture("2026-06-04"), NOW)).toEqual([]);
+    expect(filterTodayConfirmedPriorityItems(priorityBoardFixture("2026-06-04", "2026-06-05"), NOW)).toEqual([]);
+  });
+
+  it("uses the backend expected trade date instead of natural today for non-trading days", () => {
+    const weekend = new Date("2026-06-06T04:00:00.000Z");
+    const board = priorityBoardFixture("2026-06-05");
+    const playbook = playbookFixture("2026-06-05", "2026-06-06 12:00:00", false);
+
+    expect(filterTodayConfirmedPriorityItems(board, weekend).map((item) => item.symbol)).toEqual(["600000", "600001"]);
+    expect(filterTodayConfirmedCandidates(playbook, weekend).map((item) => item.symbol)).toEqual(["600000", "600001"]);
   });
 
   it("keeps only current-day confirmed playbook candidates", () => {
     const playbook = playbookFixture("2026-06-05");
 
     expect(filterTodayConfirmedCandidates(playbook, NOW).map((item) => item.symbol)).toEqual(["600000", "600001"]);
-    expect(filterTodayConfirmedCandidates(playbookFixture("2026-06-04"), NOW)).toEqual([]);
+    expect(filterTodayConfirmedCandidates(playbookFixture("2026-06-04", "2026-06-05", true), NOW)).toEqual([]);
   });
 
   it("does not drop a confirmed candidate when an observe row for the same symbol appears first", () => {
@@ -47,10 +56,11 @@ describe("today recommendation visibility", () => {
   });
 });
 
-function priorityBoardFixture(latestTradeDate: string): LowBuyPriorityBoardResult {
+function priorityBoardFixture(latestTradeDate: string, expectedTradeDate = latestTradeDate): LowBuyPriorityBoardResult {
   return {
-    as_of_date: latestTradeDate,
+    as_of_date: expectedTradeDate,
     latest_trade_date: latestTradeDate,
+    latest_available_trade_date: expectedTradeDate,
     updated_at: `${latestTradeDate} 15:10:00`,
     total_candidates: 3,
     immediate_count: 2,
@@ -118,7 +128,7 @@ function priorityItem(symbol: string, buySignalState: "buy_now" | "soft_buy_now"
   };
 }
 
-function playbookFixture(latestTradeDate: string): LowBuyScreenerResult {
+function playbookFixture(latestTradeDate: string, asOfDate = latestTradeDate, stale = false): LowBuyScreenerResult {
   return {
     strategy_key: "baseline",
     strategy_title: "策略",
@@ -126,8 +136,9 @@ function playbookFixture(latestTradeDate: string): LowBuyScreenerResult {
     strategy_logic: "",
     requested_mode: "quick",
     response_mode: "quick",
-    as_of_date: latestTradeDate,
+    as_of_date: asOfDate,
     latest_trade_date: latestTradeDate,
+    stale,
     pool_size: 3,
     scanned_count: 3,
     matched_count: 3,

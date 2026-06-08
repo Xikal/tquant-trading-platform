@@ -8,7 +8,7 @@ import {
 import type { GeneratedAnalysisResponse, GeneratedPriorityItem, GeneratedStrategyTrackingItem } from "../protocol";
 
 describe("frontend worker sync compute fallback", () => {
-  it("normalizes monitor priority items without changing score semantics", () => {
+  it("normalizes monitor priority items without changing backend order", () => {
     const items = [
       priorityItem("000002", 88, "near_entry"),
       priorityItem("000001", 98, "buy_now"),
@@ -18,8 +18,8 @@ describe("frontend worker sync compute fallback", () => {
     const result = normalizeMonitorPrioritySync({ board: { items }, limit: 2 });
 
     expect(result.total).toBe(3);
-    expect(result.items.map((item) => item.symbol)).toEqual(["000001", "000002"]);
-    expect(result.items[0].buy_signal_state).toBe("buy_now");
+    expect(result.items.map((item) => item.symbol)).toEqual(["000002", "000001"]);
+    expect(result.items[0].buy_signal_state).toBe("near_entry");
   });
 
   it("filters and sorts strategy tracking items deterministically", () => {

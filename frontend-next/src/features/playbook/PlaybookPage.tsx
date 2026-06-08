@@ -15,6 +15,7 @@ import {
   loadPlaybookDataset,
   mergePlaybookQuotes,
   performanceSummary,
+  playbookTradeDate,
   quoteStatus,
   selectedCandidate,
   shadowLifecycle,
@@ -85,7 +86,7 @@ export function PlaybookPage() {
           <div class="playbook-hero-card__main">
             <div class="playbook-title-row">
               <h2>{currentStrategyLabel()}</h2>
-              <span class="playbook-luck-pill"><strong>红运</strong><em>今日守正待机</em><small>签</small></span>
+              <span class="playbook-luck-pill"><strong>红运</strong><em>发布日守正待机</em><small>签</small></span>
             </div>
             <p>{strategyDescription(currentStrategyLabel())}</p>
           </div>
@@ -99,7 +100,7 @@ export function PlaybookPage() {
             <ParamCard label="确认可买数量" value={String(laneCandidates(candidates(), "buyable").length)} suffix="只" />
             <ParamCard label="全量深筛状态" value={isRefreshing() ? "刷新中" : query.error ? "异常" : "已完成"} suffix={query.error ? "!" : "100%"} tone={query.error ? "risk" : "ok"} />
             <ParamCard label="数据状态" value={quoteStatus(dataset()) === "--" ? "实时就绪" : "已对齐"} suffix={quoteStatus(dataset())} tone="ok" />
-            <ParamCard label="当前交易日" value={tradeDateText()} suffix="周五" />
+            <ParamCard label="当前交易日" value={playbookTradeDate(dataset())} suffix="后端发布" />
           </div>
 
           <div class="playbook-strategy-tabs" role="tablist" aria-label="选股策略">
@@ -160,7 +161,7 @@ export function PlaybookPage() {
 
             <section class="playbook-focus-card">
               <div class="playbook-focus-card__header">
-                <h3>今日注目核心标的</h3>
+                <h3>发布日注目核心标的</h3>
                 <span>FOCUS</span>
               </div>
               <Show
@@ -380,15 +381,19 @@ function metricValue(items: Array<{ label: string; value: string }>, label: stri
 }
 
 function laneCandidates(items: PlaybookCandidate[], lane: StockLane): PlaybookCandidate[] {
-  if (lane === "buyable") return items.filter((item) => item.lane.includes("buy") || item.action.includes("买") || item.action.includes("立即"));
-  if (lane === "observing") return items.filter((item) => item.lane.includes("wait") || item.action.includes("观察") || item.action.includes("等待"));
-  if (lane === "pending") return items.filter((item) => item.action.includes("确认") || item.details.includes("确认"));
-  return items.filter((item) => item.riskText.includes("放弃") || item.riskText.includes("风险") || item.details.includes("放弃"));
+  if (lane === "buyable") return items.filter((item) => laneText(item).includes("buy") || item.action.includes("买") || item.action.includes("立即"));
+  if (lane === "observing") return items.filter((item) => laneText(item).includes("watch") || laneText(item).includes("wait") || item.action.includes("观察") || item.action.includes("等待"));
+  if (lane === "pending") return items.filter((item) => laneText(item).includes("pending") || laneText(item).includes("confirm") || item.action.includes("确认") || item.details.includes("确认"));
+  return items.filter((item) => laneText(item).includes("avoid") || laneText(item).includes("give_up") || item.riskText.includes("放弃") || item.riskText.includes("风险") || item.details.includes("放弃"));
+}
+
+function laneText(item: PlaybookCandidate): string {
+  return `${item.lane} ${item.laneText}`.toLowerCase();
 }
 
 function laneTitle(lane: StockLane): string {
   const titles: Record<StockLane, string> = {
-    buyable: "现在可买 / 小仓试买",
+    buyable: "确认买入候选",
     observing: "核心观察阶段标的",
     pending: "等待条件确认标的",
     discarded: "观察 / 暂时放弃池",
@@ -413,10 +418,6 @@ function strategyDescription(label: string): string {
     收盘强势承接: "策略原理：寻找尾盘半小时异常大单承接且全天保持高强度的强势票。",
   };
   return descriptions[label] ?? "策略原理：按服务端策略元数据展示，信号只做观察与复盘参考。";
-}
-
-function tradeDateText(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 const laneTabs: Array<{ key: StockLane; label: string }> = [

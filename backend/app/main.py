@@ -333,10 +333,11 @@ def healthz():
 @app.get("/readyz", response_model=ReadinessResponse)
 def readyz(response: Response):
     frontend_next_cutover = bool(frontend_next_cutover_paths())
+    serve_frontend_static = bool(settings.serve_frontend_static)
     checks = {
         "database": False,
-        "frontend_dist": FRONTEND_INDEX_FILE.exists(),
-        "frontend_next_dist": (not frontend_next_cutover) or FRONTEND_NEXT_INDEX_FILE.exists(),
+        "frontend_dist": (not serve_frontend_static) or FRONTEND_INDEX_FILE.exists(),
+        "frontend_next_dist": (not serve_frontend_static) or (not frontend_next_cutover) or FRONTEND_NEXT_INDEX_FILE.exists(),
         "analytics_dependencies": False,
     }
     errors: list[str] = []
@@ -347,9 +348,9 @@ def readyz(response: Response):
     except Exception as exc:
         errors.append(f"database: {exc}")
 
-    if not checks["frontend_dist"]:
+    if serve_frontend_static and not checks["frontend_dist"]:
         errors.append("frontend_dist: missing frontend/dist/index.html")
-    if frontend_next_cutover and not checks["frontend_next_dist"]:
+    if serve_frontend_static and frontend_next_cutover and not checks["frontend_next_dist"]:
         errors.append("frontend_next_dist: missing frontend-next/dist/index.html")
     analytics = analytics_dependency_status()
     checks["analytics_dependencies"] = bool(analytics.ready or not analytics.enabled)
@@ -520,6 +521,8 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
 
 @app.get("/", include_in_schema=False)
 def root():
+    if not settings.serve_frontend_static:
+        return HealthResponse(status="ok", app=settings.app_name)
     if FRONTEND_INDEX_FILE.exists():
         return FileResponse(FRONTEND_INDEX_FILE)
     return HealthResponse(status="ok", app=settings.app_name)
@@ -588,6 +591,8 @@ def frontend_app(full_path: str):
     api_prefix = settings.api_prefix.strip("/")
     if full_path == api_prefix or full_path.startswith(f"{api_prefix}/"):
         return JSONResponse(status_code=404, content={"detail": "API endpoint not found"})
+    if not settings.serve_frontend_static:
+        return JSONResponse(status_code=404, content={"detail": "Frontend static serving is disabled"})
     if _should_serve_frontend_next(full_path):
         return _serve_frontend_next(full_path)
     return _serve_frontend_dist(FRONTEND_DIST_DIR, FRONTEND_INDEX_FILE, full_path)

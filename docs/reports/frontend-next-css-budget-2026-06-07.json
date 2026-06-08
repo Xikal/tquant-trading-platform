@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-08T03:33:24.322Z",
+  "generated_at": "2026-06-08T13:14:45.530Z",
   "summary": {
     "source_css_files": 29,
-    "source_css_bytes": 299197,
-    "source_css_gzip_bytes": 59727,
-    "source_css_lines": 15682,
+    "source_css_bytes": 303565,
+    "source_css_gzip_bytes": 60427,
+    "source_css_lines": 15931,
     "dist_css_files": 11,
-    "dist_css_bytes": 240556,
-    "dist_css_gzip_bytes": 48132,
+    "dist_css_bytes": 169870,
+    "dist_css_gzip_bytes": 35668,
     "important_count": 23,
     "dist_available": true
   },
@@ -21,9 +21,9 @@
     },
     {
       "file": "src/shared/styles/legacy-solid-adapter.css",
-      "bytes": 14691,
-      "gzip_bytes": 3312,
-      "lines": 809,
+      "bytes": 17641,
+      "gzip_bytes": 3759,
+      "lines": 969,
       "important_count": 5
     },
     {
@@ -56,18 +56,18 @@
     },
     {
       "file": "src/shared/styles/legacy-workspace/workspace-primitives-base.css",
-      "bytes": 6522,
-      "gzip_bytes": 1289,
-      "lines": 354,
+      "bytes": 6521,
+      "gzip_bytes": 1288,
+      "lines": 353,
       "important_count": 1
     }
   ],
   "largest_source_css": [
     {
       "file": "src/features/backtest/backtest-slice.css",
-      "bytes": 24016,
-      "gzip_bytes": 4092,
-      "lines": 1343,
+      "bytes": 24942,
+      "gzip_bytes": 4282,
+      "lines": 1406,
       "important_count": 0
     },
     {
@@ -99,6 +99,13 @@
       "important_count": 0
     },
     {
+      "file": "src/features/data-console/data-console-slice.css",
+      "bytes": 18301,
+      "gzip_bytes": 3213,
+      "lines": 998,
+      "important_count": 0
+    },
+    {
       "file": "src/features/monitor-market/monitor-market.css",
       "bytes": 18282,
       "gzip_bytes": 3041,
@@ -106,11 +113,11 @@
       "important_count": 0
     },
     {
-      "file": "src/features/data-console/data-console-slice.css",
-      "bytes": 17805,
-      "gzip_bytes": 3149,
-      "lines": 968,
-      "important_count": 0
+      "file": "src/shared/styles/legacy-solid-adapter.css",
+      "bytes": 17641,
+      "gzip_bytes": 3759,
+      "lines": 969,
+      "important_count": 5
     },
     {
       "file": "src/features/auth/LoginPage.css",
@@ -118,13 +125,6 @@
       "gzip_bytes": 3676,
       "lines": 880,
       "important_count": 4
-    },
-    {
-      "file": "src/shared/styles/legacy-solid-adapter.css",
-      "bytes": 14691,
-      "gzip_bytes": 3312,
-      "lines": 809,
-      "important_count": 5
     },
     {
       "file": "src/features/playbook/playbookSlice.css",
@@ -149,9 +149,9 @@
     },
     {
       "file": "src/shared/styles/legacy-workspace/workspace-login-scene.css",
-      "bytes": 10543,
+      "bytes": 10542,
       "gzip_bytes": 2435,
-      "lines": 487,
+      "lines": 486,
       "important_count": 0
     },
     {
@@ -171,23 +171,16 @@
   ],
   "largest_dist_css": [
     {
-      "file": "dist/assets/index-D1m2N8l9.css",
-      "bytes": 88546,
-      "gzip_bytes": 17028,
+      "file": "dist/assets/BacktestPage-WrHtBwat.css",
+      "bytes": 20288,
+      "gzip_bytes": 3952,
       "lines": 2,
-      "important_count": 19
+      "important_count": 0
     },
     {
       "file": "dist/assets/SettingsPage-BEGsxa-y.css",
       "bytes": 19996,
       "gzip_bytes": 3582,
-      "lines": 2,
-      "important_count": 0
-    },
-    {
-      "file": "dist/assets/BacktestPage-Bh0PnbqD.css",
-      "bytes": 19559,
-      "gzip_bytes": 3766,
       "lines": 2,
       "important_count": 0
     },
@@ -206,6 +199,13 @@
       "important_count": 0
     },
     {
+      "file": "dist/assets/index-Baaax_FR.css",
+      "bytes": 16758,
+      "gzip_bytes": 4336,
+      "lines": 2,
+      "important_count": 5
+    },
+    {
       "file": "dist/assets/MonitorActionPage-CrG0_n4h.css",
       "bytes": 15290,
       "gzip_bytes": 3331,
@@ -220,18 +220,18 @@
       "important_count": 0
     },
     {
+      "file": "dist/assets/DataConsolePage-BL845ZW3.css",
+      "bytes": 14142,
+      "gzip_bytes": 2898,
+      "lines": 2,
+      "important_count": 0
+    },
+    {
       "file": "dist/assets/LoginPage-qTpIqddy.css",
       "bytes": 13823,
       "gzip_bytes": 3408,
       "lines": 2,
       "important_count": 4
-    },
-    {
-      "file": "dist/assets/DataConsolePage-CTQzT0Dp.css",
-      "bytes": 13769,
-      "gzip_bytes": 2856,
-      "lines": 2,
-      "important_count": 0
     },
     {
       "file": "dist/assets/PlaybookPage-mnH0OPyl.css",

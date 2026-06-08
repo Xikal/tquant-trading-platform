@@ -12,6 +12,7 @@ export interface VirtualListProps<T> {
   ariaLabel?: string;
   loading?: boolean;
   class?: string;
+  initialItemLimit?: number;
   getItemKey?: (item: T, index: number) => string | number;
   renderItem: (item: T, index: number) => JSX.Element;
   emptyText?: string;
@@ -31,10 +32,16 @@ export function VirtualList<T>(props: VirtualListProps<T>) {
   });
   const rowGap = () => props.gap ?? 8;
   const estimateSize = () => props.estimateSize ?? 112;
+  const initialItemLimit = () => {
+    const viewportRows = Math.ceil((props.maxHeight ?? 520) / estimateSize());
+    const withOverscan = viewportRows + (props.overscan ?? 6) * 2;
+    const limit = props.initialItemLimit ?? Math.min(20, Math.max(1, withOverscan));
+    return Math.max(1, Math.min(props.items.length, limit));
+  };
   const virtualItems = createMemo(() => {
     const measuredItems = scrollReady() ? virtualizer.getVirtualItems() : [];
     if (measuredItems.length > 0) return measuredItems;
-    return props.items.map((_, index) => ({ index, start: index * estimateSize(), key: props.getItemKey?.(props.items[index], index) ?? index }));
+    return props.items.slice(0, initialItemLimit()).map((_, index) => ({ index, start: index * estimateSize(), key: props.getItemKey?.(props.items[index], index) ?? index }));
   });
 
   return (

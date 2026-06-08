@@ -16,6 +16,7 @@ import {
   field,
   filterItems,
   firstRecord,
+  buildDriftRows,
   idOf,
   nameOf,
   pctValue,
@@ -134,7 +135,7 @@ export function StrategyTrackingPage() {
   const errorCount = createMemo(() => states.filter((state) => state.error()).length);
   const buyLikeCount = createMemo(() => filteredItems().filter(isBuyLike).length);
   const watchLikeCount = createMemo(() => Math.max(0, filteredItems().length - buyLikeCount()));
-  const staleSource = createMemo(() => (errorCount() ? "strategy_tracking_snapshot_stale" : "strategy_tracking_snapshot"));
+  const staleSource = createMemo(() => (errorCount() ? "降级源: strategy_tracking_snapshot_stale" : "数据源: strategy_tracking_snapshot"));
   const showAudit = createMemo(() => filters().mode === "production" || !hideAudit());
 
   createEffect(() => {
@@ -191,7 +192,7 @@ export function StrategyTrackingPage() {
             <div>
               <h1>策略跟踪监控系统</h1>
               <p>
-                降级源: {staleSource()} · {filters().boardFilter === "main_only" ? "过滤创业/科创板" : "全部市场板块"}
+                {staleSource()} · {filters().boardFilter === "main_only" ? "过滤创业/科创板" : "全部市场板块"}
               </p>
             </div>
             <span class={`strategy-clean-refresh${pendingCount() ? " strategy-clean-refresh--active" : ""}`}>
@@ -230,7 +231,7 @@ export function StrategyTrackingPage() {
                 <span>信号: {filters().signalState || "全部"}</span>
                 <span>|</span>
                 <em>
-                  <Icon name="eyeOff" /> 已屏蔽创业/科创板
+                  <Icon name={filters().boardFilter === "main_only" ? "eyeOff" : "eye"} /> {filters().boardFilter === "main_only" ? "已屏蔽创业/科创板" : "未屏蔽创业/科创板"}
                 </em>
               </div>
               <div class="strategy-clean-filter-actions" data-testid="strategy-tracking-filter-summary">
@@ -341,7 +342,7 @@ export function StrategyTrackingPage() {
 
         <footer class="strategy-clean-footer">
           <span>策略系统仅作为算法数据分析复盘和验证展示，不构成任何实质性投资建议。</span>
-          <span>数据源驱动：System Alpha Engine 2026 · 五大支柱极智版</span>
+          <span>数据源驱动：后端 strategy-tracking / BFF 合约；strategy_engine 仅 shadow-only 对照</span>
         </footer>
       </div>
 
@@ -375,16 +376,17 @@ export function StrategyTrackingPage() {
 
 function SignalRow(props: { item: TrackingRecord; index: number; selected: boolean; onSelect: () => void }) {
   const buyLike = () => isBuyLike(props.item);
-  const signalText = () => field(props.item, ["signal_text", "signal_state", "status"], buyLike() ? "确定买入类" : "接近买点（观察）");
+  const signalText = () => field(props.item, ["signal_text", "signal_state", "status"], buyLike() ? "确定买入类" : "观察类");
   const entryText = () => `${field(props.item, ["entry_zone_low", "entry_price"], "--")} ~ ${field(props.item, ["entry_zone_high", "target_price"], "--")}`;
   const currentReturn = () => pctValue(raw(props.item, ["current_return_pct", "return_pct", "avg_current_return_pct"]));
   const maxGain = () => pctValue(raw(props.item, ["max_gain_pct", "avg_max_gain_pct", "best_exit_return_pct"]));
   const maxDrawdown = () => pctValue(raw(props.item, ["max_drawdown_pct", "avg_max_drawdown_pct"]));
   const returnTone = () => valueTone(raw(props.item, ["current_return_pct", "return_pct", "avg_current_return_pct"]));
+  const priorityTag = () => field(props.item, ["priority_tag", "attention_tag", "review_priority_text"], "");
   return (
     <article class={`strategy-signal-row${buyLike() ? " strategy-signal-row--buy" : ""}${props.selected ? " strategy-signal-row--selected" : ""}`}>
       <Show when={buyLike()}>
-        <div class="strategy-signal-row__corner">确定买入类 · 小仓试买</div>
+        <div class="strategy-signal-row__corner">确定买入类</div>
       </Show>
       <div class="strategy-signal-row__body">
         <div class="strategy-signal-row__copy">
@@ -392,19 +394,19 @@ function SignalRow(props: { item: TrackingRecord; index: number; selected: boole
             <strong>{symbolOf(props.item) || `标的样本 #${props.index + 1}`}</strong>
             <Show when={nameOf(props.item)}><span>{nameOf(props.item)}</span></Show>
             <Pill tone={buyLike() ? "green" : "blue"}>{signalText()}</Pill>
-            <Pill tone="slate">值得重点看</Pill>
+            <Show when={priorityTag()}><Pill tone="slate">{priorityTag()}</Pill></Show>
             <Show when={!buyLike()}><Pill tone="amber">火候未到</Pill></Show>
           </div>
           <p>
             策略线：<b>{strategyOf(props.item)}</b> · 计划区：<b>{entryText()}</b> · 风险线：<b>{field(props.item, ["stop_loss", "risk_line"], "--")}</b> · 目标：<b>{field(props.item, ["target_price", "take_profit"], "--")}</b>
           </p>
-          <small>{field(props.item, ["plain_language_summary", "user_friendly_reason", "review_text", "reason"], "冲高未止盈 · 原低吸策略 · 影子校验一致")}</small>
+          <small>{field(props.item, ["plain_language_summary", "user_friendly_reason", "review_text", "reason"], "--")}</small>
         </div>
         <div class="strategy-signal-row__metrics">
           <MetricMini label="信号后最高" value={maxGain()} tone="green" />
           <MetricMini label="当前涨跌" value={currentReturn()} tone={returnTone()} />
           <MetricMini label="最多跌幅" value={maxDrawdown()} tone={maxDrawdown().startsWith("-") ? "red" : "slate"} />
-          <Pill tone={buyLike() ? "green" : "blue"}>{field(props.item, ["entry_touch_text", "touch_status"], "已到计划区")}</Pill>
+          <Pill tone={buyLike() ? "green" : "blue"}>{field(props.item, ["entry_touch_text", "touch_status"], "计划区状态未返回")}</Pill>
           <button type="button" aria-label={`查看 ${symbolOf(props.item)} 详情`} onClick={props.onSelect}>
             详情
           </button>
@@ -419,7 +421,7 @@ function PerformancePanel(props: { query: OperationDataState; fallbackItems: Tra
   const data = () => rows().length ? rows()[0] : firstRecord(props.summary, props.fallbackItems[0]);
   return (
     <section class="strategy-clean-panel">
-      <PanelHead icon="award" title="多周期收益绩效" badge="超越基准" tone="green" />
+      <PanelHead icon="award" title="多周期收益绩效" badge={hasRecord(data()) ? "后端返回" : "等待数据"} tone="green" />
       <TabState query={props.query} fallbackText="表现接口暂不可用，已回退到当前列表表现字段。" />
       <div class="strategy-clean-metric-grid">
         <MetricBox label="策略年化收益" value={pctValue(raw(data(), ["annual_return", "win_rate_5d", "current_return_pct"]))} tone="green" />
@@ -431,9 +433,9 @@ function PerformancePanel(props: { query: OperationDataState; fallbackItems: Tra
         <BarLine label="近 90 日" value={raw(data(), ["win_rate_90d", "win_rate_5d"])} compare={raw(data(), ["benchmark_return_90d"])} />
       </div>
       <div class="strategy-clean-kvbox">
-        <KV label="夏普比率 (Sharpe Ratio)" value={field(data(), ["sharpe", "sharpe_ratio"], "1.82")} />
-        <KV label="最大回撤控制率" value={pctValue(raw(data(), ["max_drawdown_pct", "avg_max_drawdown_pct"]), "优")} tone="green" />
-        <KV label="盈亏比期望" value={field(data(), ["profit_loss_ratio", "expectancy_ratio"], "2.14 : 1")} />
+        <KV label="夏普比率 (Sharpe Ratio)" value={field(data(), ["sharpe", "sharpe_ratio"], "--")} />
+        <KV label="最大回撤控制率" value={pctValue(raw(data(), ["max_drawdown_pct", "avg_max_drawdown_pct"]), "--")} tone="green" />
+        <KV label="盈亏比期望" value={field(data(), ["profit_loss_ratio", "expectancy_ratio"], "--")} />
       </div>
     </section>
   );
@@ -441,9 +443,11 @@ function PerformancePanel(props: { query: OperationDataState; fallbackItems: Tra
 
 function HoldingPanel(props: { query: OperationDataState }) {
   const item = () => firstRecord(recordsFrom(props.query.data())[0], firstRecord(props.query.data()));
+  const sectorText = () => sectorDistributionText(item());
+  const sectorBars = () => sectorWeights(item());
   return (
     <section class="strategy-clean-panel">
-      <PanelHead icon="wallet" title="持仓特征与期限结构" badge="动态健康" tone="blue" />
+      <PanelHead icon="wallet" title="持仓特征与期限结构" badge={hasRecord(item()) ? "后端返回" : "等待数据"} tone="blue" />
       <TabState query={props.query} fallbackText="持有分析暂不可用。" />
       <div class="strategy-clean-bar-list">
         <Bar label="超短线 (1-3 天)" value={raw(item(), ["short_hold_ratio"])} />
@@ -451,13 +455,17 @@ function HoldingPanel(props: { query: OperationDataState }) {
         <Bar label="中线持仓 (7 天+)" value={raw(item(), ["trend_hold_ratio"])} />
       </div>
       <div class="strategy-clean-kvbox">
-        <KV label="持有结论" value={field(item(), ["conclusion", "dominant_holding_bucket_text"], "短线 1-3 天")} tone="blue" />
-        <KV label="执行建议" value={field(item(), ["action_hint", "holding_advice"], "短线观察，按触发条件复盘")} />
+        <KV label="持有结论" value={field(item(), ["conclusion", "dominant_holding_bucket_text"], "--")} tone="blue" />
+        <KV label="执行建议" value={field(item(), ["action_hint", "holding_advice"], "--")} />
       </div>
       <div class="strategy-clean-sector-box">
         <strong>主攻行业分布 (前三名)：</strong>
-        <p>{field(item(), ["sector_summary", "top_sectors"], "1. 半导体科技 (45%)  2. 新能源车 (30%)  3. 医药制造 (15%)")}</p>
-        <div><span style={{ width: "45%" }} /><span style={{ width: "30%" }} /><span style={{ width: "15%" }} /><span style={{ width: "10%" }} /></div>
+        <p>{sectorText()}</p>
+        <div>
+          <For each={sectorBars()}>
+            {(width) => <span style={{ width: `${width}%` }} />}
+          </For>
+        </div>
       </div>
     </section>
   );
@@ -465,20 +473,19 @@ function HoldingPanel(props: { query: OperationDataState }) {
 
 function DriftPanel(props: { review: OperationDataState; fallbackItems: TrackingRecord[] }) {
   const root = () => firstRecord(props.review.data());
-  const abnormal = () => recordsFrom(root().abnormal_return_items);
-  const needsReview = () => recordsFrom(root().needs_review_items);
-  const sample = () => abnormal()[0] ?? needsReview()[0] ?? props.fallbackItems[0] ?? {};
+  const rows = () => buildDriftRows(root());
+  const hasData = () => rows().some((row) => row.hasData);
   return (
     <section class="strategy-clean-panel">
-      <PanelHead icon="branch" title="实盘与回测漂移监控" badge="轻微滑点" tone="amber" />
-      <TabState query={props.review} fallbackText="漂移诊断接口暂不可用，已回退到当前筛选结果。" />
+      <PanelHead icon="branch" title="实盘与回测漂移监控" badge={hasData() ? "按后端数据" : "数据待确认"} tone="amber" />
+      <TabState query={props.review} fallbackText="漂移诊断接口暂不可用，当前不展示推断指标。" />
       <div class="strategy-clean-stack">
-        <DriftRow label="均化滑点损失" value={pctValue(raw(sample(), ["slippage_pct", "avg_current_return_pct"]), "-0.12% / 交易")} status="可接受" />
-        <DriftRow label="实盘信号响应延时" value={field(root(), ["latency_text", "avg_latency"], "平均 0.85 秒")} status="高速级" />
-        <DriftRow label="时序排序一致性" value={field(root(), ["order_consistency", "shadow_consistency"], "99.2% (影子校验)")} status="无异动" />
+        <For each={rows()}>
+          {(row) => <DriftRow label={row.label} value={row.value} status={row.status} tone={row.tone} />}
+        </For>
       </div>
       <div class="strategy-clean-note">
-        实盘策略在大资金集中抛售或极速拉升时，可能在计划买入区间出现短暂挂单溢出，导致小幅漂移。
+        {field(root(), ["drift_note", "summary", "plain_language_summary"], "后端暂未返回漂移说明。")}
       </div>
     </section>
   );
@@ -488,24 +495,25 @@ function DiagnosticsPanel(props: { query: OperationDataState; selected: Tracking
   const root = () => firstRecord(props.query.data());
   const failureTags = () => firstRecord(root().failure_tags);
   const selected = () => props.selected ?? props.filteredItems[0] ?? {};
+  const warningTitle = () => field(root(), ["warning_title", "diagnostic_title"], hasRecord(root()) || hasRecord(selected()) ? "后端诊断提示" : "暂无诊断数据");
   return (
     <div class="strategy-clean-panel-stack">
       <section class="strategy-clean-panel">
-        <PanelHead icon="pulse" title="系统诊断 · 强弱警示" badge="降权警报" tone="red" />
+        <PanelHead icon="pulse" title="系统诊断 · 强弱警示" badge={hasRecord(root()) || hasRecord(selected()) ? "后端返回" : "等待数据"} tone="red" />
         <TabState query={props.query} fallbackText="诊断接口暂不可用。" />
         <div class="strategy-clean-danger-note">
-          <strong>弱市场环境下平均收益为负</strong>
-          <p>{field(selected(), ["failure_reason_text", "review_text", "plain_language_summary"], "过去30日胜率保持较高，但冲高回落占比偏高，缩量无主线阶段需要降权观察。")}</p>
+          <strong>{warningTitle()}</strong>
+          <p>{field(selected(), ["failure_reason_text", "review_text", "plain_language_summary"], "后端暂未返回诊断说明。")}</p>
         </div>
         <div class="strategy-clean-diagnostic-grid">
           <MetricBox label="冲高回落数" value={String(Object.values(failureTags()).reduce<number>((sum, value) => sum + Number(value || 0), 0) || recordsFrom(root().needs_review_items).length || 0)} tone="amber" />
-          <MetricBox label="计划未触达" value={field(root(), ["missed_entry_count"], "1")} />
+          <MetricBox label="计划未触达" value={field(root(), ["missed_entry_count"], "--")} />
           <MetricBox label="触发风控止损" value={field(root(), ["stop_loss_count"], "0")} tone="green" />
           <MetricBox label="异常净收益" value={field(root(), ["abnormal_return_count"], "0")} />
         </div>
         <div class="strategy-clean-bar-list">
-          <Bar label="首板回调·胜率极限" value={raw(selected(), ["win_rate_5d", "entry_touch_rate"])} />
-          <Bar label="冲高回落容忍度" value={0.625} tone="amber" />
+          <Bar label={`${strategyOf(selected()) || "当前策略"}·胜率`} value={raw(selected(), ["win_rate_5d", "entry_touch_rate"])} />
+          <Bar label="冲高回落容忍度" value={raw(root(), ["retracement_tolerance", "spike_retrace_tolerance"])} tone="amber" />
         </div>
       </section>
     </div>
@@ -516,14 +524,14 @@ function ReviewPanel(props: { journal: OperationDataState; relativeStrength: Ope
   return (
     <div class="strategy-clean-panel-stack">
       <section class="strategy-clean-panel">
-        <PanelHead icon="package" title="复盘作业调度" badge="今日最新" />
+        <PanelHead icon="package" title="复盘作业调度" badge="当前快照" />
         <button type="button" class="strategy-clean-replay" onClick={props.onReplay}>
           <Icon name="play" /> 立即执行一键复盘
         </button>
         <div class="strategy-clean-kvbox">
           <KV label="默认复盘深度" value="近 30 交易日" />
-          <KV label="影子一致性检验" value="双向全开 (无漂移)" tone="green" />
-          <KV label="跟踪下一阶段策略" value={strategyOf(props.selected ?? {}) || "首板回调 (first_board)"} tone="blue" />
+          <KV label="影子一致性检验" value="shadow-only 对照，不替代生产排序" tone="green" />
+          <KV label="跟踪下一阶段策略" value={strategyOf(props.selected ?? {}) || "--"} tone="blue" />
         </div>
       </section>
       <StrategyTrackingReviewCenter journal={props.journal} relativeStrength={props.relativeStrength} selected={props.selected} />
@@ -535,14 +543,14 @@ function AuditPanel(props: { review: TrackingRecord; performance: TrackingRecord
   return (
     <section class="strategy-clean-audit">
       <div class="strategy-clean-audit__head">
-        <h3><Icon name="shield" /> 晋级审查报告 · 影子回测数据归因 ({field(props.performance, ["strategy_key"], "n_pattern_long_wash")})</h3>
-        <span>大样本审计量: {field(props.review, ["sample_count", "audit_sample_count"], "1,613 次")}</span>
+        <h3><Icon name="shield" /> 晋级审查报告 · 影子回测数据归因 ({field(props.performance, ["strategy_key"], "--")})</h3>
+        <span>大样本审计量: {field(props.review, ["sample_count", "audit_sample_count"], "--")}</span>
       </div>
       <div class="strategy-clean-audit__grid">
-        <MetricBox label="利润因子 (PF)" value={field(props.performance, ["profit_factor"], "1.149")} tone="green" />
-        <MetricBox label="平均单笔期望" value={pctValue(raw(props.performance, ["expectancy", "avg_current_return_pct"]), "+0.28%")} tone="green" />
-        <MetricBox label="历史最大回撤" value={pctValue(raw(props.performance, ["max_drawdown_pct"]), "-51.15%")} tone="red" />
-        <MetricBox label="Max5 (低位极值)" value={pctValue(raw(props.review, ["max5_low"]), "-3.75%")} tone="red" />
+        <MetricBox label="利润因子 (PF)" value={field(props.performance, ["profit_factor"], "--")} tone="green" />
+        <MetricBox label="平均单笔期望" value={pctValue(raw(props.performance, ["expectancy", "avg_current_return_pct"]), "--")} tone="green" />
+        <MetricBox label="历史最大回撤" value={pctValue(raw(props.performance, ["max_drawdown_pct"]), "--")} tone="red" />
+        <MetricBox label="Max5 (低位极值)" value={pctValue(raw(props.review, ["max5_low"]), "--")} tone="red" />
       </div>
       <div class="strategy-clean-audit__foot">
         <span>当前审查层级: <strong>研究层</strong> (建议继续验证，自动生效: 禁止)</span>
@@ -657,11 +665,12 @@ function Bar(props: { label: string; value: unknown; tone?: "blue" | "amber" }) 
   );
 }
 
-function DriftRow(props: { label: string; value: string; status: string }) {
+function DriftRow(props: { label: string; value: string; status: string; tone: "green" | "blue" | "amber" | "slate" | "red" }) {
+  const pillTone = () => (props.tone === "red" ? "amber" : props.tone);
   return (
     <div class="strategy-clean-drift-row">
       <div><span>{props.label}</span><strong>{props.value}</strong></div>
-      <Pill tone="green">{props.status}</Pill>
+      <Pill tone={pillTone()}>{props.status}</Pill>
     </div>
   );
 }
@@ -730,4 +739,39 @@ function percent(value: unknown): number {
   if (!Number.isFinite(numeric)) return 0;
   const normalized = Math.abs(numeric) <= 1 ? numeric * 100 : numeric;
   return Math.max(0, Math.min(100, Math.abs(normalized)));
+}
+
+function sectorWeights(record: TrackingRecord): number[] {
+  const value = raw(record, ["top_sectors", "sector_distribution", "sector_weights"]);
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return 0;
+      const source = item as Record<string, unknown>;
+      const numeric = Number(source.weight_pct ?? source.weight ?? source.ratio ?? source.percent);
+      if (!Number.isFinite(numeric)) return 0;
+      const normalized = Math.abs(numeric) <= 1 ? numeric * 100 : numeric;
+      return Math.max(0, Math.min(100, Math.abs(normalized)));
+    })
+    .filter((width) => width > 0)
+    .slice(0, 4);
+}
+
+function sectorDistributionText(record: TrackingRecord): string {
+  const summary = field(record, ["sector_summary"], "");
+  if (summary) return summary;
+  const value = raw(record, ["top_sectors", "sector_distribution", "sector_weights"]);
+  if (!Array.isArray(value)) return "暂无后端行业分布";
+  const labels = value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return "";
+      const source = item as Record<string, unknown>;
+      const name = String(source.name ?? source.sector_name ?? source.sector ?? source.label ?? "").trim();
+      if (!name) return "";
+      const width = sectorWeights({ top_sectors: [source] })[0];
+      return width ? `${index + 1}. ${name} (${width.toFixed(1)}%)` : `${index + 1}. ${name}`;
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+  return labels.length ? labels.join("  ") : "暂无后端行业分布";
 }

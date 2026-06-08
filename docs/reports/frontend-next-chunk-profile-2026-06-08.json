@@ -1,31 +1,38 @@
 {
-  "generated_at": "2026-06-07T19:10:08.097Z",
+  "generated_at": "2026-06-08T13:14:45.195Z",
   "dist_index": "dist/index.html",
   "targets": {
     "initial_js_raw_bytes_max": 350000,
     "initial_echarts_assets_max": 0
   },
   "summary": {
-    "initial_js_assets": 3,
-    "initial_js_raw_bytes": 282841,
-    "initial_js_gzip_bytes": 85336,
+    "initial_js_assets": 5,
+    "initial_js_raw_bytes": 284862,
+    "initial_js_gzip_bytes": 86555,
     "initial_css_assets": 1,
-    "initial_css_raw_bytes": 88546,
-    "initial_css_gzip_bytes": 17028,
+    "initial_css_raw_bytes": 16758,
+    "initial_css_gzip_bytes": 4336,
     "initial_echarts_assets": 0,
-    "total_js_assets": 29,
-    "total_js_raw_bytes": 1219669,
-    "echarts_assets": 3,
-    "echarts_raw_bytes": 457660,
-    "echarts_gzip_bytes": 152287
+    "total_js_assets": 28,
+    "total_js_raw_bytes": 775593,
+    "echarts_assets": 0,
+    "echarts_raw_bytes": 0,
+    "echarts_gzip_bytes": 0
   },
   "initial_assets": [
     {
-      "name": "index-eR4fswIZ.js",
-      "href": "/next/assets/index-eR4fswIZ.js",
+      "name": "index-CmrZ_oi2.js",
+      "href": "/next/assets/index-CmrZ_oi2.js",
       "type": "js",
-      "bytes": 68594,
-      "gzip_bytes": 20662
+      "bytes": 71086,
+      "gzip_bytes": 21098
+    },
+    {
+      "name": "tanstack-misc-DpKFfoky.js",
+      "href": "/next/assets/tanstack-misc-DpKFfoky.js",
+      "type": "js",
+      "bytes": 160251,
+      "gzip_bytes": 45683
     },
     {
       "name": "solid-vendor-Ch9Uoa8e.js",
@@ -35,65 +42,29 @@
       "gzip_bytes": 12471
     },
     {
-      "name": "tanstack-B8c36lUu.js",
-      "href": "/next/assets/tanstack-B8c36lUu.js",
+      "name": "tanstack-router-BLsFFlgG.js",
+      "href": "/next/assets/tanstack-router-BLsFFlgG.js",
       "type": "js",
-      "bytes": 181059,
-      "gzip_bytes": 52203
+      "bytes": 18005,
+      "gzip_bytes": 6099
     },
     {
-      "name": "index-D1m2N8l9.css",
-      "href": "/next/assets/index-D1m2N8l9.css",
+      "name": "tanstack-query-xRvKldof.js",
+      "href": "/next/assets/tanstack-query-xRvKldof.js",
+      "type": "js",
+      "bytes": 2332,
+      "gzip_bytes": 1204
+    },
+    {
+      "name": "index-Baaax_FR.css",
+      "href": "/next/assets/index-Baaax_FR.css",
       "type": "css",
-      "bytes": 88546,
-      "gzip_bytes": 17028
+      "bytes": 16758,
+      "gzip_bytes": 4336
     }
   ],
-  "echarts_assets": [
-    {
-      "name": "echarts-charts-BhDYVetR.js",
-      "href": "/next/assets/echarts-charts-BhDYVetR.js",
-      "type": "js",
-      "bytes": 284021,
-      "gzip_bytes": 94407
-    },
-    {
-      "name": "echarts-components-DE1kHsW9.js",
-      "href": "/next/assets/echarts-components-DE1kHsW9.js",
-      "type": "js",
-      "bytes": 160792,
-      "gzip_bytes": 53304
-    },
-    {
-      "name": "echarts-renderers-BmNxWEn8.js",
-      "href": "/next/assets/echarts-renderers-BmNxWEn8.js",
-      "type": "js",
-      "bytes": 12847,
-      "gzip_bytes": 4576
-    }
-  ],
+  "echarts_assets": [],
   "largest_assets": [
-    {
-      "name": "echarts-charts-BhDYVetR.js",
-      "href": "/next/assets/echarts-charts-BhDYVetR.js",
-      "type": "js",
-      "bytes": 284021,
-      "gzip_bytes": 94407
-    },
-    {
-      "name": "tanstack-B8c36lUu.js",
-      "href": "/next/assets/tanstack-B8c36lUu.js",
-      "type": "js",
-      "bytes": 181059,
-      "gzip_bytes": 52203
-    },
-    {
-      "name": "echarts-components-DE1kHsW9.js",
-      "href": "/next/assets/echarts-components-DE1kHsW9.js",
-      "type": "js",
-      "bytes": 160792,
-      "gzip_bytes": 53304
-    },
     {
       "name": "vendor-BfhJbhuW.js",
       "href": "/next/assets/vendor-BfhJbhuW.js",
@@ -102,39 +73,39 @@
       "gzip_bytes": 51305
     },
     {
-      "name": "index-D1m2N8l9.css",
-      "href": "/next/assets/index-D1m2N8l9.css",
-      "type": "css",
-      "bytes": 88546,
-      "gzip_bytes": 17028
+      "name": "tanstack-misc-DpKFfoky.js",
+      "href": "/next/assets/tanstack-misc-DpKFfoky.js",
+      "type": "js",
+      "bytes": 160251,
+      "gzip_bytes": 45683
     },
     {
-      "name": "index-eR4fswIZ.js",
-      "href": "/next/assets/index-eR4fswIZ.js",
+      "name": "index-CmrZ_oi2.js",
+      "href": "/next/assets/index-CmrZ_oi2.js",
       "type": "js",
-      "bytes": 68594,
-      "gzip_bytes": 20662
+      "bytes": 71086,
+      "gzip_bytes": 21098
     },
     {
-      "name": "PaperPage-D7fRWqZN.js",
-      "href": "/next/assets/PaperPage-D7fRWqZN.js",
+      "name": "PaperPage-BpGKpMvA.js",
+      "href": "/next/assets/PaperPage-BpGKpMvA.js",
       "type": "js",
-      "bytes": 63520,
-      "gzip_bytes": 18536
+      "bytes": 63531,
+      "gzip_bytes": 18537
     },
     {
-      "name": "StrategyTrackingPage-B0Z7JOTH.js",
-      "href": "/next/assets/StrategyTrackingPage-B0Z7JOTH.js",
+      "name": "BacktestPage-BQ8kLb7s.js",
+      "href": "/next/assets/BacktestPage-BQ8kLb7s.js",
       "type": "js",
-      "bytes": 40831,
-      "gzip_bytes": 13310
+      "bytes": 43747,
+      "gzip_bytes": 14423
     },
     {
-      "name": "BacktestPage-Ca_ID0ZJ.js",
-      "href": "/next/assets/BacktestPage-Ca_ID0ZJ.js",
+      "name": "StrategyTrackingPage-C6tzeunZ.js",
+      "href": "/next/assets/StrategyTrackingPage-C6tzeunZ.js",
       "type": "js",
-      "bytes": 38475,
-      "gzip_bytes": 13345
+      "bytes": 43323,
+      "gzip_bytes": 13777
     },
     {
       "name": "solid-vendor-Ch9Uoa8e.js",
@@ -144,25 +115,32 @@
       "gzip_bytes": 12471
     },
     {
-      "name": "SettingsPage-DD_GQWTU.js",
-      "href": "/next/assets/SettingsPage-DD_GQWTU.js",
+      "name": "SettingsPage-BmljkyMW.js",
+      "href": "/next/assets/SettingsPage-BmljkyMW.js",
       "type": "js",
-      "bytes": 26096,
-      "gzip_bytes": 9735
+      "bytes": 26065,
+      "gzip_bytes": 9720
     },
     {
-      "name": "MonitorActionPage-CMLP4ezY.js",
-      "href": "/next/assets/MonitorActionPage-CMLP4ezY.js",
+      "name": "MonitorActionPage-C9DgxEF1.js",
+      "href": "/next/assets/MonitorActionPage-C9DgxEF1.js",
       "type": "js",
-      "bytes": 22227,
-      "gzip_bytes": 8079
+      "bytes": 22953,
+      "gzip_bytes": 8216
     },
     {
-      "name": "DataConsolePage-g3CipcFj.js",
-      "href": "/next/assets/DataConsolePage-g3CipcFj.js",
+      "name": "DataConsolePage-twXtxd3n.js",
+      "href": "/next/assets/DataConsolePage-twXtxd3n.js",
       "type": "js",
-      "bytes": 21125,
-      "gzip_bytes": 7699
+      "bytes": 21290,
+      "gzip_bytes": 7751
+    },
+    {
+      "name": "BacktestPage-WrHtBwat.css",
+      "href": "/next/assets/BacktestPage-WrHtBwat.css",
+      "type": "css",
+      "bytes": 20288,
+      "gzip_bytes": 3952
     },
     {
       "name": "SettingsPage-BEGsxa-y.css",
@@ -172,18 +150,18 @@
       "gzip_bytes": 3582
     },
     {
-      "name": "BacktestPage-Bh0PnbqD.css",
-      "href": "/next/assets/BacktestPage-Bh0PnbqD.css",
-      "type": "css",
-      "bytes": 19559,
-      "gzip_bytes": 3766
+      "name": "AnalysisPage-CTxcosJH.js",
+      "href": "/next/assets/AnalysisPage-CTxcosJH.js",
+      "type": "js",
+      "bytes": 19447,
+      "gzip_bytes": 7522
     },
     {
-      "name": "MonitorMarketPage-Bm5_BwHs.js",
-      "href": "/next/assets/MonitorMarketPage-Bm5_BwHs.js",
+      "name": "MonitorMarketPage-CrDzPOun.js",
+      "href": "/next/assets/MonitorMarketPage-CrDzPOun.js",
       "type": "js",
-      "bytes": 18900,
-      "gzip_bytes": 6884
+      "bytes": 19073,
+      "gzip_bytes": 6574
     },
     {
       "name": "StrategyTrackingPage-BfcLV-3B.css",
@@ -193,13 +171,6 @@
       "gzip_bytes": 3605
     },
     {
-      "name": "AnalysisPage-DCUV81gM.js",
-      "href": "/next/assets/AnalysisPage-DCUV81gM.js",
-      "type": "js",
-      "bytes": 18617,
-      "gzip_bytes": 7172
-    },
-    {
       "name": "PaperPage-RihhV-yi.css",
       "href": "/next/assets/PaperPage-RihhV-yi.css",
       "type": "css",
@@ -207,11 +178,32 @@
       "gzip_bytes": 3741
     },
     {
-      "name": "PlaybookPage-D_4zqGG4.js",
-      "href": "/next/assets/PlaybookPage-D_4zqGG4.js",
+      "name": "tanstack-router-BLsFFlgG.js",
+      "href": "/next/assets/tanstack-router-BLsFFlgG.js",
       "type": "js",
-      "bytes": 17358,
-      "gzip_bytes": 6787
+      "bytes": 18005,
+      "gzip_bytes": 6099
+    },
+    {
+      "name": "PlaybookPage-D4Ev9-z4.js",
+      "href": "/next/assets/PlaybookPage-D4Ev9-z4.js",
+      "type": "js",
+      "bytes": 17884,
+      "gzip_bytes": 6803
+    },
+    {
+      "name": "index-Baaax_FR.css",
+      "href": "/next/assets/index-Baaax_FR.css",
+      "type": "css",
+      "bytes": 16758,
+      "gzip_bytes": 4336
+    },
+    {
+      "name": "mutations-BuT34-UR.js",
+      "href": "/next/assets/mutations-BuT34-UR.js",
+      "type": "js",
+      "bytes": 15400,
+      "gzip_bytes": 4238
     }
   ],
   "status": {

@@ -1,16 +1,16 @@
 # Frontend Next CSS Unused Selector Report - 2026-06-07
 
 状态：只读候选报告，未删除任何样式。
-生成时间：2026-06-08T03:33:24.854Z
+生成时间：2026-06-08T13:14:47.068Z
 
 ## Summary
 
 | 项 | 值 |
 |---|---:|
 | CSS files | 29 |
-| code files scanned | 130 |
-| unique class selectors | 1332 |
-| referenced selectors | 790 |
+| code files scanned | 135 |
+| unique class selectors | 1342 |
+| referenced selectors | 800 |
 | candidate unused selectors | 112 |
 | known dynamic/legacy selectors | 597 |
 

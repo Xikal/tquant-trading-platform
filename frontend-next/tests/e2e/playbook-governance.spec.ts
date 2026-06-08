@@ -8,7 +8,7 @@ test("playbook governance readiness keeps lifecycle actions protected and resear
   const writes = captureApiWrites(page);
 
   await page.goto("/next/playbook");
-  await expect(page.getByRole("heading", { name: "今日注目核心标的" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /注目核心标的/ })).toBeVisible();
   await expect(page.getByText("平安银行").first()).toBeVisible();
   await page.getByText("浦发银行").first().click();
   await expect(page.getByTestId("playbook-detail")).toContainText("600000");

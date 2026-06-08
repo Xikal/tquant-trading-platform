@@ -51,7 +51,7 @@ export async function loadPlaybookDataset(strategy: string, init: RequestJsonOpt
     apiClient.lowBuyStrategies(init),
     apiClient.strategiesMeta(init),
   ]);
-  const symbols = candidatesFromPriority(priorityBoard).slice(0, 20).map((item) => item.symbol);
+  const symbols = playbookCandidates({ screener, priorityBoard } as PlaybookDataset).slice(0, 20).map((item) => item.symbol);
   const quotes = options.includeQuotes === false ? undefined : await apiClient.lowBuyQuotes(symbols, strategy, init);
   return { screener, priorityBoard, quotes, strategies, meta, loadedAt: new Date().toLocaleTimeString("zh-CN", { hour12: false }) };
 }
@@ -93,13 +93,19 @@ export function quoteStatus(data: PlaybookDataset | null): string {
   return text(quotes.updated_at ?? quotes.quote_timestamp ?? data?.loadedAt, "--");
 }
 
+export function playbookTradeDate(data: PlaybookDataset | null): string {
+  const screener = readRecord(data?.screener);
+  const board = boardRoot(data);
+  return text(screener.latest_trade_date ?? board.latest_trade_date ?? board.latest_available_trade_date, "--");
+}
+
 export function mergePlaybookQuotes(data: PlaybookDataset | null, quotes: unknown): PlaybookDataset | null {
   if (!data || quotes === undefined) return data;
   return { ...data, quotes };
 }
 
 export function candidateFamilies(data: PlaybookDataset | null): PlaybookFamily[] {
-  const board = boardRoot(data);
+  const board = candidateRoot(data);
   const quotes = quoteBySymbol(data);
   const sections = readArray<Record<string, unknown>>(board.family_sections);
   if (sections.length) {
@@ -111,7 +117,7 @@ export function candidateFamilies(data: PlaybookDataset | null): PlaybookFamily[
     }));
   }
   const groups = new Map<string, PlaybookCandidate[]>();
-  candidatesFromPriority(data?.priorityBoard, quotes).forEach((candidate) => {
+  playbookCandidates(data, quotes).forEach((candidate) => {
     const key = candidate.lane || "baseline";
     groups.set(key, [...(groups.get(key) ?? []), candidate]);
   });
@@ -177,7 +183,9 @@ function priorityRecordsFromBoard(value: unknown): Record<string, unknown>[] {
     }));
   });
   if (bucketItems.length) return bucketItems;
-  const fromScreener = readArray<Record<string, unknown>>(root.confirmed_candidates).concat(readArray<Record<string, unknown>>(root.watch_candidates));
+  const fromScreener = readArray<Record<string, unknown>>(root.confirmed_candidates)
+    .concat(readArray<Record<string, unknown>>(root.candidates))
+    .concat(readArray<Record<string, unknown>>(root.watch_candidates));
   return fromScreener;
 }
 
@@ -224,7 +232,18 @@ function boardRoot(data: PlaybookDataset | null): Record<string, unknown> {
 }
 
 function countByLane(data: PlaybookDataset | null, lane: string): number {
-  return candidatesFromPriority(data?.priorityBoard).filter((item) => item.lane === lane).length;
+  return playbookCandidates(data).filter((item) => item.lane === lane).length;
+}
+
+function candidateRoot(data: PlaybookDataset | null): Record<string, unknown> {
+  const screenerRoot = readRecord(data?.screener);
+  return priorityRecordsFromBoard(screenerRoot).length ? screenerRoot : boardRoot(data);
+}
+
+function playbookCandidates(data: PlaybookDataset | null, quotes = new Map<string, Record<string, unknown>>()): PlaybookCandidate[] {
+  const screenerCandidates = candidatesFromPriority(data?.screener, quotes);
+  if (screenerCandidates.length) return screenerCandidates;
+  return candidatesFromPriority(data?.priorityBoard, quotes);
 }
 
 function uniqueByKey(items: PlaybookStrategyTab[]): PlaybookStrategyTab[] {

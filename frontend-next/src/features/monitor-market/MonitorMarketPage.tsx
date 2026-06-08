@@ -28,9 +28,8 @@ type IconName =
   | "trendUp";
 
 export function MonitorMarketPage() {
-  const [dataMode, setDataMode] = createSignal<DataMode>("empty");
+  const [dataMode, setDataMode] = createSignal<DataMode>("active");
   const [isRefreshing, setIsRefreshing] = createSignal(false);
-  const [lastRefreshed, setLastRefreshed] = createSignal(new Date().toTimeString().slice(0, 8));
   let refreshTimer: number | undefined;
   onCleanup(() => {
     if (refreshTimer) window.clearTimeout(refreshTimer);
@@ -46,7 +45,6 @@ export function MonitorMarketPage() {
       if (refreshTimer) window.clearTimeout(refreshTimer);
       refreshTimer = window.setTimeout(() => {
         setIsRefreshing(false);
-        setLastRefreshed(new Date().toTimeString().slice(0, 8));
       }, 360);
     });
   };
@@ -74,17 +72,17 @@ export function MonitorMarketPage() {
                   <div class="market-sentiment-mode" role="tablist" aria-label="市场数据模式">
                     <button
                       type="button"
-                      class={dataMode() === "empty" ? "market-sentiment-mode__item market-sentiment-mode__item--empty" : "market-sentiment-mode__item"}
+                      class={dataMode() === "empty" ? "market-sentiment-mode__item market-sentiment-mode__item--active market-sentiment-mode__item--empty" : "market-sentiment-mode__item"}
                       onClick={() => setDataMode("empty")}
                     >
-                      BFF待初始化 (空态)
+                      空态预览
                     </button>
                     <button
                       type="button"
                       class={dataMode() === "active" ? "market-sentiment-mode__item market-sentiment-mode__item--active" : "market-sentiment-mode__item"}
                       onClick={() => setDataMode("active")}
                     >
-                      活跃市态 (满载)
+                      实时数据
                     </button>
                   </div>
                   <button type="button" class="market-sentiment-refresh" onClick={handleRefresh}>
@@ -97,7 +95,7 @@ export function MonitorMarketPage() {
               <main class="market-sentiment-main">
                 <section class="market-sentiment-top-grid">
                   <MarketGateCard view={view} active={active()} />
-                  <RuntimeCard view={view} lastRefreshed={lastRefreshed()} />
+                  <RuntimeCard view={view} />
                 </section>
 
                 <section class="market-sentiment-three-grid">
@@ -130,7 +128,7 @@ function MarketGateCard(props: { view: MarketView; active: boolean }) {
           <span class="market-sentiment-ping"><i /><b /></span>
           <h2><Icon name="shield" />市场状态总闸</h2>
         </div>
-        <span>BFF: ACTIVE</span>
+        <span>{props.view.syncStatus}</span>
       </div>
 
       <div class="market-sentiment-gate-grid">
@@ -182,7 +180,7 @@ function MarketGateCard(props: { view: MarketView; active: boolean }) {
   );
 }
 
-function RuntimeCard(props: { view: MarketView; lastRefreshed: string }) {
+function RuntimeCard(props: { view: MarketView }) {
   return (
     <article class="market-sentiment-card market-sentiment-card--runtime">
       <div class="market-sentiment-card__head">
@@ -193,15 +191,15 @@ function RuntimeCard(props: { view: MarketView; lastRefreshed: string }) {
       </div>
       <div class="market-sentiment-runtime-grid">
         <RuntimeMetric label="已持仓自选" value={props.view.holdingCount} unit="标的" />
-        <RuntimeMetric label="今天可操作" value={props.view.actionCount} unit="机会" tone="amber" />
+        <RuntimeMetric label="当前快照可操作" value={props.view.actionCount} unit="机会" tone="amber" />
         <RuntimeMetric label="需要避险" value={props.view.riskCount} unit="预警" tone="rose" />
         <RuntimeMetric label="平均质量分" value={props.view.averageScore} tone="emerald" mono />
       </div>
       <div class="market-sentiment-runtime-footer">
-        <span><Icon name="clock" />生产榜/刷新:</span>
+        <span><Icon name="clock" />生产榜/数据源:</span>
         <b>{props.view.boardRefreshCount}</b>
         <i>/</i>
-        <strong>{props.lastRefreshed}</strong>
+        <strong>{props.view.dataUpdatedAt}</strong>
       </div>
     </article>
   );
@@ -368,6 +366,7 @@ type MarketView = {
   averageScore: string;
   boardRefreshCount: string;
   closeReview: string;
+  dataUpdatedAt: string;
   databaseBackend: string;
   etfRows: MarketEtf[];
   firepower: number;
@@ -388,17 +387,18 @@ type MarketView = {
   pulseBars: number[];
   riskCount: string;
   safetyLevel: string;
+  syncStatus: string;
 };
 
-function buildView(model: MarketPanelModel): MarketView {
+export function buildView(model: MarketPanelModel): MarketView {
   const board = model.board;
   const root = model.root;
   const snapshot = model.snapshot;
   const gateDecision = text(board.market_gate_decision ?? board.gate_decision, "block");
-  const marketState = text(board.market_state_category_text ?? board.market_state_text ?? model.breadth.state_text, "下跌退潮");
-  const marketRead = text(board.market_state_text ?? board.market_read ?? model.breadth.summary, "热点切换偏快，今天更适合等确认，不适合追价。");
+  const marketState = text(board.market_state_category_text ?? board.market_state_text ?? model.breadth.state_text, "--");
+  const marketRead = text(board.market_state_text ?? board.market_read ?? model.breadth.summary, "--");
   const firepower = percentNumber(board.market_firepower_multiplier ?? board.firepower ?? 0);
-  const hotSectors = stringList(board.hot_industries ?? snapshot.hot_industries ?? model.sectorStrength.hot_industries).slice(0, 3);
+  const hotSectors = stringList(board.hot_industries ?? snapshot.hot_industries ?? model.breadth.hot_industries ?? model.sectorStrength.hot_industries).slice(0, 3);
   const leaders = buildLeaders(model);
   const etfRows = buildEtfs(model);
   const reviewTexts = buildReviews(model);
@@ -421,6 +421,7 @@ function buildView(model: MarketPanelModel): MarketView {
     averageScore: scores.length ? (scores.reduce((sum, value) => sum + value, 0) / scores.length).toFixed(1) : text(board.average_quality_score, "--"),
     boardRefreshCount: text(board.refresh_count ?? nested(root, "instrument_sync_status.refresh_count"), "0"),
     closeReview: reviewTexts.close,
+    dataUpdatedAt: bestUpdatedAt(model),
     databaseBackend: text(model.runtime.database_backend ?? nested(root, "runtime.database_backend"), "MYSQL").toUpperCase(),
     etfRows,
     firepower,
@@ -428,26 +429,27 @@ function buildView(model: MarketPanelModel): MarketView {
     gateBlocked: gateDecision.includes("block") || gateDecision.includes("阻断") || marketState.includes("退潮"),
     holdingCount: text(board.holding_watch_count ?? nested(root, "paper.holding_count"), "0"),
     hotSectors,
-    hotStrength: text(board.hot_strength_text, "--"),
+    hotStrength: text(board.hot_strength_text ?? model.breadth.state_text ?? model.breadth.data_quality_text, "--"),
     leaderAdvice: text(model.sectorStrength.leader_advice, "等待板块与龙头确认数据。"),
     leaders,
     mainline: text(nested(model.sectorStrength, "mainline.name") ?? model.sectorStrength.mainline, leaders[0]?.sector ?? "暂无主线"),
     marketRead,
     marketState,
-    medianChange: signedPercent(model.breadth.median_change_pct ?? model.breadth.median_pct ?? board.market_median_change_pct, "--"),
+    medianChange: signedPercent(model.breadth.stock_median_change ?? model.breadth.median_change_pct ?? model.breadth.median_pct ?? board.market_median_change_pct, "--"),
     middayReview: reviewTexts.midday,
     posture: text(board.directional_bias_text ?? board.market_direction_text, "谨慎 · 等确认"),
     postureHint: text(board.posture_hint, "不适合追高/低吸"),
     pulseBars: pulseBars(model),
     riskCount: String(riskItems.length || text(board.risk_count ?? board.warning_count, "0")),
     safetyLevel: text(board.safety_level, "LEVEL-ALPHA 3"),
+    syncStatus: syncStatus(model),
   };
 }
 
 function buildLeaders(model: MarketPanelModel): MarketLeader[] {
   const rows = model.sectorRows.slice(0, 4).map((row) => {
-    const sector = text(pickFirst(row, ["sector_name", "sector", "name"]), "");
-    const name = text(pickFirst(row, ["leader_name", "leader", "leader_symbol", "top_symbol"]), "");
+    const sector = text(pickFirst(row, ["sector_name", "sector", "industry_name", "industry"]), "");
+    const name = text(pickFirst(row, ["leader_name", "leader", "stock_name", "name", "leader_symbol", "symbol", "top_symbol"]), "");
     const change = signedPercent(pickFirst(row, ["leader_change_pct", "change_pct", "pct_chg", "relative_strength"]), "--");
     return { sector, name, change };
   }).filter((item) => item.sector || item.name);
@@ -466,18 +468,27 @@ function buildEtfs(model: MarketPanelModel): MarketEtf[] {
 }
 
 function buildReviews(model: MarketPanelModel): { midday: string; close: string } {
-  const rows = [...model.reviewRows, ...readArray<Record<string, unknown>>(model.snapshot.review_reports)];
-  const midday = rows.find((row) => `${row.title ?? row.name ?? ""}`.includes("午"));
-  const close = rows.find((row) => `${row.title ?? row.name ?? ""}`.includes("收"));
+  const rows = model.reviewRows;
+  const midday = rows.find((row) => reportSlot(row).includes("midday") || reportSlot(row).includes("午"));
+  const close = rows.find((row) => reportSlot(row).includes("close") || reportSlot(row).includes("收"));
   return {
-    midday: text(midday?.summary ?? midday?.content, "午盘复盘暂未生成。等待市场 BFF 返回真实复盘后展示。"),
-    close: text(close?.summary ?? close?.content, "成交不足 7000 亿，下跌数近 4000 家。冰点确立，明日预计迎来情绪极度分歧，关注抗跌股。"),
+    midday: reportText(midday, "午盘复盘暂未生成。等待市场 BFF 返回真实复盘后展示。"),
+    close: reportText(close, "收盘复盘暂未生成。等待收盘后生成。"),
   };
+}
+
+function reportSlot(row: Record<string, unknown>): string {
+  return `${row.report_slot ?? row.slot ?? row.title ?? row.name ?? ""}`.toLowerCase();
+}
+
+function reportText(row: Record<string, unknown> | undefined, fallback: string): string {
+  if (!row) return fallback;
+  return text(pickFirst(row, ["overall_summary", "summary", "content", "suggestion", "status_text"]), fallback);
 }
 
 function pulseBars(model: MarketPanelModel): number[] {
   const values = model.breadthValues.map((value) => Math.max(5, Math.min(90, Math.round(Number(value) || 0))));
-  return values.length >= 6 ? values.slice(0, 13) : [];
+  return values.slice(0, 13);
 }
 
 function stringList(value: unknown): string[] {
@@ -497,4 +508,22 @@ function signedPercent(value: unknown, fallback: string): string {
   if (!Number.isFinite(raw)) return fallback;
   const pct = raw > 1 || raw < -1 ? raw : raw * 100;
   return `${pct > 0 ? "+" : ""}${pct.toFixed(Math.abs(pct) < 10 ? 2 : 1)}%`;
+}
+
+function bestUpdatedAt(model: MarketPanelModel): string {
+  return text(
+    pickFirst(model.breadth, ["updated_at", "generated_at"]) ??
+      pickFirst(model.pulse, ["updated_at", "generated_at"]) ??
+      pickFirst(model.sectorStrength, ["updated_at", "generated_at"]) ??
+      pickFirst(model.snapshot, ["updated_at", "as_of_date"]) ??
+      model.root.generated_at,
+    "--",
+  );
+}
+
+function syncStatus(model: MarketPanelModel): string {
+  const partials = readArray(model.root.partial_errors);
+  if (model.root.stale === true) return "BFF: STALE";
+  if (partials.length > 0) return `BFF: PARTIAL ${partials.length}`;
+  return "BFF: ACTIVE";
 }

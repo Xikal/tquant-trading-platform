@@ -57,4 +57,23 @@ describe("monitor action priority board model", () => {
       dispose();
     });
   });
+
+  it("does not fabricate market firepower or AI insight when backend fields are absent", () => {
+    createRoot((dispose) => {
+      const model = createMonitorActionModel(
+        {
+          monitor_snapshot: {
+            priority_board: {
+              items: [{ symbol: "000001", name: "平安银行", signal_state: "观察确认" }],
+            },
+          },
+        },
+        () => undefined,
+      );
+
+      expect(model.metrics.find((item) => item.label === "市场火力")?.value).toBe("--");
+      expect(model.aiInsight).toBe("--");
+      dispose();
+    });
+  });
 });

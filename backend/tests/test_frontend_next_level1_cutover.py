@@ -109,3 +109,55 @@ def test_level2_allowlisted_legacy_routes_use_frontend_next(monkeypatch, tmp_pat
     assert "next-page" in paper_response.text
     assert analysis_response.status_code == 200
     assert "legacy-page" in analysis_response.text
+
+
+def test_api_only_mode_disables_backend_static_fallback(monkeypatch, tmp_path):
+    legacy_dist = tmp_path / "frontend" / "dist"
+    _write_dist(legacy_dist, "legacy-page", "legacy.js")
+    monkeypatch.setattr(main, "FRONTEND_DIST_DIR", legacy_dist)
+    monkeypatch.setattr(main, "FRONTEND_INDEX_FILE", legacy_dist / "index.html")
+    monkeypatch.setattr(main.settings, "serve_frontend_static", False)
+
+    try:
+        with TestClient(main.app) as client:
+            root_response = client.get("/")
+            page_response = client.get("/monitor")
+            api_response = client.get("/api/does-not-exist")
+    finally:
+        monkeypatch.setattr(main.settings, "serve_frontend_static", True)
+
+    assert root_response.status_code == 200
+    assert root_response.json()["status"] == "ok"
+    assert page_response.status_code == 404
+    assert page_response.json() == {"detail": "Frontend static serving is disabled"}
+    assert "<html" not in page_response.text.lower()
+    assert api_response.status_code == 404
+    assert api_response.json() == {"detail": "API endpoint not found"}
+
+
+def test_api_only_readyz_does_not_require_static_frontend_dist(monkeypatch, tmp_path):
+    missing_legacy_dist = tmp_path / "frontend" / "dist"
+    missing_next_dist = tmp_path / "frontend-next" / "dist"
+
+    monkeypatch.setattr(main, "FRONTEND_INDEX_FILE", missing_legacy_dist / "index.html")
+    monkeypatch.setattr(main, "FRONTEND_NEXT_INDEX_FILE", missing_next_dist / "index.html")
+    monkeypatch.setattr(main, "frontend_next_cutover_paths", lambda: frozenset({"monitor"}))
+    monkeypatch.setattr(main, "ping_database", lambda: True)
+    monkeypatch.setattr(main.settings, "serve_frontend_static", False)
+
+    class _AnalyticsStatus:
+        ready = True
+        enabled = False
+        error = ""
+
+    monkeypatch.setattr(main, "analytics_dependency_status", lambda: _AnalyticsStatus())
+
+    try:
+        response = main.readyz(type("ResponseStub", (), {"status_code": 200})())
+    finally:
+        monkeypatch.setattr(main.settings, "serve_frontend_static", True)
+
+    assert response.status == "ok"
+    assert response.checks["frontend_dist"] is True
+    assert response.checks["frontend_next_dist"] is True
+    assert response.errors == []

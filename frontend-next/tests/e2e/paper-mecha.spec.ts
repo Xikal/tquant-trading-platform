@@ -44,6 +44,9 @@ test("/next/paper supports workflow tabs and guarded order confirmation without 
   await page.getByRole("tab", { name: "记录" }).click();
   await expect(page.getByRole("tabpanel", { name: "记录" })).toBeVisible();
   await expect(page.getByText("策略买入")).toBeVisible();
+  await expect(page.getByText("SYSTEM_INIT")).toHaveCount(0);
+  await expect(page.getByText("神经元连接同步率稳定在 84.2%")).toHaveCount(0);
+  await expect(page.getByText("A股沪深两市指数馈入开始...")).toHaveCount(0);
 
   await page.getByRole("tab", { name: "详情信息" }).click();
   await expect(page.getByRole("tabpanel", { name: "详情信息" })).toBeVisible();
@@ -74,6 +77,29 @@ test("/next/paper supports workflow tabs and guarded order confirmation without 
   await page.getByTestId("paper-order-form").getByRole("button", { name: "提交委托" }).click();
   await expect(page.getByText("提交委托已记录")).toBeVisible();
   expect(writeRequests).toEqual([]);
+});
+
+test("/next/paper does not show fabricated automation logs when backend has no runs", async ({ page }) => {
+  await installE2eAuthState(page);
+  await page.route("**/api/bff/v1/workspace/paper", (route) => {
+    route.fulfill({
+      status: 200,
+      json: {
+        ...paperWorkspaceFixture,
+        auto_trading_status: { running: false, engine_running: false, trading_time: true },
+        auto_trading_runs: [],
+        risk_events: [],
+      },
+    });
+  });
+
+  await page.goto("/next/paper");
+  await expect(page.locator(".paper-mecha-action-panel")).toContainText("暂无后端自动交易同步记录");
+  await page.getByRole("button", { name: "展开工作流" }).click();
+  await expect(page.getByText("暂无后端自动交易运行记录")).toBeVisible();
+  await expect(page.getByText("SYSTEM_INIT")).toHaveCount(0);
+  await expect(page.getByText("神经元连接同步率稳定在 84.2%")).toHaveCount(0);
+  await expect(page.getByText("沪深两市指数馈入开始")).toHaveCount(0);
 });
 
 test("/next/paper refreshes live stock prices without manual action", async ({ page }) => {

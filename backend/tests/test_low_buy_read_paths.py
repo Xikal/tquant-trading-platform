@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import threading
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -614,15 +615,17 @@ class LowBuyReadPathTests(unittest.TestCase):
         )
         service = _ScreenReadFallbackService(fallback)
 
-        with self.Session() as db:
-            response = screen_read_path(
-                service,
-                db,
-                strategy="first_board",
-                limit=16,
-                include_history=False,
-                scan_mode="quick",
-            )
+        with patch("app.services.low_buy.screening_read.expected_low_buy_trade_date", lambda _db: "2026-06-05"), \
+                patch("app.services.low_buy.screening_read.published_low_buy_trade_date", lambda _db: ""):
+            with self.Session() as db:
+                response = screen_read_path(
+                    service,
+                    db,
+                    strategy="first_board",
+                    limit=16,
+                    include_history=False,
+                    scan_mode="quick",
+                )
 
         self.assertEqual(service.loaded_cached_dates, ["2026-06-05"])
         self.assertEqual(service.loaded_fallback_dates, ["2026-06-05"])

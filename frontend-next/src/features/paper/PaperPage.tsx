@@ -211,7 +211,7 @@ function PaperWorkflowLauncher(props: { root: Record<string, unknown>; isPending
             ? "正在读取模拟盘数据"
             : props.isError
               ? "数据降级，点击查看本地复核面板"
-              : `今日 ${autoRuns().length} 次动作 · 风险 ${riskEvents().length} 条 · 最近 ${text(lastRun().status ?? "idle")}`}
+              : `当前快照 ${autoRuns().length} 次动作 · 风险 ${riskEvents().length} 条 · 最近 ${text(lastRun().status ?? "idle")}`}
         </span>
       </div>
       <Button variant="primary" size="sm" onClick={props.onOpen}>

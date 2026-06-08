@@ -886,6 +886,69 @@
   padding: 6px;
 }
 
+.equity-sparkline {
+  display: grid;
+  place-items: stretch;
+}
+
+.equity-sparkline svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.equity-sparkline__grid {
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.equity-sparkline__tick {
+  fill: #94a3b8;
+  font-size: 10px;
+}
+
+.equity-sparkline__area {
+  fill: rgba(37, 99, 235, 0.1);
+}
+
+.equity-sparkline__line {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.equity-sparkline__hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.equity-sparkline__cursor {
+  stroke: rgba(37, 99, 235, 0.35);
+  stroke-dasharray: 3 3;
+}
+
+.equity-sparkline__dot {
+  fill: #2563eb;
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.equity-sparkline__tooltip {
+  fill: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.equity-sparkline__empty {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .backtest-chart-foot {
   display: flex;
   justify-content: space-between;

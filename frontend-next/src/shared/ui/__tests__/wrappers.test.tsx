@@ -223,6 +223,25 @@ describe("shared wrapper accessibility", () => {
     expect(document.querySelectorAll("[role='listitem']")).toHaveLength(2);
   });
 
+  it("does not render every virtual card before the virtualizer measures the scroll container", () => {
+    render(
+      () => (
+        <VirtualCardList
+          items={Array.from({ length: 100 }, (_, index) => `Item ${index + 1}`)}
+          estimateSize={40}
+          maxHeight={80}
+          overscan={1}
+          initialItemLimit={4}
+          ariaLabel="长观察列表"
+          renderItem={(item) => <div>{item}</div>}
+        />
+      ),
+      document.body,
+    );
+
+    expect(document.querySelectorAll("[role='listitem']").length).toBeLessThan(100);
+  });
+
   it("refreshes shadow action drafts when parent fields change", async () => {
     const TestShadowAction = () => {
       const [symbol, setSymbol] = createSignal("000001");

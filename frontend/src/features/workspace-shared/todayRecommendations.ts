@@ -44,12 +44,40 @@ export function isBeijingTodayTradeDate(value?: string | null, now: Date = new D
   return normalizeTradeDate(value) === beijingTodayString(now);
 }
 
+export function isCurrentPublishedTradeDate(
+  latestTradeDate?: string | null,
+  expectedTradeDate?: string | null,
+  stale?: boolean | null,
+  now: Date = new Date(),
+): boolean {
+  const latest = normalizeTradeDate(latestTradeDate);
+  const expected = normalizeTradeDate(expectedTradeDate);
+  if (!latest) {
+    return false;
+  }
+  if (stale === true) {
+    return false;
+  }
+  if (latest && expected) {
+    return latest === expected;
+  }
+  if (stale === false) {
+    return true;
+  }
+  return isBeijingTodayTradeDate(latest, now);
+}
+
 export function isConfirmedRecommendationState(value?: string | null): boolean {
   return CONFIRMED_RECOMMENDATION_STATES.has(String(value ?? ""));
 }
 
 export function isTodayPriorityBoard(board: LowBuyPriorityBoardResult | null, now: Date = new Date()): boolean {
-  return Boolean(board && isBeijingTodayTradeDate(board.latest_trade_date, now));
+  return Boolean(board && isCurrentPublishedTradeDate(
+    board.latest_trade_date,
+    board.latest_available_trade_date,
+    board.stale,
+    now,
+  ));
 }
 
 export function filterTodayConfirmedPriorityItems(
@@ -73,7 +101,7 @@ export function filterTodayConfirmedCandidates(
   playbook: LowBuyScreenerResult | null,
   now: Date = new Date(),
 ): LowBuyCandidate[] {
-  if (!playbook || !isBeijingTodayTradeDate(playbook.latest_trade_date, now)) {
+  if (!playbook || !isCurrentPublishedTradeDate(playbook.latest_trade_date, null, playbook.stale, now)) {
     return [];
   }
   return uniqueBySymbol([

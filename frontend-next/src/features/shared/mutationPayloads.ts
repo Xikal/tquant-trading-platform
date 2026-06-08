@@ -27,9 +27,12 @@ export function paperOrderPayload(draft: Record<string, unknown>): PaperOrderCre
 }
 
 export function backtestPayload(draft: Record<string, unknown>): BacktestRunCreate {
+  const strategies = splitList(draft.strategies ?? draft.strategy)
+    .map((item) => normalizeStrategyKey(item))
+    .filter(Boolean);
   return {
     name: stringValue(draft.name, "frontend-next shadow backtest"),
-    strategies: [normalizeStrategyKey(draft.strategy)],
+    strategies,
     start_date: stringValue(draft.start, "2025-01-01"),
     end_date: stringValue(draft.end, "2026-06-05"),
     initial_capital: positiveNumber(draft.capital, 100000),

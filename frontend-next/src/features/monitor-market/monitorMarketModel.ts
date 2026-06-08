@@ -36,7 +36,11 @@ export function createMonitorMarketModel(data: unknown): MarketPanelModel {
   const pulseRows = normalizeRows(pulse.items ?? pulse.rows ?? pulse.hourly ?? pulse.timeline);
   const sectorRows = normalizeRows(sectorStrength.items ?? sectorStrength.sectors ?? sectorStrength.rows ?? snapshot.sector_leaders);
   const etfRows = normalizeRows(sectorEtf.opportunities ?? sectorEtf.items ?? sectorEtf.rows);
-  const reviewRows = normalizeRows(review.items ?? review.reports ?? snapshot.review_reports);
+  const reviewRows = [
+    ...normalizeRows(review.items ?? review.reports),
+    ...normalizeRows(root.review_reports),
+    ...normalizeRows(snapshot.review_reports),
+  ];
   const runtimeRows = normalizeRows(runtime.items ?? runtime.workers ?? runtime.tasks ?? root.runtime_tasks);
 
   return {
@@ -52,7 +56,7 @@ export function createMonitorMarketModel(data: unknown): MarketPanelModel {
     qualityMetrics: [
       { label: "市场状态", value: text(board.market_state_text ?? breadth.state_text) },
       { label: "市场火力", value: pctText(board.market_firepower_multiplier ?? 1) },
-      { label: "上涨比例", value: pctText(board.stock_up_ratio ?? breadth.up_ratio), tone: "up" },
+      { label: "上涨比例", value: pctText(board.stock_up_ratio ?? breadth.stock_up_ratio ?? breadth.up_ratio), tone: "up" },
       { label: "涨停数", value: text(board.limit_up_count ?? breadth.limit_up_count, "0") },
       { label: "跌停数", value: text(board.limit_down_count ?? breadth.limit_down_count, "0"), tone: "down" },
     ],
@@ -130,10 +134,22 @@ function chartValues(
     .map((value) => (value > 1 ? value : value * 100));
   if (values.length) return values.slice(0, 24);
   return [
-    Number(breadth.up_ratio ?? 0.45) * 100,
-    Number(breadth.limit_up_count ?? 8),
-    Number(pulse.strength ?? 0.52) * 100,
-    Number(nested(pulse, "latest.up_ratio") ?? 0.48) * 100,
-    Number(nested(breadth, "quality_score") ?? 0.75) * 100,
+    toPercentValue(pickFirst(breadth, ["stock_up_ratio", "up_ratio"])),
+    toBoundedBarValue(breadth.limit_up_count, 80),
+    toPercentValue(pickFirst(pulse, ["strength", "pulse_strength"])),
+    toPercentValue(nested(pulse, "latest.up_ratio")),
+    toPercentValue(nested(breadth, "quality_score")),
   ].filter((value) => Number.isFinite(value));
+}
+
+function toPercentValue(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return Number.NaN;
+  return parsed > 1 ? parsed : parsed * 100;
+}
+
+function toBoundedBarValue(value: unknown, cap: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return Number.NaN;
+  return Math.max(0, Math.min(cap, parsed));
 }
