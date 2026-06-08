@@ -1,7 +1,7 @@
 # Frontend Next Chunk Profile - 2026-06-08
 
 状态：PASS
-生成时间：2026-06-08T17:19:41.237Z
+生成时间：2026-06-08T23:50:24.395Z
 
 ## Summary
 
