@@ -1,14 +1,14 @@
 # Frontend Next Chunk Profile - 2026-06-08
 
 状态：PASS
-生成时间：2026-06-08T13:14:45.195Z
+生成时间：2026-06-08T17:19:41.237Z
 
 ## Summary
 
 | 项 | 值 | 状态 |
 |---|---:|---|
-| initial JS raw bytes | 284862 | ok |
-| initial JS gzip bytes | 86555 | - |
+| initial JS raw bytes | 284749 | ok |
+| initial JS gzip bytes | 86527 | - |
 | initial CSS raw bytes | 16758 | - |
 | initial CSS gzip bytes | 4336 | - |
 | initial ECharts assets | 0 | ok |
@@ -19,7 +19,7 @@
 
 | Asset | type | raw bytes | gzip bytes |
 |---|---|---:|---:|
-| index-CmrZ_oi2.js | js | 71086 | 21098 |
+| index-DgaF_Iyt.js | js | 70973 | 21070 |
 | tanstack-misc-DpKFfoky.js | js | 160251 | 45683 |
 | solid-vendor-Ch9Uoa8e.js | js | 33188 | 12471 |
 | tanstack-router-BLsFFlgG.js | js | 18005 | 6099 |

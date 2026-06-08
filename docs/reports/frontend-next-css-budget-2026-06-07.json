@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-06-08T13:14:45.530Z",
+  "generated_at": "2026-06-08T17:19:41.269Z",
   "summary": {
     "source_css_files": 29,
-    "source_css_bytes": 303565,
-    "source_css_gzip_bytes": 60427,
-    "source_css_lines": 15931,
+    "source_css_bytes": 306206,
+    "source_css_gzip_bytes": 60728,
+    "source_css_lines": 16073,
     "dist_css_files": 11,
-    "dist_css_bytes": 169870,
-    "dist_css_gzip_bytes": 35668,
-    "important_count": 23,
+    "dist_css_bytes": 181080,
+    "dist_css_gzip_bytes": 37708,
+    "important_count": 25,
     "dist_available": true
   },
   "important_by_file": [
@@ -41,6 +41,13 @@
       "important_count": 3
     },
     {
+      "file": "src/features/paper/paper-page.css",
+      "bytes": 24165,
+      "gzip_bytes": 4253,
+      "lines": 1231,
+      "important_count": 2
+    },
+    {
       "file": "src/shared/styles/legacy-workspace/workspace-paper-mecha.css",
       "bytes": 11325,
       "gzip_bytes": 2490,
@@ -71,17 +78,17 @@
       "important_count": 0
     },
     {
+      "file": "src/features/paper/paper-page.css",
+      "bytes": 24165,
+      "gzip_bytes": 4253,
+      "lines": 1231,
+      "important_count": 2
+    },
+    {
       "file": "src/features/settings/settings-slice.css",
       "bytes": 23791,
       "gzip_bytes": 3732,
       "lines": 1158,
-      "important_count": 0
-    },
-    {
-      "file": "src/features/paper/paper-page.css",
-      "bytes": 22995,
-      "gzip_bytes": 4114,
-      "lines": 1177,
       "important_count": 0
     },
     {
@@ -93,9 +100,9 @@
     },
     {
       "file": "src/features/monitor-action/monitor-action.css",
-      "bytes": 19121,
-      "gzip_bytes": 3659,
-      "lines": 1095,
+      "bytes": 20592,
+      "gzip_bytes": 3821,
+      "lines": 1183,
       "important_count": 0
     },
     {
@@ -171,6 +178,13 @@
   ],
   "largest_dist_css": [
     {
+      "file": "dist/assets/PaperPage-BjViCAjj.css",
+      "bytes": 28456,
+      "gzip_bytes": 5606,
+      "lines": 2,
+      "important_count": 4
+    },
+    {
       "file": "dist/assets/BacktestPage-WrHtBwat.css",
       "bytes": 20288,
       "gzip_bytes": 3952,
@@ -192,13 +206,6 @@
       "important_count": 0
     },
     {
-      "file": "dist/assets/PaperPage-RihhV-yi.css",
-      "bytes": 18439,
-      "gzip_bytes": 3741,
-      "lines": 2,
-      "important_count": 0
-    },
-    {
       "file": "dist/assets/index-Baaax_FR.css",
       "bytes": 16758,
       "gzip_bytes": 4336,
@@ -206,9 +213,9 @@
       "important_count": 5
     },
     {
-      "file": "dist/assets/MonitorActionPage-CrG0_n4h.css",
-      "bytes": 15290,
-      "gzip_bytes": 3331,
+      "file": "dist/assets/MonitorActionPage-CSDf4FPa.css",
+      "bytes": 16483,
+      "gzip_bytes": 3506,
       "lines": 2,
       "important_count": 0
     },

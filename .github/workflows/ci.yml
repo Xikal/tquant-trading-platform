@@ -92,6 +92,48 @@ jobs:
           path: frontend/dist
           if-no-files-found: error
 
+  frontend-next:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend-next/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install backend dependencies for API contract export
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      - name: Install frontend-next dependencies
+        working-directory: frontend-next
+        run: npm ci
+      - name: Check frontend-next API contract
+        working-directory: frontend-next
+        run: npm run api:check
+      - name: Run frontend-next typecheck
+        working-directory: frontend-next
+        run: npm run typecheck
+      - name: Run frontend-next lint
+        working-directory: frontend-next
+        run: npm run lint
+      - name: Run frontend-next tests
+        working-directory: frontend-next
+        run: npm test -- --run
+      - name: Build frontend-next
+        working-directory: frontend-next
+        run: npm run build
+      - name: Upload frontend-next dist artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-next-dist
+          path: frontend-next/dist
+          if-no-files-found: error
+
   go-rust:
     runs-on: ubuntu-latest
     steps:
@@ -132,7 +174,7 @@ jobs:
           path: docs/reports/rust-finance-bench.txt
 
   deploy:
-    needs: [backend, frontend, go-rust]
+    needs: [backend, frontend, frontend-next, go-rust]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -144,6 +186,11 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist
+      - name: Download frontend-next dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-next-dist
+          path: frontend-next/dist
       - name: Select deploy target scope
         run: |
           set -euo pipefail
@@ -157,44 +204,11 @@ jobs:
             changed_files=""
           fi
           printf '%s\n' "$changed_files" > /tmp/gupiao_changed_files.txt
-          scope=ops
-          has_frontend=0
-          has_go=0
-          has_ops=0
-          if [ -z "$changed_files" ]; then
-            scope=all
-          else
-            while IFS= read -r path; do
-              [ -z "$path" ] && continue
-              case "$path" in
-                frontend/*)
-                  has_frontend=1
-                  ;;
-                go-services/*)
-                  has_go=1
-                  ;;
-                docs/*|AGENTS.md|IMPLEMENTATION_PLAN.md)
-                  ;;
-                .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|backend/tests/test_independent_runtime_components.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/deploy_delta_package.py|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh|scripts/run_platform_component.sh)
-                  has_ops=1
-                  ;;
-                *)
-                  scope=all
-                  ;;
-              esac
-              [ "$scope" = all ] && break
-            done <<< "$changed_files"
-            if [ "$scope" != all ]; then
-              if [ "$has_frontend" = 1 ] && [ "$has_go" = 0 ] && [ "$has_ops" = 0 ]; then
-                scope=frontend-hot
-              elif [ "$has_frontend" = 0 ] && [ "$has_go" = 1 ] && [ "$has_ops" = 0 ]; then
-                scope=go
-              elif [ "$has_frontend" = 0 ] && [ "$has_go" = 0 ]; then
-                scope=ops
-              else
-                scope=all
-              fi
-            fi
+          scope_json="$(python3 scripts/deploy_scope.py --changed-files-from /tmp/gupiao_changed_files.txt)"
+          scope="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])' <<< "$scope_json")"
+          if [ "$scope" = blocked ]; then
+            echo "$scope_json" >&2
+            exit 2
           fi
           echo "DEPLOY_TARGET_SCOPE=$scope" >> "$GITHUB_ENV"
           echo "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" >> "$GITHUB_ENV"
@@ -219,6 +233,7 @@ jobs:
           RUN_STRATEGY_TEST: "0"
           RUN_FULL_TESTS: "0"
           DEPLOY_FRONTEND_HOT_REQUIRED: "1"
+          DEPLOY_FRONTEND_NEXT_REQUIRED: "1"
           DEPLOY_SYNC_MODE: "delta-package"
           DEPLOY_GIT_REF: ${{ github.sha }}
           DEPLOY_GIT_AUTH_TOKEN: ${{ github.token }}

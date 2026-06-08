@@ -63,13 +63,13 @@ def test_frontend_next_cutover_invalid_runtime_setting_falls_back_to_env(monkeyp
 def test_frontend_next_cutover_paths_parse_allowlist(monkeypatch):
     class _Settings:
         frontend_next_monitor_cutover_enabled = False
-        frontend_next_cutover_paths = "monitor, monitor/market, paper, unknown, /settings/"
+        frontend_next_cutover_paths = "/, monitor, monitor/market, paper, unknown, /settings/"
 
     monkeypatch.setattr(frontend_next_cutover, "get_settings", lambda: _Settings())
     frontend_next_cutover.clear_frontend_next_cutover_cache()
 
     assert frontend_next_cutover.frontend_next_cutover_paths() == frozenset(
-        {"monitor", "monitor/market", "paper", "settings"}
+        {"", "monitor", "monitor/market", "paper", "settings"}
     )
 
 
@@ -82,3 +82,4 @@ def test_frontend_next_cutover_paths_all(monkeypatch):
     frontend_next_cutover.clear_frontend_next_cutover_cache()
 
     assert frontend_next_cutover.frontend_next_cutover_paths() == frontend_next_cutover.SUPPORTED_CUTOVER_PATHS
+    assert "" in frontend_next_cutover.frontend_next_cutover_paths()

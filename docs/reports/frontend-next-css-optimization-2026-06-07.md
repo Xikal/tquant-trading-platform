@@ -1,30 +1,30 @@
 # Frontend Next CSS Optimization - 2026-06-07
 
 状态：预算报告已生成；未执行破坏性删除。
-生成时间：2026-06-08T13:14:45.530Z
+生成时间：2026-06-08T17:19:41.269Z
 
 ## Budget Summary
 
 | 项 | 值 | 状态 |
 |---|---:|---|
 | source CSS files | 29 | - |
-| source CSS bytes | 303565 | needs-explanation |
-| source CSS gzip bytes | 60427 | - |
-| source CSS lines | 15931 | - |
+| source CSS bytes | 306206 | needs-explanation |
+| source CSS gzip bytes | 60728 | - |
+| source CSS lines | 16073 | - |
 | dist CSS files | 11 | built |
-| dist CSS bytes | 169870 | - |
-| dist CSS gzip bytes | 35668 | ok |
-| !important count | 23 | ok |
+| dist CSS bytes | 181080 | - |
+| dist CSS gzip bytes | 37708 | ok |
+| !important count | 25 | ok |
 
 ## Largest Source CSS
 
 | File | bytes | lines | !important |
 |---|---:|---:|---:|
 | src/features/backtest/backtest-slice.css | 24942 | 1406 | 0 |
+| src/features/paper/paper-page.css | 24165 | 1231 | 2 |
 | src/features/settings/settings-slice.css | 23791 | 1158 | 0 |
-| src/features/paper/paper-page.css | 22995 | 1177 | 0 |
 | src/features/strategy-tracking/strategy-tracking.css | 22694 | 1235 | 0 |
-| src/features/monitor-action/monitor-action.css | 19121 | 1095 | 0 |
+| src/features/monitor-action/monitor-action.css | 20592 | 1183 | 0 |
 | src/features/data-console/data-console-slice.css | 18301 | 998 | 0 |
 | src/features/monitor-market/monitor-market.css | 18282 | 949 | 0 |
 | src/shared/styles/legacy-solid-adapter.css | 17641 | 969 | 5 |
@@ -40,12 +40,12 @@
 
 | File | bytes | gzip bytes |
 |---|---:|---:|
+| dist/assets/PaperPage-BjViCAjj.css | 28456 | 5606 |
 | dist/assets/BacktestPage-WrHtBwat.css | 20288 | 3952 |
 | dist/assets/SettingsPage-BEGsxa-y.css | 19996 | 3582 |
 | dist/assets/StrategyTrackingPage-BfcLV-3B.css | 18759 | 3605 |
-| dist/assets/PaperPage-RihhV-yi.css | 18439 | 3741 |
 | dist/assets/index-Baaax_FR.css | 16758 | 4336 |
-| dist/assets/MonitorActionPage-CrG0_n4h.css | 15290 | 3331 |
+| dist/assets/MonitorActionPage-CSDf4FPa.css | 16483 | 3506 |
 | dist/assets/MonitorMarketPage-DxnU4VuE.css | 14757 | 2806 |
 | dist/assets/DataConsolePage-BL845ZW3.css | 14142 | 2898 |
 | dist/assets/LoginPage-qTpIqddy.css | 13823 | 3408 |
@@ -59,6 +59,7 @@
 | src/shared/styles/legacy-solid-adapter.css | 5 | 17641 |
 | src/features/auth/LoginPage.css | 4 | 17343 |
 | src/shared/styles/legacy-workspace/workspace.css | 3 | 10388 |
+| src/features/paper/paper-page.css | 2 | 24165 |
 | src/shared/styles/legacy-workspace/workspace-paper-mecha.css | 2 | 11325 |
 | src/shared/styles/legacy-workspace/workspace-paper.css | 2 | 9600 |
 | src/shared/styles/legacy-workspace/workspace-primitives-base.css | 1 | 6521 |

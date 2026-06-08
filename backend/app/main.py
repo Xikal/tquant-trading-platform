@@ -523,6 +523,8 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
 def root():
     if not settings.serve_frontend_static:
         return HealthResponse(status="ok", app=settings.app_name)
+    if _should_serve_frontend_next("/"):
+        return _serve_frontend_next("/")
     if FRONTEND_INDEX_FILE.exists():
         return FileResponse(FRONTEND_INDEX_FILE)
     return HealthResponse(status="ok", app=settings.app_name)

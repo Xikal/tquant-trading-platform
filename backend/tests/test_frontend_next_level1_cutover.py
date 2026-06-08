@@ -111,6 +111,54 @@ def test_level2_allowlisted_legacy_routes_use_frontend_next(monkeypatch, tmp_pat
     assert "legacy-page" in analysis_response.text
 
 
+def test_cutover_all_serves_root_and_supported_legacy_routes_from_frontend_next(monkeypatch, tmp_path):
+    legacy_dist = tmp_path / "frontend" / "dist"
+    next_dist = tmp_path / "frontend-next" / "dist"
+    _write_dist(legacy_dist, "legacy-all", "legacy.js")
+    _write_dist(next_dist, "next-all", "next.js")
+
+    monkeypatch.setattr(main, "FRONTEND_DIST_DIR", legacy_dist)
+    monkeypatch.setattr(main, "FRONTEND_INDEX_FILE", legacy_dist / "index.html")
+    monkeypatch.setattr(main, "FRONTEND_NEXT_DIST_DIR", next_dist)
+    monkeypatch.setattr(main, "FRONTEND_NEXT_INDEX_FILE", next_dist / "index.html")
+    monkeypatch.setattr(
+        main,
+        "frontend_next_cutover_paths",
+        lambda: frozenset({"", "monitor", "paper", "strategy-tracking", "analysis", "playbook", "backtest", "data", "settings"}),
+    )
+
+    with TestClient(main.app) as client:
+        root_response = client.get("/")
+        route_responses = {
+            path: client.get(path)
+            for path in (
+                "/monitor",
+                "/paper",
+                "/strategy-tracking",
+                "/analysis",
+                "/playbook",
+                "/backtest",
+                "/data",
+                "/settings",
+            )
+        }
+        next_asset_response = client.get("/next/assets/next.js")
+        legacy_asset_response = client.get("/assets/legacy.js")
+        api_response = client.get("/api/__missing_smoke__")
+
+    assert root_response.status_code == 200
+    assert "next-all" in root_response.text
+    for path, response in route_responses.items():
+        assert response.status_code == 200, path
+        assert "next-all" in response.text, path
+    assert next_asset_response.status_code == 200
+    assert "next-all" in next_asset_response.text
+    assert legacy_asset_response.status_code == 200
+    assert "legacy-all" in legacy_asset_response.text
+    assert api_response.status_code == 404
+    assert api_response.json() == {"detail": "API endpoint not found"}
+
+
 def test_api_only_mode_disables_backend_static_fallback(monkeypatch, tmp_path):
     legacy_dist = tmp_path / "frontend" / "dist"
     _write_dist(legacy_dist, "legacy-page", "legacy.js")

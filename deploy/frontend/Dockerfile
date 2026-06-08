@@ -14,5 +14,5 @@ RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY deploy/frontend/nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=legacy-build /workspace/frontend/dist/ /usr/share/nginx/html/
-COPY --from=next-build /workspace/frontend-next/dist/ /usr/share/nginx/html/next/
+COPY --from=legacy-build /workspace/frontend/dist/ /usr/share/nginx/html-root/
+COPY --from=next-build /workspace/frontend-next/dist/ /usr/share/nginx/html-next/

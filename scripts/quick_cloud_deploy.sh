@@ -10,6 +10,7 @@ CLOUD_USER="${CLOUD_USER:-ubuntu}"
 CLOUD_SSH_KEY="${CLOUD_SSH_KEY:-}"
 CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
 CLOUD_APP_PORT="${CLOUD_APP_PORT:-18090}"
+BACKEND_API_PORT="${BACKEND_API_PORT:-18091}"
 CLOUD_DOMAIN="${CLOUD_DOMAIN:-}"
 CLOUD_CERT_EMAIL="${CLOUD_CERT_EMAIL:-}"
 CLOUD_PUBLIC_BASE_URL="${CLOUD_PUBLIC_BASE_URL:-}"
@@ -41,6 +42,14 @@ VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 VERIFY_PUBLIC_ENTRY="${VERIFY_PUBLIC_ENTRY:-1}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
+DEPLOY_FRONTEND_NEXT_REQUIRED="${DEPLOY_FRONTEND_NEXT_REQUIRED:-0}"
+DEPLOY_CHANGED_FILES_FROM="${DEPLOY_CHANGED_FILES_FROM:-}"
+DEPLOY_COMPOSE_TOPOLOGY="${DEPLOY_COMPOSE_TOPOLOGY:-monolith}"
+BACKEND_API_COMPOSE_FILE="${BACKEND_API_COMPOSE_FILE:-}"
+FRONTEND_COMPOSE_FILE="${FRONTEND_COMPOSE_FILE:-}"
+DB_MIGRATION_COMPOSE_FILE="${DB_MIGRATION_COMPOSE_FILE:-docker-compose.mysql.yml}"
+RUNTIME_COMPOSE_FILE="${RUNTIME_COMPOSE_FILE:-docker-compose.mysql.yml}"
+GO_COMPOSE_FILE="${GO_COMPOSE_FILE:-docker-compose.mysql.yml}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"
 DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
@@ -113,8 +122,22 @@ Options:
   --full          Run the slower local checks and latest-data acceptance.
   --fast-risk-accepted
                  Skip local compile/build checks for emergency deploys only.
-  --scope <auto|all|frontend-hot|go|ops>
+  --scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>
                  Choose deployment target. auto is the default and uses changed files.
+  --changed-files-from <file>
+                 Read changed files from a newline-separated file for auto scope resolution.
+  --compose-topology <monolith|separated>
+                 Select monolith or separated deployment topology.
+  --backend-api-compose-file <file>
+                 Compose file used for backend-api scope.
+  --frontend-compose-file <file>
+                 Compose file used for frontend-next/frontend-web scope.
+  --db-migration-compose-file <file>
+                 Compose file used for migration scope.
+  --runtime-compose-file <file>
+                 Compose file used for worker scope.
+  --go-compose-file <file>
+                 Compose file used for Go service scope.
   --sync-mode <delta-package|package-only|git-inplace|git-clone>
                  Choose release sync mode. delta-package falls back to package-only.
   --prebuilt-images
@@ -131,6 +154,8 @@ Options:
                  Image ref to tag as tquant-go-scan-worker:mysql when --prebuilt-images is enabled.
   --frontend-hot-required
                  Fail instead of falling back when frontend-hot has no dist artifact.
+  --frontend-next-required
+                 Fail instead of falling back when frontend-next has no dist artifact.
   --performance-verify
                  Run online Go/Rust performance gates after deploy/verify.
                  Defaults to 2 rounds with 8 samples per round.
@@ -194,8 +219,40 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_TARGET_SCOPE="${2:?missing scope}"
       shift 2
       ;;
+    --changed-files-from)
+      DEPLOY_CHANGED_FILES_FROM="${2:?missing changed files path}"
+      shift 2
+      ;;
+    --compose-topology)
+      DEPLOY_COMPOSE_TOPOLOGY="${2:?missing compose topology}"
+      shift 2
+      ;;
+    --backend-api-compose-file)
+      BACKEND_API_COMPOSE_FILE="${2:?missing backend api compose file}"
+      shift 2
+      ;;
+    --frontend-compose-file)
+      FRONTEND_COMPOSE_FILE="${2:?missing frontend compose file}"
+      shift 2
+      ;;
+    --db-migration-compose-file)
+      DB_MIGRATION_COMPOSE_FILE="${2:?missing db migration compose file}"
+      shift 2
+      ;;
+    --runtime-compose-file)
+      RUNTIME_COMPOSE_FILE="${2:?missing runtime compose file}"
+      shift 2
+      ;;
+    --go-compose-file)
+      GO_COMPOSE_FILE="${2:?missing go compose file}"
+      shift 2
+      ;;
     --frontend-hot-required)
       DEPLOY_FRONTEND_HOT_REQUIRED=1
+      shift
+      ;;
+    --frontend-next-required)
+      DEPLOY_FRONTEND_NEXT_REQUIRED=1
       shift
       ;;
     --sync-mode)
@@ -307,7 +364,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT
+export CLOUD_HOST CLOUD_USER CLOUD_SSH_KEY CLOUD_PROJECT_DIR CLOUD_APP_PORT BACKEND_API_PORT
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export CLOUD_DOMAIN CLOUD_CERT_EMAIL CLOUD_PUBLIC_BASE_URL CLOUD_AUTH_COOKIE_SECURE CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE
 export FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED
@@ -315,7 +372,9 @@ export FRONTEND_NEXT_CUTOVER_PATHS
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
 export VERIFY_PUBLIC_DOMAIN VERIFY_PUBLIC_ENTRY
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
-export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED
+export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED DEPLOY_FRONTEND_NEXT_REQUIRED DEPLOY_CHANGED_FILES_FROM
+export DEPLOY_COMPOSE_TOPOLOGY
+export BACKEND_API_COMPOSE_FILE FRONTEND_COMPOSE_FILE DB_MIGRATION_COMPOSE_FILE RUNTIME_COMPOSE_FILE GO_COMPOSE_FILE
 export DEPLOY_SYNC_MODE
 export DEPLOY_PREBUILT_IMAGES_ENABLED
 export DEPLOY_PREBUILT_WEB_IMAGE_REF
@@ -623,7 +682,7 @@ REMOTE
 
 verify_remote() {
   log "verify remote service health"
-  if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" ]]; then
+  if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" || "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
     VERIFY_WEB_IMAGE_SYNC=0
   fi
   cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" bash -s <<'REMOTE'
@@ -678,6 +737,7 @@ if test "${VERIFY_WEB_IMAGE_SYNC:-1}" = "1"; then
   echo web_image:ok
 else
   echo web_image:skipped_frontend_hot
+  echo web_image:skipped_frontend_next
 fi
 grep -Eq '^AUTH_COOKIE_SECURE=true$' "$CLOUD_PROJECT_DIR/.env"
 grep -Eq '^AUTH_ALLOW_INSECURE_HTTP_COOKIE=false$' "$CLOUD_PROJECT_DIR/.env"
@@ -800,6 +860,14 @@ RUN_FULL_TESTS="$RUN_FULL_TESTS" \
 RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
 DEPLOY_TARGET_SCOPE="$DEPLOY_TARGET_SCOPE" \
 DEPLOY_FRONTEND_HOT_REQUIRED="$DEPLOY_FRONTEND_HOT_REQUIRED" \
+DEPLOY_FRONTEND_NEXT_REQUIRED="$DEPLOY_FRONTEND_NEXT_REQUIRED" \
+DEPLOY_CHANGED_FILES_FROM="$DEPLOY_CHANGED_FILES_FROM" \
+DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
+BACKEND_API_COMPOSE_FILE="$BACKEND_API_COMPOSE_FILE" \
+FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE" \
+DB_MIGRATION_COMPOSE_FILE="$DB_MIGRATION_COMPOSE_FILE" \
+RUNTIME_COMPOSE_FILE="$RUNTIME_COMPOSE_FILE" \
+GO_COMPOSE_FILE="$GO_COMPOSE_FILE" \
 DEPLOY_SYNC_MODE="$DEPLOY_SYNC_MODE" \
 AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
 AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
@@ -811,6 +879,7 @@ CLOUD_USER="$CLOUD_USER" \
 CLOUD_SSH_KEY="$CLOUD_SSH_KEY" \
 CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
 CLOUD_APP_PORT="$CLOUD_APP_PORT" \
+BACKEND_API_PORT="$BACKEND_API_PORT" \
 CLOUD_DOMAIN="$CLOUD_DOMAIN" \
 CLOUD_CERT_EMAIL="$CLOUD_CERT_EMAIL" \
 CLOUD_AUTH_COOKIE_SECURE="$CLOUD_AUTH_COOKIE_SECURE" \

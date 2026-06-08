@@ -11,7 +11,7 @@ DEFAULT_DEPLOY_MODE="${DEFAULT_DEPLOY_MODE:-safe}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [--scope <auto|all|frontend-hot|go|ops>] [quick deploy options]
+Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [--scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>] [quick deploy options]
 
 Config:
   Reads .env.deploy.local by default when present. Override with DEPLOY_ENV_FILE.
@@ -22,7 +22,23 @@ Modes:
   --safe   Default. Run quick deploy with local compile/build gates and auto scope.
   --fast   Explicit emergency path; maps to --fast-risk-accepted.
   --full   Run full local checks and latest-data acceptance.
-  --scope  Override target selection. auto is default; frontend-hot skips image rebuild.
+  --scope  Override target selection. auto is default; frontend-next deploys static assets only.
+  --frontend-next-required
+           Fail instead of falling back when frontend-next dist is missing.
+  --changed-files-from <file>
+           Pass newline-separated changed files to auto scope resolver.
+  --compose-topology <monolith|separated>
+           Select monolith or separated deployment topology.
+  --backend-api-compose-file <file>
+           Compose file used for backend-api scope.
+  --frontend-compose-file <file>
+           Compose file used for frontend-next/frontend-web scope.
+  --db-migration-compose-file <file>
+           Compose file used for migration scope.
+  --runtime-compose-file <file>
+           Compose file used for worker scope.
+  --go-compose-file <file>
+           Compose file used for Go service scope.
   --sync-mode <delta-package|package-only|git-inplace|git-clone>
            Choose deploy sync mode. delta-package falls back to package-only.
   --verify-only
@@ -110,6 +126,14 @@ while [[ $# -gt 0 ]]; do
     --scope)
       args+=("$1" "${2:?missing scope}")
       shift 2
+      ;;
+    --changed-files-from|--compose-topology|--backend-api-compose-file|--frontend-compose-file|--db-migration-compose-file|--runtime-compose-file|--go-compose-file)
+      args+=("$1" "${2:?missing value}")
+      shift 2
+      ;;
+    --frontend-next-required)
+      args+=("$1")
+      shift
       ;;
     --sync-mode)
       DEPLOY_SYNC_MODE="${2:?missing sync mode}"

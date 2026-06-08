@@ -10,6 +10,18 @@ CLOUD_USER="${CLOUD_USER:-ubuntu}"
 CLOUD_PROJECT_DIR="${CLOUD_PROJECT_DIR:-/home/ubuntu/gupiao-upload}"
 CLOUD_COMPOSE_FILE="${CLOUD_COMPOSE_FILE:-docker-compose.mysql.yml}"
 CLOUD_APP_PORT="${CLOUD_APP_PORT:-18090}"
+BACKEND_API_PORT="${BACKEND_API_PORT:-18091}"
+DEPLOY_COMPOSE_TOPOLOGY="${DEPLOY_COMPOSE_TOPOLOGY:-monolith}"
+if [[ "$DEPLOY_COMPOSE_TOPOLOGY" == "separated" ]]; then
+  BACKEND_API_COMPOSE_FILE="${BACKEND_API_COMPOSE_FILE:-docker-compose.separated.yml}"
+  FRONTEND_COMPOSE_FILE="${FRONTEND_COMPOSE_FILE:-docker-compose.separated.yml}"
+else
+  BACKEND_API_COMPOSE_FILE="${BACKEND_API_COMPOSE_FILE:-$CLOUD_COMPOSE_FILE}"
+  FRONTEND_COMPOSE_FILE="${FRONTEND_COMPOSE_FILE:-$CLOUD_COMPOSE_FILE}"
+fi
+DB_MIGRATION_COMPOSE_FILE="${DB_MIGRATION_COMPOSE_FILE:-docker-compose.mysql.yml}"
+RUNTIME_COMPOSE_FILE="${RUNTIME_COMPOSE_FILE:-docker-compose.mysql.yml}"
+GO_COMPOSE_FILE="${GO_COMPOSE_FILE:-docker-compose.mysql.yml}"
 CLOUD_KEEP_BACKUPS="${CLOUD_KEEP_BACKUPS:-3}"
 AUTO_INITIAL_GIT_COMMIT="${AUTO_INITIAL_GIT_COMMIT:-1}"
 AUTO_INSTALL_BACKUP_CRON="${AUTO_INSTALL_BACKUP_CRON:-1}"
@@ -28,7 +40,9 @@ VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_CHANGED_FILES="${DEPLOY_CHANGED_FILES:-}"
+DEPLOY_CHANGED_FILES_FROM="${DEPLOY_CHANGED_FILES_FROM:-}"
 DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
+DEPLOY_FRONTEND_NEXT_REQUIRED="${DEPLOY_FRONTEND_NEXT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 DEPLOY_DELTA_MAX_CHANGE_RATIO="${DEPLOY_DELTA_MAX_CHANGE_RATIO:-0.35}"
 DEPLOY_GIT_REMOTE_URL="${DEPLOY_GIT_REMOTE_URL:-https://github.com/Xikal/tquant-trading-platform.git}"
@@ -55,6 +69,7 @@ DEPLOY_DELTA_FULL_BYTES=0
 DEPLOY_DELTA_FALLBACK_REASON=""
 DEPLOY_PACKAGE_PATH=""
 DEPLOY_UPLOAD_SECONDS=0
+DEPLOY_RESOLVED_UNITS=""
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -76,6 +91,10 @@ validate_deploy_sync_mode() {
 }
 
 collect_changed_files() {
+  if [[ -n "$DEPLOY_CHANGED_FILES_FROM" ]]; then
+    sed '/^$/d' "$DEPLOY_CHANGED_FILES_FROM" | sort -u
+    return 0
+  fi
   if [[ -n "$DEPLOY_CHANGED_FILES" ]]; then
     printf '%s\n' "$DEPLOY_CHANGED_FILES" | tr ' ' '\n' | sed '/^$/d' | sort -u
     return 0
@@ -94,63 +113,38 @@ collect_changed_files() {
 }
 
 resolve_deploy_scope() {
-  case "$DEPLOY_TARGET_SCOPE" in
-    all|frontend-hot|go|ops)
-      printf '%s\n' "$DEPLOY_TARGET_SCOPE"
-      return 0
-      ;;
-    auto)
-      ;;
-    *)
-      log "invalid DEPLOY_TARGET_SCOPE=$DEPLOY_TARGET_SCOPE; expected auto, all, frontend-hot, go, or ops"
-      exit 2
-      ;;
-  esac
+  local changed_file_list
+  local scope_json
+  local scope
+  changed_file_list="$(mktemp "/tmp/gupiao-deploy-changed-files-XXXXXX")"
+  collect_changed_files > "$changed_file_list"
+  scope_json="$(python3 "$ROOT_DIR/scripts/deploy_scope.py" --scope "$DEPLOY_TARGET_SCOPE" --changed-files-from "$changed_file_list")" || {
+    rm -f "$changed_file_list"
+    log "deployment scope resolution failed"
+    exit 2
+  }
+  rm -f "$changed_file_list"
+  scope="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])' <<< "$scope_json")"
+  DEPLOY_RESOLVED_UNITS="$(python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["units"]))' <<< "$scope_json")"
+  printf '%s\n' "$scope"
+}
 
-  local changed_files
-  changed_files="$(collect_changed_files)"
-  if [[ -z "$changed_files" ]]; then
-    printf 'all\n'
+deploy_scope_has_unit() {
+  local unit="$1"
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "all" ]]; then
     return 0
   fi
-
-  local has_frontend=0
-  local has_go=0
-  local has_ops=0
-  local path
-  while IFS= read -r path; do
-    case "$path" in
-      frontend/*)
-        has_frontend=1
-        ;;
-      go-services/*)
-        has_go=1
-        ;;
-      docs/*|AGENTS.md|IMPLEMENTATION_PLAN.md)
-        ;;
-      .github/workflows/ci.yml|.gitignore|.env.deploy.local.example|Makefile|backend/tests/test_cloud_deploy_scripts.py|scripts/cloud_ssh_lib.sh|scripts/deploy_cloud_server.sh|scripts/quick_cloud_deploy.sh|scripts/one_click_cloud_deploy.sh|scripts/install_https_nginx.sh|scripts/install_backup_cron.sh|scripts/backup_database.sh|scripts/clean_local_artifacts.sh|scripts/run_platform_component.sh)
-        has_ops=1
-        ;;
-      *)
-        printf 'all\n'
-        return 0
-        ;;
-    esac
-  done <<< "$changed_files"
-
-  if [[ "$has_frontend" == "1" && "$has_go" == "0" && "$has_ops" == "0" ]]; then
-    printf 'frontend-hot\n'
-  elif [[ "$has_frontend" == "0" && "$has_go" == "1" && "$has_ops" == "0" ]]; then
-    printf 'go\n'
-  elif [[ "$has_frontend" == "0" && "$has_go" == "0" ]]; then
-    printf 'ops\n'
-  else
-    printf 'all\n'
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" && "$unit" == "frontend-legacy" ]]; then
+    return 0
   fi
+  if [[ " ${DEPLOY_RESOLVED_UNITS} " == *" $unit "* ]]; then
+    return 0
+  fi
+  [[ "$DEPLOY_RESOLVED_SCOPE" == "$unit" ]]
 }
 
 ensure_frontend_hot_artifact() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" ]]; then
+  if ! deploy_scope_has_unit frontend-legacy; then
     return 0
   fi
   if [[ -f "$ROOT_DIR/frontend/dist/index.html" ]]; then
@@ -162,6 +156,22 @@ ensure_frontend_hot_artifact() {
   fi
   log "frontend-hot scope requested but frontend/dist is missing; falling back to all"
   DEPLOY_RESOLVED_SCOPE=all
+}
+
+ensure_frontend_next_artifact() {
+  if ! deploy_scope_has_unit frontend-next; then
+    return 0
+  fi
+  if [[ -f "$ROOT_DIR/frontend-next/dist/index.html" ]]; then
+    return 0
+  fi
+  if [[ "$DEPLOY_FRONTEND_NEXT_REQUIRED" == "1" ]]; then
+    log "frontend-next scope requires frontend-next/dist/index.html"
+    exit 2
+  fi
+  log "frontend-next scope requested but frontend-next/dist is missing; falling back to all"
+  DEPLOY_RESOLVED_SCOPE=all
+  DEPLOY_RESOLVED_UNITS=all
 }
 
 require_cloud_host() {
@@ -201,9 +211,13 @@ run_local_checks() {
     PYTHONPATH="$ROOT_DIR/backend" "$ROOT_DIR/backend/.venv/bin/python" -m unittest discover \
       -s "$ROOT_DIR/backend/tests" -p 'test_*.py'
   fi
-  if [[ "$RUN_FRONTEND_BUILD" == "1" ]]; then
+  if [[ "$RUN_FRONTEND_BUILD" == "1" ]] && deploy_scope_has_unit frontend-legacy; then
     log "build frontend"
     npm --prefix "$ROOT_DIR/frontend" run build
+  fi
+  if [[ "$RUN_FRONTEND_BUILD" == "1" ]] && deploy_scope_has_unit frontend-next; then
+    log "build frontend-next"
+    npm --prefix "$ROOT_DIR/frontend-next" run build
   fi
 }
 
@@ -225,7 +239,28 @@ verify_package_contents() {
 }
 
 make_package() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]]; then
+    local frontend_next_package_path
+    frontend_next_package_path="$(mktemp "/tmp/gupiao-frontend-next-hot-$(date +%Y%m%d%H%M%S)-XXXXXX")"
+    log "create frontend-next hot package $frontend_next_package_path"
+    test -f "$ROOT_DIR/frontend-next/dist/index.html"
+    COPYFILE_DISABLE=1 tar \
+      --no-xattrs \
+      --exclude='._*' \
+      --exclude='.DS_Store' \
+      -czf "$frontend_next_package_path" -C "$ROOT_DIR/frontend-next" dist
+    printf '%s\n' "$frontend_next_package_path"
+    return 0
+  fi
+
+  if deploy_scope_has_unit frontend-next && [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-next" && "$DEPLOY_RESOLVED_SCOPE" != "all" ]]; then
+    if [[ ! -f "$ROOT_DIR/frontend-next/dist/index.html" ]]; then
+      log "combined frontend-next scope requires frontend-next/dist/index.html"
+      return 1
+    fi
+  fi
+
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ]]; then
     local frontend_package_path
     frontend_package_path="$(mktemp "/tmp/gupiao-frontend-hot-$(date +%Y%m%d%H%M%S)-XXXXXX")"
     log "create frontend hot package $frontend_package_path"
@@ -242,38 +277,45 @@ make_package() {
   local package_path
   package_path="$(mktemp "/tmp/gupiao-deploy-$(date +%Y%m%d%H%M%S)-XXXXXX")"
   log "create package $package_path"
+  local tar_excludes=(
+    --exclude='.git'
+    --exclude='.codex'
+    --exclude='.continue'
+    --exclude='.understand-anything'
+    --exclude='.runtime'
+    --exclude='.mysql-dist'
+    --exclude='.mysql-local'
+    --exclude='artifacts'
+    --exclude='backups'
+    --exclude='backend/.venv'
+    --exclude='backend/.env'
+    --exclude='backend/__pycache__'
+    --exclude='backend/.pytest_cache'
+    --exclude='backend/data/runtime.env'
+    --exclude='backend/data/*.db'
+    --exclude='backend/data/*.sqlite'
+    --exclude='frontend/node_modules'
+    --exclude='frontend/*.tsbuildinfo'
+    --exclude='frontend-next/node_modules'
+    --exclude='frontend-next/test-results'
+    --exclude='frontend-next/playwright-report'
+    --exclude='frontend-next/*.tsbuildinfo'
+    --exclude='rust/*/target'
+    --exclude='*.pyc'
+    --exclude='*.pyo'
+    --exclude='*.log'
+    --exclude='._*'
+    --exclude='.DS_Store'
+  )
+  if ! deploy_scope_has_unit frontend-legacy && ! deploy_scope_has_unit frontend-next; then
+    tar_excludes+=(--exclude='frontend/dist')
+  fi
+  if ! deploy_scope_has_unit frontend-next; then
+    tar_excludes+=(--exclude='frontend-next/dist')
+  fi
   COPYFILE_DISABLE=1 tar \
     --no-xattrs \
-    --exclude='.git' \
-    --exclude='.codex' \
-    --exclude='.continue' \
-    --exclude='.understand-anything' \
-    --exclude='.runtime' \
-    --exclude='.mysql-dist' \
-    --exclude='.mysql-local' \
-    --exclude='artifacts' \
-    --exclude='backups' \
-    --exclude='backend/.venv' \
-    --exclude='backend/.env' \
-    --exclude='backend/__pycache__' \
-    --exclude='backend/.pytest_cache' \
-    --exclude='backend/data/runtime.env' \
-    --exclude='backend/data/*.db' \
-    --exclude='backend/data/*.sqlite' \
-    --exclude='frontend/node_modules' \
-    --exclude='frontend/dist' \
-    --exclude='frontend/*.tsbuildinfo' \
-    --exclude='frontend-next/node_modules' \
-    --exclude='frontend-next/dist' \
-    --exclude='frontend-next/test-results' \
-    --exclude='frontend-next/playwright-report' \
-    --exclude='frontend-next/*.tsbuildinfo' \
-    --exclude='rust/*/target' \
-    --exclude='*.pyc' \
-    --exclude='*.pyo' \
-    --exclude='*.log' \
-    --exclude='._*' \
-    --exclude='.DS_Store' \
+    "${tar_excludes[@]}" \
     -czf "$package_path" -C "$ROOT_DIR" .
   verify_package_contents "$package_path"
   printf '%s\n' "$package_path"
@@ -324,12 +366,14 @@ prepare_deploy_package() {
   DEPLOY_DELTA_FULL_BYTES=0
   DEPLOY_DELTA_FALLBACK_REASON=""
 
-  if [[ "$DEPLOY_SYNC_MODE" != "delta-package" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+  if [[ "$DEPLOY_SYNC_MODE" != "delta-package" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]] || deploy_scope_has_unit frontend-next || deploy_scope_has_unit frontend-legacy; then
     DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
     DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
     DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
-    if [[ "$DEPLOY_SYNC_MODE" == "delta-package" && "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+    if [[ "$DEPLOY_SYNC_MODE" == "delta-package" && ( "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ) ]]; then
       DEPLOY_DELTA_FALLBACK_REASON="frontend_hot_uses_hot_package"
+    elif [[ "$DEPLOY_SYNC_MODE" == "delta-package" && ( "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" || "$DEPLOY_RESOLVED_SCOPE" == *"frontend-next"* ) ]]; then
+      DEPLOY_DELTA_FALLBACK_REASON="frontend_next_uses_hot_package"
     fi
     return 0
   fi
@@ -380,7 +424,10 @@ log_sync_metrics() {
 }
 
 remote_deploy_from_git() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || ( "$DEPLOY_SYNC_MODE" != "git-inplace" && "$DEPLOY_SYNC_MODE" != "git-clone" ) ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" != "go" ]]; then
+    return 1
+  fi
+  if [[ "$DEPLOY_SYNC_MODE" != "git-inplace" && "$DEPLOY_SYNC_MODE" != "git-clone" ]]; then
     return 1
   fi
 
@@ -388,6 +435,11 @@ remote_deploy_from_git() {
   cloud_ssh env \
     CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
     CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
+    BACKEND_API_COMPOSE_FILE="$BACKEND_API_COMPOSE_FILE" \
+    FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE" \
+    DB_MIGRATION_COMPOSE_FILE="$DB_MIGRATION_COMPOSE_FILE" \
+    RUNTIME_COMPOSE_FILE="$RUNTIME_COMPOSE_FILE" \
+    GO_COMPOSE_FILE="$GO_COMPOSE_FILE" \
     CLOUD_USER="$CLOUD_USER" \
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
@@ -397,6 +449,7 @@ remote_deploy_from_git() {
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
+    DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
     HTTPS_REQUIRED="$HTTPS_REQUIRED" \
     DEPLOY_GIT_REMOTE_URL="$DEPLOY_GIT_REMOTE_URL" \
     DEPLOY_GIT_REF="$DEPLOY_GIT_REF" \
@@ -432,10 +485,12 @@ upsert_env_value() {
 }
 
 docker_compose_build() {
+  local compose_file="$1"
+  shift
   local log_file="/tmp/gupiao-docker-build-$TS.log"
   local attempt
   for attempt in 1 2 3; do
-    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$compose_file" build "$@" 2>&1 | tee "$log_file"; then
       rm -f "$log_file"
       return 0
     fi
@@ -446,7 +501,7 @@ docker_compose_build() {
         continue
       fi
       echo "docker build transient failure persisted; retrying with classic builder" >&2
-      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$compose_file" build "$@"
       rm -f "$log_file"
       return 0
     fi
@@ -591,6 +646,55 @@ mkdir -p .runtime
 python3 scripts/deploy_delta_package.py manifest --root . --output .runtime/deploy-manifest.json --quiet
 echo "deploy_manifest:updated"
 echo "deploy_scope:$DEPLOY_SCOPE"
+DEPLOY_UNITS=" $DEPLOY_SCOPE "
+case "$DEPLOY_SCOPE" in
+  all)
+    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next frontend-legacy ops "
+    ;;
+  frontend-hot)
+    DEPLOY_UNITS=" frontend-legacy "
+    ;;
+  *)
+    DEPLOY_UNITS=" $(printf '%s' "$DEPLOY_SCOPE" | tr ',' ' ') "
+    ;;
+esac
+has_unit() {
+  case "$DEPLOY_UNITS" in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+run_database_backup() {
+  if test -f ./scripts/backup_database.sh; then
+    BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
+  else
+    echo "db_migration:backup_script_missing" >&2
+    exit 1
+  fi
+  echo "db_migration:backup_ok"
+}
+publish_frontend_next() {
+  test -f frontend-next/dist/index.html
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
+    echo "frontend_next:separated_frontend_web"
+  elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+    sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
+    sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
+    sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
+    echo "frontend_next:monolith_compat"
+  else
+    echo "frontend_next:no_running_target" >&2
+    exit 1
+  fi
+  echo "frontend_next:updated"
+}
+refresh_gateway_if_present() {
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate gateway 2>/dev/null || true
+    echo "gateway:refreshed"
+  fi
+}
 if ! grep -Eq '^AUTH_SECRET_KEY=.{64,}' .env; then
   sed -i '/^AUTH_SECRET_KEY=/d' .env
   SECRET=$(openssl rand -hex 32 2>/dev/null || python3 - <<'PY'
@@ -648,23 +752,69 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
   upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
 fi
 
-if test "$DEPLOY_SCOPE" = all; then
-  if ! use_prebuilt_app_images; then
-    docker_compose_build app
-    docker_compose_build analytics-worker
-  fi
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-  sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
-  EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-  for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
-    ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
-    if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
-      echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
-      exit 1
+if has_unit db-migration && test "$DEPLOY_SCOPE" != all; then
+  run_database_backup
+  sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+  echo "db_migration:ok"
+fi
+
+if has_unit backend-api && test "$DEPLOY_SCOPE" != all; then
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    docker_compose_build "$BACKEND_API_COMPOSE_FILE" backend-api
+    sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
+    echo "backend_api:updated"
+  elif test "$DEPLOY_SCOPE" != all; then
+    if ! use_prebuilt_app_images; then
+      docker_compose_build "$CLOUD_COMPOSE_FILE" app
     fi
-  done
-  echo "web_image:updated"
+    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app
+    echo "backend_api:monolith_app_updated"
+  fi
+fi
+
+if has_unit worker && test "$DEPLOY_SCOPE" != all; then
+  if ! use_prebuilt_app_images; then
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+  fi
+  sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  echo "workers:updated"
+fi
+
+if test "$DEPLOY_SCOPE" = all; then
+  run_database_backup
+  if ! use_prebuilt_app_images; then
+    if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+      docker_compose_build "$BACKEND_API_COMPOSE_FILE" backend-api
+    else
+      docker_compose_build "$CLOUD_COMPOSE_FILE" app
+    fi
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+  fi
+  sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
+    echo "backend_api:updated"
+  else
+    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+      ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+      if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+        echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+        exit 1
+      fi
+    done
+    echo "web_image:updated"
+  fi
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    if ! use_prebuilt_app_images; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+    fi
+    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    echo "workers:updated"
+  fi
   EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
   ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
   if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
@@ -694,7 +844,7 @@ PY
   sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 fi
 
-if test "$DEPLOY_SCOPE" = all || test "$DEPLOY_SCOPE" = go; then
+if has_unit go; then
   python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import quote
@@ -722,10 +872,10 @@ if not dsn:
         print('mysql_dsn:created')
 PY
   if ! use_prebuilt_go_images; then
-    docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+    docker_compose_build "$GO_COMPOSE_FILE" go-bff-gateway go-market-read-service go-scan-worker
   fi
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
-  if test "$DEPLOY_SCOPE" = all; then
+  sudo docker compose -f "$GO_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+  if test "$DEPLOY_SCOPE" = all && test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" != "separated"; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
     for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -748,7 +898,65 @@ remote_deploy() {
   local package_path="$1"
   local remote_package="/home/${CLOUD_USER}/$(basename "$package_path")"
   local upload_seconds=0
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]]; then
+    log "upload frontend-next hot package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
+    local upload_start
+    upload_start="$(date +%s)"
+    if ! cloud_scp_to "$package_path" "$remote_package"; then
+      return 1
+    fi
+    upload_seconds=$(( $(date +%s) - upload_start ))
+    DEPLOY_DELTA_BYTES="$(file_size_bytes "$package_path")"
+    log "hot update frontend-next dist without backend/db/worker restart"
+    if ! cloud_ssh env \
+      CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
+      CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
+      FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE" \
+      DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
+      REMOTE_PACKAGE="$remote_package" \
+      bash -s <<'REMOTE'
+set -euo pipefail
+TS=$(date +%Y%m%d%H%M%S)
+WORK_DIR="/tmp/gupiao-frontend-next-hot-$TS"
+rm -rf "$WORK_DIR"
+mkdir -p "$WORK_DIR"
+tar -xzf "$REMOTE_PACKAGE" -C "$WORK_DIR"
+test -f "$WORK_DIR/dist/index.html"
+cd "$CLOUD_PROJECT_DIR"
+mkdir -p .runtime
+if test -d frontend-next/dist; then
+  rm -rf ".runtime/frontend-next-dist-backup-$TS"
+  cp -a frontend-next/dist ".runtime/frontend-next-dist-backup-$TS" || true
+fi
+rm -rf frontend-next/dist
+mkdir -p frontend-next/dist
+cp -a "$WORK_DIR/dist/." frontend-next/dist/
+chmod -R a+rX frontend-next/dist
+if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker compose -f "$FRONTEND_COMPOSE_FILE" ps frontend-web >/dev/null 2>&1; then
+  sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
+  echo "frontend_next_hot:separated_frontend_web"
+else
+  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+    sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
+    sudo docker cp "$WORK_DIR/dist/." tquant-app-mysql:/app/frontend-next/dist/
+    sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
+    echo "frontend_next_hot:monolith_compat"
+  else
+    echo "frontend_next_hot:no_running_target" >&2
+    exit 1
+  fi
+fi
+echo "frontend_next_hot:updated"
+rm -rf "$WORK_DIR" "$REMOTE_PACKAGE"
+REMOTE
+    then
+      return 1
+    fi
+    DEPLOY_UPLOAD_SECONDS="$upload_seconds"
+    return 0
+  fi
+
+  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ]]; then
     log "upload frontend hot package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
     local upload_start
     upload_start="$(date +%s)"
@@ -814,6 +1022,11 @@ REMOTE
   if ! cloud_ssh env \
     CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" \
     CLOUD_COMPOSE_FILE="$CLOUD_COMPOSE_FILE" \
+    BACKEND_API_COMPOSE_FILE="$BACKEND_API_COMPOSE_FILE" \
+    FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE" \
+    DB_MIGRATION_COMPOSE_FILE="$DB_MIGRATION_COMPOSE_FILE" \
+    RUNTIME_COMPOSE_FILE="$RUNTIME_COMPOSE_FILE" \
+    GO_COMPOSE_FILE="$GO_COMPOSE_FILE" \
     CLOUD_USER="$CLOUD_USER" \
     CLOUD_KEEP_BACKUPS="$CLOUD_KEEP_BACKUPS" \
     CLOUD_AUTH_COOKIE_SECURE="${CLOUD_AUTH_COOKIE_SECURE:-}" \
@@ -822,6 +1035,7 @@ REMOTE
     FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
     REMOTE_PACKAGE="$remote_package" \
     DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_EFFECTIVE_SYNC_MODE" \
+    DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
@@ -858,10 +1072,12 @@ upsert_env_value() {
 }
 
 docker_compose_build() {
+  local compose_file="$1"
+  shift
   local log_file="/tmp/gupiao-docker-build-$TS.log"
   local attempt
   for attempt in 1 2 3; do
-    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@" 2>&1 | tee "$log_file"; then
+    if COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" sudo -E docker compose -f "$compose_file" build "$@" 2>&1 | tee "$log_file"; then
       rm -f "$log_file"
       return 0
     fi
@@ -872,7 +1088,7 @@ docker_compose_build() {
         continue
       fi
       echo "docker build transient failure persisted; retrying with classic builder" >&2
-      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$CLOUD_COMPOSE_FILE" build "$@"
+      COMPOSE_BAKE=false COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}" DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 sudo -E docker compose -f "$compose_file" build "$@"
       rm -f "$log_file"
       return 0
     fi
@@ -945,6 +1161,34 @@ use_prebuilt_go_images() {
   sudo docker tag "$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" tquant-go-scan-worker:mysql
   echo "docker_build:skipped_prebuilt_go"
   return 0
+}
+
+DEPLOY_UNITS=" $DEPLOY_SCOPE "
+case "$DEPLOY_SCOPE" in
+  all)
+    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next frontend-legacy ops "
+    ;;
+  frontend-hot)
+    DEPLOY_UNITS=" frontend-legacy "
+    ;;
+  *)
+    DEPLOY_UNITS=" $(printf '%s' "$DEPLOY_SCOPE" | tr ',' ' ') "
+    ;;
+esac
+has_unit() {
+  case "$DEPLOY_UNITS" in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+run_database_backup() {
+  if test -f ./scripts/backup_database.sh; then
+    BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
+  else
+    echo "db_migration:backup_script_missing" >&2
+    exit 1
+  fi
+  echo "db_migration:backup_ok"
 }
 
 cd /home/$CLOUD_USER
@@ -1058,23 +1302,69 @@ if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
   upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
 fi
 
-if test "$DEPLOY_SCOPE" = all; then
-  if ! use_prebuilt_app_images; then
-    docker_compose_build app
-    docker_compose_build analytics-worker
-  fi
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
-  sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
-  EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-  for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
-    ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
-    if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
-      echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
-      exit 1
+if has_unit db-migration && test "$DEPLOY_SCOPE" != all; then
+  run_database_backup
+  sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+  echo "db_migration:ok"
+fi
+
+if has_unit backend-api && test "$DEPLOY_SCOPE" != all; then
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    docker_compose_build "$BACKEND_API_COMPOSE_FILE" backend-api
+    sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
+    echo "backend_api:updated"
+  elif test "$DEPLOY_SCOPE" != all; then
+    if ! use_prebuilt_app_images; then
+      docker_compose_build "$CLOUD_COMPOSE_FILE" app
     fi
-  done
-  echo "web_image:updated"
+    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app
+    echo "backend_api:monolith_app_updated"
+  fi
+fi
+
+if has_unit worker && test "$DEPLOY_SCOPE" != all; then
+  if ! use_prebuilt_app_images; then
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+  fi
+  sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  echo "workers:updated"
+fi
+
+if test "$DEPLOY_SCOPE" = all; then
+  run_database_backup
+  if ! use_prebuilt_app_images; then
+    if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+      docker_compose_build "$BACKEND_API_COMPOSE_FILE" backend-api
+    else
+      docker_compose_build "$CLOUD_COMPOSE_FILE" app
+    fi
+    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+  fi
+  sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
+    echo "backend_api:updated"
+  else
+    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
+    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
+    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
+      ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
+      if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
+        echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
+        exit 1
+      fi
+    done
+    echo "web_image:updated"
+  fi
+  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
+    if ! use_prebuilt_app_images; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+    fi
+    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    echo "workers:updated"
+  fi
   EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
   ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
   if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
@@ -1104,7 +1394,7 @@ PY
   sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 fi
 
-if test "$DEPLOY_SCOPE" = all || test "$DEPLOY_SCOPE" = go; then
+if has_unit go; then
   python3 - <<'PY'
 from pathlib import Path
 from urllib.parse import quote
@@ -1132,10 +1422,10 @@ if not dsn:
         print('mysql_dsn:created')
 PY
   if ! use_prebuilt_go_images; then
-    docker_compose_build go-bff-gateway go-market-read-service go-scan-worker
+    docker_compose_build "$GO_COMPOSE_FILE" go-bff-gateway go-market-read-service go-scan-worker
   fi
-  sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
-  if test "$DEPLOY_SCOPE" = all; then
+  sudo docker compose -f "$GO_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
+  if test "$DEPLOY_SCOPE" = all && test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" != "separated"; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
     for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -1145,6 +1435,18 @@ PY
       fi
     done
   fi
+fi
+
+if has_unit frontend-next && test "$DEPLOY_SCOPE" != all; then
+  publish_frontend_next
+fi
+
+if test "$DEPLOY_SCOPE" = all; then
+  publish_frontend_next
+fi
+
+if has_unit ops || test "$DEPLOY_SCOPE" = all; then
+  refresh_gateway_if_present
 fi
 
 if test "$DEPLOY_SCOPE" = all; then
@@ -1161,7 +1463,7 @@ REMOTE
 }
 
 remote_configure_ops() {
-  if [[ "$DEPLOY_RESOLVED_SCOPE" != "all" && "${DEPLOY_FORCE_OPS_CONFIG:-0}" != "1" ]]; then
+  if [[ "$DEPLOY_RESOLVED_SCOPE" != "all" && "${DEPLOY_FORCE_OPS_CONFIG:-0}" != "1" ]] && ! deploy_scope_has_unit ops; then
     log "skip HTTPS/backup cron refresh for scope ${DEPLOY_RESOLVED_SCOPE}"
     return 0
   fi
@@ -1288,6 +1590,110 @@ fi
 REMOTE
 }
 
+verify_frontend_next_remote() {
+  log "verify frontend-next static deployment"
+  cloud_ssh env CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" bash -s <<'REMOTE'
+set -euo pipefail
+cd "$CLOUD_PROJECT_DIR"
+test -f frontend-next/dist/index.html
+if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker inspect tquant-frontend-web >/dev/null 2>&1; then
+  STATUS=$(sudo docker inspect tquant-frontend-web --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+  echo "tquant-frontend-web health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+  sudo docker exec tquant-frontend-web wget -qO- http://127.0.0.1/ >/tmp/frontend_next_home.html
+  sudo docker exec tquant-frontend-web wget -qO- http://127.0.0.1/next/ >/tmp/frontend_next_route.html
+else
+  sudo docker inspect tquant-app-mysql >/dev/null
+  sudo docker exec tquant-app-mysql test -f /app/frontend-next/dist/index.html
+fi
+echo "frontend_next_static:ok"
+REMOTE
+}
+
+verify_backend_api_remote() {
+  log "verify backend API deployment"
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" BACKEND_API_PORT="$BACKEND_API_PORT" DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" bash -s <<'REMOTE'
+set -euo pipefail
+if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker inspect tquant-backend-api >/dev/null 2>&1; then
+  STATUS=$(sudo docker inspect tquant-backend-api --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+  echo "tquant-backend-api health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+  curl -sS -f --max-time 10 "http://127.0.0.1:${BACKEND_API_PORT:-18091}/readyz" >/tmp/gupiao_readyz.json
+else
+  STATUS=$(sudo docker inspect tquant-app-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+  echo "tquant-app-mysql health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+  curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
+fi
+python3 - <<'PY'
+import json
+payload = json.load(open('/tmp/gupiao_readyz.json', encoding='utf-8'))
+assert payload.get('status') == 'ok', payload
+print('backend_api_readyz:ok')
+PY
+REMOTE
+}
+
+verify_worker_remote() {
+  log "verify worker deployment"
+  cloud_ssh bash -s <<'REMOTE'
+set -euo pipefail
+for name in tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql; do
+  STATUS=$(sudo docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
+  echo "$name health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+done
+sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+import duckdb, pyarrow  # noqa: F401
+from app.core.database import ping_database
+
+ping_database()
+print("analytics_worker_readyz:ok")
+PY
+echo "workers:ok"
+REMOTE
+}
+
+verify_deploy_scope_remote() {
+  case "$DEPLOY_RESOLVED_SCOPE" in
+    frontend-next)
+      verify_frontend_next_remote
+      return 0
+      ;;
+    backend-api)
+      verify_backend_api_remote
+      return 0
+      ;;
+    worker)
+      verify_worker_remote
+      return 0
+      ;;
+    db-migration)
+      verify_backend_api_remote
+      return 0
+      ;;
+    go)
+      verify_go_remote
+      return 0
+      ;;
+  esac
+  if deploy_scope_has_unit backend-api; then
+    verify_backend_api_remote
+  fi
+  if deploy_scope_has_unit worker; then
+    verify_worker_remote
+  fi
+  if deploy_scope_has_unit frontend-next; then
+    verify_frontend_next_remote
+  fi
+  if deploy_scope_has_unit go; then
+    verify_go_remote
+  fi
+  if ! deploy_scope_has_unit backend-api && ! deploy_scope_has_unit worker && ! deploy_scope_has_unit frontend-next && ! deploy_scope_has_unit go; then
+    verify_remote
+  fi
+}
+
 verify_go_remote() {
   log "verify go services"
   cloud_ssh bash -s <<'REMOTE'
@@ -1392,12 +1798,13 @@ main() {
   log "requested deploy sync mode: ${DEPLOY_SYNC_MODE}"
   run_local_checks
   ensure_frontend_hot_artifact
+  ensure_frontend_next_artifact
   local package_path=""
   if remote_deploy_from_git; then
     DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_SYNC_MODE"
     log "remote git sync deploy completed"
   else
-    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && ( "$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone" ) ]]; then
+    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_RESOLVED_SCOPE" != "frontend-legacy" && "$DEPLOY_RESOLVED_SCOPE" != "frontend-next" && ( "$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone" ) ]] && ! deploy_scope_has_unit frontend-next && ! deploy_scope_has_unit frontend-legacy; then
       log "remote git sync unavailable; falling back to package upload"
       DEPLOY_DELTA_FALLBACK_REASON="remote_git_sync_unavailable"
     fi
@@ -1419,9 +1826,8 @@ main() {
   fi
   log_sync_metrics
   remote_configure_ops
-  verify_remote
+  verify_deploy_scope_remote
   verify_https_remote
-  verify_go_remote
   verify_latest_data_remote
   if [[ -n "$package_path" ]]; then
     rm -f "$package_path"

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 FRONTEND_NEXT_MONITOR_CUTOVER_SETTING_KEY = "frontend_next.monitor_cutover_enabled"
 DEFAULT_LEVEL1_CUTOVER_PATHS = {"monitor"}
 SUPPORTED_CUTOVER_PATHS = {
+    "",
     "monitor",
     "monitor/market",
     "paper",
@@ -122,11 +123,15 @@ def _read_cutover_paths() -> frozenset[str]:
 
 
 def _parse_paths(value: str | None) -> frozenset[str]:
-    requested = {
-        item.strip().strip("/").lower()
-        for item in str(value or "").replace(";", ",").split(",")
-        if item.strip().strip("/")
-    }
+    requested = set()
+    for item in str(value or "").replace(";", ",").split(","):
+        raw = item.strip().lower()
+        if not raw:
+            continue
+        normalized = "" if raw == "/" else raw.strip("/")
+        if not normalized and raw != "/":
+            continue
+        requested.add(normalized)
     if "all" in requested:
         return frozenset(SUPPORTED_CUTOVER_PATHS)
     return frozenset(item for item in requested if item in SUPPORTED_CUTOVER_PATHS)

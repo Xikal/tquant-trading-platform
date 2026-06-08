@@ -417,12 +417,21 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
     one_click_script = read_repo_file("scripts/one_click_cloud_deploy.sh")
     deploy_example = read_repo_file(".env.deploy.local.example")
+    frontend_nginx = read_repo_file("deploy/frontend/nginx.conf")
+    frontend_dockerfile = read_repo_file("deploy/frontend/Dockerfile")
+    scope_helper = read_repo_file("scripts/deploy_scope.py")
 
     assert 'DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"' in deploy_script
-    assert "resolve_deploy_scope" in deploy_script
+    assert "scripts/deploy_scope.py" in deploy_script
+    assert "DEPLOY_RESOLVED_UNITS" in deploy_script
+    assert "frontend-next" in deploy_script
+    assert "frontend_next_hot:updated" in deploy_script
+    assert "frontend_next_hot:monolith_compat" in deploy_script
+    assert "frontend_next_hot:separated_frontend_web" in deploy_script
     assert "frontend-hot" in deploy_script
-    assert "go-services/*" in deploy_script
+    assert "go-services/" in scope_helper
     assert "create frontend hot package" in deploy_script
+    assert "create frontend-next hot package" in deploy_script
     assert "frontend_hot:updated" in deploy_script
     assert "frontend_hot_image:rebuilt" in deploy_script
     assert "tquant-web:mysql-before-frontend-hot" in deploy_script
@@ -432,15 +441,163 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "docker commit" not in deploy_script
     assert "skip HTTPS/backup cron refresh for scope" in deploy_script
     assert "skip latest low-buy data closure for scope" in deploy_script
-    assert "--scope <auto|all|frontend-hot|go|ops>" in quick_script
+    assert "--scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>" in quick_script
     assert "DEPLOY_FRONTEND_HOT_REQUIRED" in quick_script
+    assert "DEPLOY_FRONTEND_NEXT_REQUIRED" in quick_script
+    assert "DEPLOY_CHANGED_FILES_FROM" in quick_script
     assert "VERIFY_WEB_IMAGE_SYNC" in quick_script
     assert "web_image:skipped_frontend_hot" in quick_script
+    assert "web_image:skipped_frontend_next" in quick_script
     assert "--scope  Override target selection" in one_click_script
+    assert "--frontend-next-required" in one_click_script
     assert "DEPLOY_TARGET_SCOPE=auto" in deploy_example
+    assert "DEPLOY_COMPOSE_TOPOLOGY=separated" in deploy_example
+    assert "DEPLOY_FRONTEND_NEXT_REQUIRED=1" in deploy_example
     assert "DEPLOY_SYNC_MODE=delta-package" in deploy_example
     assert "CLOUD_PUBLIC_BASE_URL=https://43.143.243.97" in deploy_example
     assert "package-only remains the automatic fallback" in deploy_example
+    assert "root /usr/share/nginx/html-next;" in frontend_nginx
+    assert "location /__legacy/assets/" in frontend_nginx
+    assert "/usr/share/nginx/html-root/" in frontend_dockerfile
+    assert "/usr/share/nginx/html-next/" in frontend_dockerfile
+
+
+def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    remote_deploy = deploy_script.split("remote_deploy() {", 1)[1]
+    hot_branch = remote_deploy.split('if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]]; then', 1)[1].split(
+        'if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot"', 1
+    )[0]
+    assert "frontend_next_hot:updated" in hot_branch
+    assert "frontend_next_hot:separated_frontend_web" in hot_branch
+    assert "frontend_next_hot:monolith_compat" in hot_branch
+    assert 'FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE"' in hot_branch
+    assert 'sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web' in hot_branch
+    assert "backend-api" not in hot_branch
+    assert "docker_compose_build" not in hot_branch
+    assert "migration" not in hot_branch
+    assert "runtime-worker" not in hot_branch
+    assert "analytics-worker" not in hot_branch
+
+
+def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    make_package = deploy_script.split("make_package() {", 1)[1].split(
+        "fetch_remote_deploy_manifest() {", 1
+    )[0]
+    publish_function = deploy_script.split("publish_frontend_next() {", 1)[1].split(
+        "refresh_gateway_if_present() {", 1
+    )[0]
+    combined_branch = deploy_script.split('if has_unit frontend-next && test "$DEPLOY_SCOPE" != all; then', 1)[1].split(
+        'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next', 1
+    )[0]
+    assert "if ! deploy_scope_has_unit frontend-legacy && ! deploy_scope_has_unit frontend-next; then" in make_package
+    assert "tar_excludes+=(--exclude='frontend/dist')" in make_package
+    assert "test -f frontend-next/dist/index.html" in publish_function
+    assert "frontend_next:separated_frontend_web" in publish_function
+    assert "frontend_next:monolith_compat" in publish_function
+    assert "frontend_next:updated" in publish_function
+    assert "publish_frontend_next" in combined_branch
+    assert "backend-api" not in publish_function
+    assert "migration" not in publish_function
+    assert "runtime-worker" not in publish_function
+
+
+def test_backend_api_scope_restarts_api_only_and_does_not_touch_frontend_dist() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    backend_branch = deploy_script.split('if has_unit backend-api && test "$DEPLOY_SCOPE" != all; then', 1)[1].split(
+        'if has_unit worker && test "$DEPLOY_SCOPE" != all; then', 1
+    )[0]
+    assert 'docker_compose_build "$BACKEND_API_COMPOSE_FILE" backend-api' in backend_branch
+    assert 'sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api' in backend_branch
+    assert "backend_api:updated" in backend_branch
+    assert "frontend-next/dist" not in backend_branch
+    assert "frontend/dist" not in backend_branch
+    assert "migration" not in backend_branch
+    assert "runtime-worker" not in backend_branch
+
+
+def test_db_migration_scope_requires_backup_before_migration() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    migration_branch = deploy_script.split('if has_unit db-migration && test "$DEPLOY_SCOPE" != all; then', 1)[1].split(
+        'if has_unit backend-api && test "$DEPLOY_SCOPE" != all; then', 1
+    )[0]
+    assert "run_database_backup" in deploy_script
+    assert "bash ./scripts/backup_database.sh" in deploy_script
+    assert "db_migration:backup_failed" in deploy_script
+    assert "db_migration:backup_script_missing" in deploy_script
+    assert migration_branch.index("run_database_backup") < migration_branch.index("--exit-code-from migration migration")
+    assert "backend-api" not in migration_branch
+    assert "runtime-worker" not in migration_branch
+
+    all_branch = deploy_script.split('if test "$DEPLOY_SCOPE" = all; then', 1)[1].split("if has_unit go; then", 1)[0]
+    assert all_branch.index("run_database_backup") < all_branch.index("--exit-code-from migration migration")
+
+
+def test_separated_topology_uses_service_specific_compose_files() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    one_click_script = read_repo_file("scripts/one_click_cloud_deploy.sh")
+    deploy_example = read_repo_file(".env.deploy.local.example")
+
+    assert 'BACKEND_API_COMPOSE_FILE="${BACKEND_API_COMPOSE_FILE:-docker-compose.separated.yml}"' in deploy_script
+    assert 'FRONTEND_COMPOSE_FILE="${FRONTEND_COMPOSE_FILE:-docker-compose.separated.yml}"' in deploy_script
+    assert 'DB_MIGRATION_COMPOSE_FILE="${DB_MIGRATION_COMPOSE_FILE:-docker-compose.mysql.yml}"' in deploy_script
+    assert 'RUNTIME_COMPOSE_FILE="${RUNTIME_COMPOSE_FILE:-docker-compose.mysql.yml}"' in deploy_script
+    assert 'GO_COMPOSE_FILE="${GO_COMPOSE_FILE:-docker-compose.mysql.yml}"' in deploy_script
+    assert 'BACKEND_API_PORT="${BACKEND_API_PORT:-18091}"' in quick_script
+    assert "export BACKEND_API_COMPOSE_FILE FRONTEND_COMPOSE_FILE DB_MIGRATION_COMPOSE_FILE RUNTIME_COMPOSE_FILE GO_COMPOSE_FILE" in quick_script
+    assert "--backend-api-compose-file <file>" in quick_script
+    assert "--frontend-compose-file <file>" in quick_script
+    assert "--db-migration-compose-file <file>" in one_click_script
+    assert "BACKEND_API_COMPOSE_FILE=docker-compose.separated.yml" in deploy_example
+    assert "DB_MIGRATION_COMPOSE_FILE=docker-compose.mysql.yml" in deploy_example
+
+
+def test_all_scope_runs_frontend_after_go_and_then_gateway_refresh() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    package_remote = deploy_script.split("remote_deploy() {", 1)[1]
+    package_remote = package_remote.split("remote_configure_ops() {", 1)[0]
+
+    assert package_remote.index('if test "$DEPLOY_SCOPE" = all; then\n  run_database_backup') < package_remote.index(
+        "if has_unit go; then"
+    )
+    assert package_remote.index("if has_unit go; then") < package_remote.index(
+        'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next'
+    )
+    assert package_remote.index('if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next') < package_remote.index(
+        "refresh_gateway_if_present"
+    )
+
+
+def test_verify_remote_is_scope_aware_for_separated_topology() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    verify_function = deploy_script.split("verify_deploy_scope_remote() {", 1)[1].split("verify_go_remote() {", 1)[0]
+    assert "verify_frontend_next_remote" in verify_function
+    assert "verify_backend_api_remote" in verify_function
+    assert "verify_worker_remote" in verify_function
+    assert "verify_go_remote" in verify_function
+    assert "deploy_scope_has_unit backend-api" in verify_function
+    assert "deploy_scope_has_unit frontend-next" in verify_function
+    assert "verify_remote" in verify_function
+    assert 'BACKEND_API_PORT="$BACKEND_API_PORT"' in deploy_script
+    assert "tquant-frontend-web health" in deploy_script
+    assert "tquant-backend-api health" in deploy_script
+
+
+def test_deploy_scope_helper_recognizes_frontend_next_and_blocks_strategy_policy() -> None:
+    script = read_repo_file("scripts/deploy_scope.py")
+
+    assert "frontend-next/" in script
+    assert "frontend-legacy" in script
+    assert "backend-api" in script
+    assert "db-migration" in script
+    assert "strategy_policy.py requires explicit human review" in script
 
 
 def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
@@ -467,6 +624,9 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert "git -C \"$WORKTREE\" checkout --detach \"$DEPLOY_GIT_REF\"" in deploy_script
     assert '"$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone"' in deploy_script
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
+    assert 'if [[ "$DEPLOY_RESOLVED_SCOPE" != "go" ]]; then' in deploy_script
+    assert "frontend_next_uses_hot_package" in deploy_script
+    assert "frontend_hot_uses_hot_package" in deploy_script
     assert "package-only" in deploy_script
     assert 'DEPLOY_SYNC_MODE: "delta-package"' in workflow
     assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
@@ -649,6 +809,12 @@ def test_makefile_has_one_click_deploy_shortcuts() -> None:
     assert "./scripts/one_click_cloud_deploy.sh" in makefile
     assert "deploy-cloud-web:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required" in makefile
+    assert "deploy-cloud-next:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope frontend-next --frontend-next-required" in makefile
+    assert "deploy-cloud-api:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope backend-api" in makefile
+    assert "deploy-cloud-db:" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope db-migration" in makefile
     assert "deploy-cloud-go:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh --scope go" in makefile
     assert "deploy-cloud-full:" in makefile
@@ -663,17 +829,21 @@ def test_ci_reuses_frontend_artifact_and_selects_deploy_scope() -> None:
     workflow = read_repo_file(".github/workflows/ci.yml")
 
     assert "Upload frontend dist artifact" in workflow
+    assert "Upload frontend-next dist artifact" in workflow
     assert "actions/upload-artifact@v4" in workflow
     assert "Download frontend dist artifact" in workflow
+    assert "Download frontend-next dist artifact" in workflow
     assert "actions/download-artifact@v4" in workflow
     assert "Select deploy target scope" in workflow
     assert "fetch-depth: 0" in workflow
     assert "github.event.before" in workflow
     assert 'git diff --name-only "$before" "$after"' in workflow
     assert 'git diff --name-only HEAD^ HEAD' in workflow
+    assert "python3 scripts/deploy_scope.py" in workflow
     assert "DEPLOY_TARGET_SCOPE=$scope" in workflow
     assert "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" in workflow
     assert "DEPLOY_FRONTEND_HOT_REQUIRED" in workflow
+    assert "DEPLOY_FRONTEND_NEXT_REQUIRED" in workflow
 
 
 def test_ci_deploy_fails_when_cloud_secrets_are_missing() -> None:
