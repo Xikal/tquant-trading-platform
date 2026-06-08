@@ -14,6 +14,9 @@ test("/next/paper keeps mecha avatar and effects visible before API success", as
 
   const hud = page.locator(".paper-mecha-action-panel");
   await expect(hud).toBeVisible();
+  await expect
+    .poll(() => hud.evaluate((node) => window.getComputedStyle(node).borderTopLeftRadius))
+    .toBe("16px");
   await expect(hud.locator(".paper-mecha-action-panel__avatar svg")).toBeVisible();
   await expect(hud.locator("canvas.paper-mecha-action-panel__particles")).toBeAttached();
   await expect(hud.locator(".paper-mecha-action-panel__unit-option")).toHaveCount(5);
@@ -128,7 +131,7 @@ test("/next/paper refreshes live stock prices without manual action", async ({ p
   await expect(page.locator(".paper-console-position__price").first()).toContainText("8.910");
 });
 
-test("/next/paper virtualizes long positions and workflow tables", async ({ page }) => {
+test("/next/paper renders holdings as a four-column card grid and virtualizes workflow tables", async ({ page }) => {
   await installE2eAuthState(page);
   const largeFixture = buildLargePaperFixture(80);
   await page.route("**/api/bff/v1/workspace/paper", (route) => route.fulfill({ status: 200, json: largeFixture }));
@@ -136,7 +139,25 @@ test("/next/paper virtualizes long positions and workflow tables", async ({ page
   await page.goto("/next/paper");
   await expect(page.getByRole("heading", { name: "模拟盘" })).toBeVisible();
   await expect(page.locator(".paper-mecha-action-panel")).toBeVisible();
-  await expect.poll(() => page.locator(".paper-console-position").count()).toBeLessThan(18);
+  const positions = page.locator(".paper-console-position");
+  await expect(positions).toHaveCount(80);
+  await expect(page.locator(".paper-console-positions--virtual")).toHaveCount(0);
+  const gridStyle = await page.locator(".paper-console-positions").evaluate((node) => {
+    const style = window.getComputedStyle(node);
+    return {
+      columns: style.gridTemplateColumns.split(" ").filter(Boolean).length,
+      display: style.display,
+    };
+  });
+  expect(gridStyle.display).toBe("grid");
+  expect(gridStyle.columns).toBeGreaterThan(1);
+  expect(gridStyle.columns).toBeLessThanOrEqual(4);
+  const firstRowCount = await positions.evaluateAll((nodes) => {
+    if (!nodes.length) return 0;
+    const firstTop = Math.round(nodes[0].getBoundingClientRect().top);
+    return nodes.filter((node) => Math.abs(Math.round(node.getBoundingClientRect().top) - firstTop) <= 1).length;
+  });
+  expect(firstRowCount).toBeLessThanOrEqual(4);
 
   await page.getByRole("button", { name: "展开工作流" }).click();
   await page.getByRole("tab", { name: "记录" }).click();

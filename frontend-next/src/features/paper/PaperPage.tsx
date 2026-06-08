@@ -1,17 +1,17 @@
 import { createQuery } from "@tanstack/solid-query";
 import { useLocation } from "@tanstack/solid-router";
-import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { apiClient } from "../../shared/api/client";
 import { queryKeys } from "../../shared/api/queryKeys";
 import { Button } from "../../shared/ui/Button";
 import { Modal } from "../../shared/ui/Modal";
-import { VirtualList } from "../../shared/ui/VirtualList";
 import { readArray, readRecord, text } from "../shared/dataAccess";
 import { PageScaffold } from "../shared/PageScaffold";
 import { PaperMechaHud } from "./PaperMechaHud";
 import { PaperOrderForm } from "./PaperOrderForm";
 import { PaperWorkflowTabs } from "./PaperWorkflowTabs";
 import { paperOrderDraftFromSearch, paperOrderDraftKey } from "./paperOrderDraft";
+import "../../shared/styles/legacy-workspace/workspace-paper-mecha.css";
 import "./paper-page.css";
 
 export function PaperPage() {
@@ -286,18 +286,11 @@ function PaperPositionGrid(props: { positions: Record<string, unknown>[]; isPend
       when={props.positions.length}
       fallback={<div class="paper-console-empty">{props.isPending ? "正在读取模拟盘持仓" : props.isError ? "持仓接口暂不可用" : "暂无模拟持仓"}</div>}
     >
-      <VirtualList
-        items={props.positions}
-        ariaLabel="模拟盘当前持仓"
-        class="paper-console-positions paper-console-positions--virtual"
-        maxHeight={292}
-        estimateSize={138}
-        overscan={3}
-        gap={8}
-        emptyText="暂无模拟持仓"
-        getItemKey={(item, index) => text(item.id ?? item.symbol ?? item.code, `position-${index}`)}
-        renderItem={(item) => <PaperPositionCard item={item} onOpenOrder={props.onOpenOrder} />}
-      />
+      <div class="paper-console-positions" aria-label="模拟盘当前持仓">
+        <For each={props.positions}>
+          {(item) => <PaperPositionCard item={item} onOpenOrder={props.onOpenOrder} />}
+        </For>
+      </div>
     </Show>
   );
 }
