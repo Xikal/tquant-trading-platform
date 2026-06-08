@@ -16,6 +16,18 @@ test("/next/analysis runs symbol and batch analysis without trading writes", asy
   await expect(page.getByRole("heading", { name: "盘中异常提醒" })).toBeVisible();
   await expect(page.locator(".tq-analysis-page__anomaly")).toContainText("暂无异常");
   await expect(page.locator(".analysis-kline-frame .chart-frame canvas").first()).toBeVisible();
+  await expect(page.locator(".analysis-kline-header")).toContainText("8.72");
+
+  const quoteRequestsAfterAnalysis: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/quote/")) quoteRequestsAfterAnalysis.push(url.pathname);
+  });
+  await page.getByLabel("分析代码").fill("000001");
+  await page.waitForTimeout(300);
+  expect(quoteRequestsAfterAnalysis).toEqual([]);
+  await expect(page.locator(".analysis-kline-header")).toContainText("8.72");
+  await page.getByLabel("分析代码").fill("600000");
 
   await page.getByLabel("批量代码").fill("000001,600000");
   await page.getByTestId("analysis-batch").click();

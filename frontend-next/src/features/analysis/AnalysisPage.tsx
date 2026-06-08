@@ -46,12 +46,18 @@ export function AnalysisPage() {
   const instrument = createMemo(() => readRecord(responseRoot().instrument));
   const metrics = createMemo(() => readRecord(responseRoot().metrics));
   const microstructure = createMemo(() => readRecord(responseRoot().microstructure));
+  const analyzedSymbol = createMemo(() => text(responseRoot().symbol, ""));
   const liveQuoteQuery = createQuery(() => ({
-    queryKey: queryKeys.quote(currentSymbol()),
-    queryFn: ({ signal }) => apiClient.quote(currentSymbol(), { signal }),
-    enabled: Boolean(snapshot() && hasValidSymbol()),
+    queryKey: queryKeys.quote(analyzedSymbol()),
+    queryFn: ({ signal }) => apiClient.quote(analyzedSymbol(), { signal }),
+    enabled: analyzedSymbol().length === 6,
   }));
-  const currentQuote = createMemo(() => readRecord(liveQuoteQuery.data ?? quoteRecord(snapshot())));
+  const currentQuote = createMemo(() => {
+    const liveQuote = readRecord(liveQuoteQuery.data);
+    const liveQuoteSymbol = text(liveQuote.symbol, analyzedSymbol());
+    if (liveQuoteQuery.data && liveQuoteSymbol === analyzedSymbol()) return liveQuote;
+    return quoteRecord(snapshot());
+  });
   const currentAnomaly = createMemo(() => anomalyRecord(snapshot()));
   const chartValues = createMemo(() => chartPoints(snapshot()));
   const hasValidSymbol = createMemo(() => currentSymbol().length === 6);
