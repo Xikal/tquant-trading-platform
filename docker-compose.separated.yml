@@ -59,6 +59,7 @@ services:
       TQUANT_BFF_GATEWAY_URL: ${TQUANT_BFF_GATEWAY_URL:-http://tquant-go-bff-gateway:8091}
       TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-http://tquant-go-market-read-service:8092}
       TQUANT_GO_SCAN_WORKER_URL: ${TQUANT_GO_SCAN_WORKER_URL:-http://tquant-go-scan-worker:8093}
+      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:?TQUANT_INTERNAL_SERVICE_TOKEN is required}
       BFF_WORKSPACE_CACHE_ENABLED: ${BFF_WORKSPACE_CACHE_ENABLED:-true}
     volumes:
       - app_runtime_data:/app/backend/data
