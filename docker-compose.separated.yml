@@ -22,7 +22,7 @@ services:
 
   backend-api:
     build:
-      context: .
+      context: ./backend
       dockerfile: deploy/backend-api/Dockerfile
       args:
         BASE_IMAGE: ${BACKEND_API_BASE_IMAGE:-tquant-web:mysql}

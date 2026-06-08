@@ -25,7 +25,7 @@
 | 工件 | 文件 |
 | --- | --- |
 | frontend static image | `deploy/frontend/Dockerfile`，或生产上直接挂载已构建的 `frontend/dist` 与 `frontend-next/dist` |
-| backend api image | `deploy/backend-api/Dockerfile`，从现有 `tquant-web:mysql` runtime 派生，仅复制后端代码 |
+| backend api image | `deploy/backend-api/Dockerfile`，从现有 `tquant-web:mysql` runtime 派生，仅复制 `backend/app`、`backend/alembic`、`backend/scripts` |
 | frontend nginx | `deploy/frontend/nginx.conf` |
 | gateway nginx | `deploy/nginx/tquant-separated-gateway.conf.template` |
 | separated compose | `docker-compose.separated.yml` |

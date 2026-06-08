@@ -2,9 +2,11 @@ ARG BASE_IMAGE=tquant-web:mysql
 FROM ${BASE_IMAGE}
 
 USER root
-COPY backend /app/backend
-COPY scripts /app/scripts
-RUN chown -R tquant:tquant /app/backend /app/scripts
+COPY app /app/backend/app
+COPY alembic /app/backend/alembic
+COPY scripts /app/backend/scripts
+COPY alembic.ini /app/backend/alembic.ini
+RUN chown -R tquant:tquant /app/backend
 USER tquant
 
 EXPOSE 8000

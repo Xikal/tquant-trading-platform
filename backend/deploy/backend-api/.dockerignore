@@ -1,0 +1,12 @@
+*
+!app/
+!alembic/
+!scripts/
+!alembic.ini
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.runtime/
+data/
+.venv/
