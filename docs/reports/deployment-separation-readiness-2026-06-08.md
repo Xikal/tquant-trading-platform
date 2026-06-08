@@ -120,7 +120,7 @@ MYSQL_PASSWORD=app \
 docker compose -f docker-compose.separated.yml config
 ```
 
-结果：compose config 可解析，`backend-api` 环境包含 `SERVE_FRONTEND_STATIC=false`；`frontend-web` 挂载 `frontend/dist` 与 `frontend-next/dist`；MySQL/Redis 通过既有 Docker network 访问，不重复创建数据库容器。
+结果：compose config 可解析，`backend-api` 环境包含 `SERVE_FRONTEND_STATIC=false`；`frontend-web` 分别挂载 `frontend/dist` 到 `/usr/share/nginx/html-root`、`frontend-next/dist` 到 `/usr/share/nginx/html-next`；MySQL/Redis 通过既有 Docker network 访问，不重复创建数据库容器。
 
 建议后续本地完整启动验证：
 

@@ -11,8 +11,8 @@ services:
       - tquant-mysql-default
     volumes:
       - ./deploy/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./frontend/dist:/usr/share/nginx/html:ro
-      - ./frontend-next/dist:/usr/share/nginx/html/next:ro
+      - ./frontend/dist:/usr/share/nginx/html-root:ro
+      - ./frontend-next/dist:/usr/share/nginx/html-next:ro
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null && wget -qO- http://127.0.0.1/next/ >/dev/null"]
       interval: 20s
