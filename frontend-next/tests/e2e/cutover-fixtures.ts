@@ -56,7 +56,13 @@ export async function installAnalysisFixture(page: Page) {
     await route.fulfill({ status: 200, json: body.map((item) => analysisResponse(item.symbol)) });
   });
   await page.route("**/api/quote/*", (route) => route.fulfill({ status: 200, json: quoteFixture(routeSymbol(route.request().url())) }));
-  await page.route("**/api/kline/*", (route) => route.fulfill({ status: 200, json: { bars: klineFixture() } }));
+  await page.route("**/api/kline/*", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("period") !== "5m") {
+      return route.fulfill({ status: 422, json: { detail: "fixture only accepts backend-supported 5m kline period" } });
+    }
+    return route.fulfill({ status: 200, json: { bars: klineFixture() } });
+  });
   await page.route("**/api/key-levels/stock/*", (route) => route.fulfill({ status: 200, json: keyLevelFixture }));
   await page.route("**/api/market/intraday-anomaly/*", (route) => route.fulfill({ status: 200, json: { anomaly_level: "normal", anomaly_text: "暂无异常", data_quality_text: "正常" } }));
 }

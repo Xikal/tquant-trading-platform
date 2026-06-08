@@ -76,6 +76,32 @@ test("/next/paper supports workflow tabs and guarded order confirmation without 
   expect(writeRequests).toEqual([]);
 });
 
+test("/next/paper refreshes live stock prices without manual action", async ({ page }) => {
+  await installE2eAuthState(page);
+  let workspaceRequests = 0;
+  await page.route("**/api/bff/v1/workspace/paper", (route) => {
+    workspaceRequests += 1;
+    const latestPrice = workspaceRequests === 1 ? 8.72 : 8.91;
+    return route.fulfill({
+      status: 200,
+      json: {
+        ...paperWorkspaceFixture,
+        generated_at: `2026-06-06 09:45:${String(workspaceRequests).padStart(2, "0")}`,
+        positions: paperWorkspaceFixture.positions.map((position) => ({
+          ...position,
+          latest_price: latestPrice,
+          market_value: latestPrice * Number(position.quantity),
+        })),
+      },
+    });
+  });
+
+  await page.goto("/next/paper");
+  await expect(page.locator(".paper-console-position__price").first()).toContainText("8.720");
+  await expect.poll(() => workspaceRequests, { timeout: 13_000 }).toBeGreaterThan(1);
+  await expect(page.locator(".paper-console-position__price").first()).toContainText("8.910");
+});
+
 test("/next/paper virtualizes long positions and workflow tables", async ({ page }) => {
   await installE2eAuthState(page);
   const largeFixture = buildLargePaperFixture(80);

@@ -21,12 +21,12 @@
 }
 
 .data-terminal-header {
-  position: sticky;
-  top: 56px;
-  z-index: 8;
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   min-height: 50px;
   border: 1px solid rgb(226 232 240);
@@ -62,7 +62,12 @@
 }
 
 .data-terminal-brand {
+  flex: 1 1 360px;
   gap: 9px;
+  min-width: 0;
+}
+
+.data-terminal-brand > div {
   min-width: 0;
 }
 
@@ -78,15 +83,20 @@
 }
 
 .data-terminal-brand__line {
+  min-width: 0;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .data-terminal-brand h1 {
+  overflow: hidden;
   margin: 0;
   color: rgb(15 23 42);
   font-size: 14px;
   font-weight: 900;
   letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .data-terminal-brand__line span {
@@ -110,6 +120,8 @@
 }
 
 .data-terminal-header__tools {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -950,6 +962,24 @@
   .data-log-search {
     align-items: stretch;
     flex-wrap: wrap;
+  }
+
+  .data-terminal-brand {
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .data-terminal-brand h1 {
+    white-space: normal;
+  }
+
+  .data-terminal-header__tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .data-terminal-last-check {
+    justify-items: start;
   }
 
   .data-terminal-grid--top,

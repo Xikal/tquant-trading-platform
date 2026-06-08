@@ -237,6 +237,12 @@ async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: numbe
   else upstreamSignal?.addEventListener("abort", abortFromUpstream, { once: true });
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      if (upstreamSignal?.aborted) throw new ApiTransportError("aborted", "请求已取消");
+      throw new ApiTransportError("timeout", "请求超时，请稍后重试");
+    }
+    throw error;
   } finally {
     globalThis.clearTimeout(timeout);
     upstreamSignal?.removeEventListener("abort", abortFromUpstream);

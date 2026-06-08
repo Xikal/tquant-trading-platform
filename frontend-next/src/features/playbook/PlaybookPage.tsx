@@ -1,6 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, untrack } from "solid-js";
+import { apiClient } from "../../shared/api/client";
 import { errorMessage } from "../../shared/api/errors";
 import { queryKeys } from "../../shared/api/queryKeys";
 import { normalizedStrategyKey } from "../../shared/config/strategyCommands";
@@ -12,6 +13,7 @@ import {
   DEFAULT_PLAYBOOK_STRATEGY,
   detailRows,
   loadPlaybookDataset,
+  mergePlaybookQuotes,
   performanceSummary,
   quoteStatus,
   selectedCandidate,
@@ -36,9 +38,17 @@ export function PlaybookPage() {
   const [detailOpen, setDetailOpen] = createSignal(false);
   const query = createQuery(() => ({
     queryKey: queryKeys.lowBuyScreener({ strategy: strategy(), limit: 36, scan_limit: 36, include_history: true }),
-    queryFn: ({ signal }) => loadPlaybookDataset(strategy(), { signal }),
+    queryFn: ({ signal }) => loadPlaybookDataset(strategy(), { signal }, { includeQuotes: false }),
   }));
-  const dataset = () => query.data ?? null;
+  const baseDataset = () => query.data ?? null;
+  const quoteSymbols = createMemo(() => candidateFamilies(baseDataset()).flatMap((family) => family.items.map((item) => item.symbol)).slice(0, 20));
+  const liveQuotesQuery = createQuery(() => ({
+    queryKey: queryKeys.lowBuyQuotes(quoteSymbols(), strategy()),
+    queryFn: ({ signal }) => apiClient.lowBuyQuotes(quoteSymbols(), strategy(), { signal }),
+    enabled: quoteSymbols().length > 0,
+  }));
+  const dataset = createMemo(() => mergePlaybookQuotes(baseDataset(), liveQuotesQuery.data));
+  const isRefreshing = createMemo(() => query.isFetching || liveQuotesQuery.isFetching);
   const tabs = createMemo(() => strategyTabs(dataset()).map((item) => ({ key: item.key, label: item.label })));
   const activeTabs = createMemo(() => tabs().length ? tabs() : fallbackStrategyTabs);
   const families = createMemo(() => candidateFamilies(dataset()));
@@ -81,13 +91,13 @@ export function PlaybookPage() {
           </div>
           <div class="playbook-hero-card__actions">
             <button type="button" class="playbook-btn playbook-btn--primary" onClick={() => void query.refetch()} data-testid="playbook-refresh">
-              {query.isFetching ? "刷新中" : "刷新全量"}
+              {isRefreshing() ? "刷新中" : "刷新全量"}
             </button>
           </div>
 
           <div class="playbook-param-grid">
             <ParamCard label="确认可买数量" value={String(laneCandidates(candidates(), "buyable").length)} suffix="只" />
-            <ParamCard label="全量深筛状态" value={query.isFetching ? "刷新中" : query.error ? "异常" : "已完成"} suffix={query.error ? "!" : "100%"} tone={query.error ? "risk" : "ok"} />
+            <ParamCard label="全量深筛状态" value={isRefreshing() ? "刷新中" : query.error ? "异常" : "已完成"} suffix={query.error ? "!" : "100%"} tone={query.error ? "risk" : "ok"} />
             <ParamCard label="数据状态" value={quoteStatus(dataset()) === "--" ? "实时就绪" : "已对齐"} suffix={quoteStatus(dataset())} tone="ok" />
             <ParamCard label="当前交易日" value={tradeDateText()} suffix="周五" />
           </div>

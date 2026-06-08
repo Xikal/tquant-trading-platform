@@ -76,6 +76,30 @@ test("/next/playbook reads low-buy workflow and blocks lifecycle writes", async 
   expect(writes()).toEqual([]);
 });
 
+test("/next/playbook refreshes candidate quote prices without refreshing the whole screener", async ({ page }) => {
+  await installE2eAuthState(page);
+  let screenerRequests = 0;
+  let quoteRequests = 0;
+  await installPlaybookRoutes(page, {
+    onScreener: () => {
+      screenerRequests += 1;
+    },
+    quotePrice: (symbol) => {
+      if (symbol !== "600000") return undefined;
+      quoteRequests += 1;
+      return quoteRequests <= 1 ? 8.72 : 8.91;
+    },
+  });
+
+  await page.goto("/next/playbook");
+  const candidatePanel = page.locator(".playbook-candidates-panel");
+  const row = candidatePanel.getByRole("row").filter({ hasText: "浦发银行" });
+  await expect(row).toContainText("8.72");
+  await expect.poll(() => quoteRequests, { timeout: 9_000 }).toBeGreaterThan(1);
+  await expect(row).toContainText("8.91");
+  expect(screenerRequests).toBe(1);
+});
+
 function collectWrites(page: Page) {
   const writes: string[] = [];
   page.on("request", (request) => {
@@ -102,10 +126,18 @@ async function installAnalysisRoutes(page: Page) {
   await page.route("**/api/market/intraday-anomaly/*", (route) => route.fulfill({ status: 200, json: anomalyFixture(routeSymbol(route.request().url())) }));
 }
 
-async function installPlaybookRoutes(page: Page) {
-  await page.route("**/api/screeners/low-buy?**", (route) => route.fulfill({ status: 200, json: lowBuyResponseFixture }));
+async function installPlaybookRoutes(page: Page, options: { onScreener?: () => void; quotePrice?: (symbol: string) => number | undefined } = {}) {
+  await page.route("**/api/screeners/low-buy?**", (route) => {
+    options.onScreener?.();
+    return route.fulfill({ status: 200, json: lowBuyResponseFixture });
+  });
   await page.route("**/api/screeners/low-buy/priority-board?**", (route) => route.fulfill({ status: 200, json: priorityBoardFixture }));
-  await page.route("**/api/screeners/low-buy/quotes?**", (route) => route.fulfill({ status: 200, json: { updated_at: "09:45:00", quotes: [quoteFixture("000001"), quoteFixture("600000")] } }));
+  await page.route("**/api/screeners/low-buy/quotes?**", (route) =>
+    route.fulfill({
+      status: 200,
+      json: { updated_at: "09:45:00", quotes: [quoteFixture("000001", options.quotePrice), quoteFixture("600000", options.quotePrice)] },
+    }),
+  );
   await page.route("**/api/screeners/low-buy/strategies", (route) => route.fulfill({ status: 200, json: strategiesFixture }));
   await page.route("**/api/strategies/meta", (route) => route.fulfill({ status: 200, json: metaFixture }));
 }
@@ -139,12 +171,13 @@ function analysisResponse(symbol: string) {
   };
 }
 
-function quoteFixture(symbol: string) {
+function quoteFixture(symbol: string, priceOverride?: (symbol: string) => number | undefined) {
+  const price = priceOverride?.(symbol) ?? (symbol === "600000" ? 8.72 : 12.3);
   return {
     symbol,
     name: symbol === "600000" ? "浦发银行" : "平安银行",
-    last_price: symbol === "600000" ? 8.72 : 12.3,
-    latest_price: symbol === "600000" ? 8.72 : 12.3,
+    last_price: price,
+    latest_price: price,
     change_pct: symbol === "600000" ? 0.012 : -0.004,
     volume_ratio: 1.2,
     data_quality: "fresh",

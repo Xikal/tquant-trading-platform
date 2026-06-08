@@ -1,7 +1,10 @@
 import type { ColumnDef } from "@tanstack/solid-table";
+import { createQuery } from "@tanstack/solid-query";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js";
+import { apiClient } from "../../shared/api/client";
 import { errorMessage } from "../../shared/api/errors";
+import { queryKeys } from "../../shared/api/queryKeys";
 import { KlineChart } from "../../shared/charts/KlineChart";
 import { DataTable } from "../../shared/ui/DataTable";
 import { PageScaffold } from "../shared/PageScaffold";
@@ -43,7 +46,12 @@ export function AnalysisPage() {
   const instrument = createMemo(() => readRecord(responseRoot().instrument));
   const metrics = createMemo(() => readRecord(responseRoot().metrics));
   const microstructure = createMemo(() => readRecord(responseRoot().microstructure));
-  const currentQuote = createMemo(() => quoteRecord(snapshot()));
+  const liveQuoteQuery = createQuery(() => ({
+    queryKey: queryKeys.quote(currentSymbol()),
+    queryFn: ({ signal }) => apiClient.quote(currentSymbol(), { signal }),
+    enabled: Boolean(snapshot() && hasValidSymbol()),
+  }));
+  const currentQuote = createMemo(() => readRecord(liveQuoteQuery.data ?? quoteRecord(snapshot())));
   const currentAnomaly = createMemo(() => anomalyRecord(snapshot()));
   const chartValues = createMemo(() => chartPoints(snapshot()));
   const hasValidSymbol = createMemo(() => currentSymbol().length === 6);

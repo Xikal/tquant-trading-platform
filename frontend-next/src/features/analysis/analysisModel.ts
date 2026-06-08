@@ -49,6 +49,9 @@ export interface BatchAnalysisRow {
   reason: string;
 }
 
+export const ANALYSIS_REQUEST_TIMEOUT_MS = 60_000;
+export const ANALYSIS_BATCH_REQUEST_TIMEOUT_MS = 90_000;
+
 export const defaultAnalysisForm: AnalysisFormState = {
   symbol: "",
   batchSymbols: "",
@@ -73,10 +76,11 @@ export function buildAnalysisPayload(form: AnalysisFormState, symbol = form.symb
 
 export async function runAnalysisWorkflow(form: AnalysisFormState, init: RequestJsonOptions = {}): Promise<AnalysisSnapshot> {
   const payload = buildAnalysisPayload(form);
+  const analysisInit = withDefaultTimeout(init, ANALYSIS_REQUEST_TIMEOUT_MS);
   const [response, quote, kline, keyLevels, anomaly] = await Promise.allSettled([
-    apiClient.analyzeSymbol(payload, init),
+    apiClient.analyzeSymbol(payload, analysisInit),
     apiClient.quote(payload.symbol, init),
-    apiClient.kline(payload.symbol, "daily", 120, init),
+    apiClient.kline(payload.symbol, "5m", 120, init),
     apiClient.stockKeyLevels(payload.symbol, init),
     apiClient.marketIntradayAnomaly(payload.symbol, init),
   ]);
@@ -95,7 +99,7 @@ export async function runAnalysisWorkflow(form: AnalysisFormState, init: Request
 
 export async function runBatchAnalysis(form: AnalysisFormState, init: RequestJsonOptions = {}): Promise<BatchAnalysisRow[]> {
   const payloads = parseSymbols(form.batchSymbols).map((symbol) => buildAnalysisPayload(form, symbol));
-  const response = await apiClient.analyzeBatch(payloads, false, init);
+  const response = await apiClient.analyzeBatch(payloads, false, withDefaultTimeout(init, ANALYSIS_BATCH_REQUEST_TIMEOUT_MS));
   const rows = readArray<Record<string, unknown>>(response).map(batchRow);
   const sorted = await sortDisplayItems({ items: rows, key: "score", direction: "desc", numeric: true });
   return sorted.result ?? rows;
@@ -211,6 +215,10 @@ function normalizeSymbol(symbol: string): string {
 
 function positiveNumber(value: number, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function withDefaultTimeout(init: RequestJsonOptions, timeoutMs: number): RequestJsonOptions {
+  return init.timeoutMs === undefined ? { ...init, timeoutMs } : init;
 }
 
 function lotQuantity(value: number): number {

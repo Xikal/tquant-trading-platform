@@ -71,6 +71,28 @@ test("/next/data shows operations tabs and keeps repair/backfill/task in default
   expect(writeRequests).toEqual([]);
 });
 
+test("/next/data keeps QuantData header separated from the dashboard cards", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/next/data");
+
+  await expect(page.getByRole("heading", { name: "QuantData 实时监控" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "今日数据能用吗？" })).toBeVisible();
+
+  const layout = await page.evaluate(() => {
+    const header = document.querySelector(".data-terminal-header")?.getBoundingClientRect();
+    const firstCard = document.querySelector(".data-terminal-grid--top .data-terminal-card")?.getBoundingClientRect();
+    return {
+      headerBottom: header?.bottom ?? 0,
+      firstCardTop: firstCard?.top ?? 0,
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+
+  expect(layout.headerBottom).toBeLessThanOrEqual(layout.firstCardTop);
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+});
+
 test("/next/settings shows security/governance tabs and keeps config writes in default protected mode", async ({ page }) => {
   const writeRequests = captureWriteRequests(page);
   await page.goto("/next/settings");

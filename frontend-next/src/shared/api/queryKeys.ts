@@ -51,7 +51,7 @@ export const queryKeys = {
 
   lowBuyScreener: (query: OperationPathOptions["query"] = {}) => operationQueryKey("lowBuyScreener", { query }),
   lowBuyPriorityBoard: (limit = 12) => operationQueryKey("lowBuyPriorityBoard", { query: { limit } }),
-  lowBuyQuotes: (symbols: string[] = []) => operationQueryKey("lowBuyQuotes", { query: { symbols } }),
+  lowBuyQuotes: (symbols: string[] = [], strategy?: string) => operationQueryKey("lowBuyQuotes", { query: { symbols, strategy } }),
   lowBuyStrategies: operationQueryKey("lowBuyStrategies"),
   strategiesMeta: operationQueryKey("strategiesMeta"),
 

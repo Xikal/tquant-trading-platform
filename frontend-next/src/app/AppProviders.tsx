@@ -2,12 +2,15 @@ import type { JSX } from "solid-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { AuthProvider } from "../features/auth/authModel";
 import { ApiError, ApiTransportError } from "../shared/api/errors";
+import { operationStaleTimeMs, realtimeRefetchIntervalMs, refetchOnWindowFocus } from "../shared/api/queryPolicy";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10_000,
-      refetchOnWindowFocus: false,
+      staleTime: (query) => operationStaleTimeMs(query.queryKey),
+      refetchInterval: (query) => realtimeRefetchIntervalMs(query.queryKey),
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: (query) => refetchOnWindowFocus(query.queryKey),
       retry: (_failureCount, error) => shouldRetryQuery(error),
     },
   },

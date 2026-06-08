@@ -44,7 +44,7 @@ export interface PlaybookFamily {
 
 export const DEFAULT_PLAYBOOK_STRATEGY = "first_board";
 
-export async function loadPlaybookDataset(strategy: string, init: RequestJsonOptions = {}): Promise<PlaybookDataset> {
+export async function loadPlaybookDataset(strategy: string, init: RequestJsonOptions = {}, options: { includeQuotes?: boolean } = {}): Promise<PlaybookDataset> {
   const [screener, priorityBoard, strategies, meta] = await Promise.all([
     apiClient.lowBuyScreener({ strategy, limit: 36, scan_limit: 36, include_history: true }, init),
     apiClient.lowBuyPriorityBoard(30, "baseline", "cache", init),
@@ -52,7 +52,7 @@ export async function loadPlaybookDataset(strategy: string, init: RequestJsonOpt
     apiClient.strategiesMeta(init),
   ]);
   const symbols = candidatesFromPriority(priorityBoard).slice(0, 20).map((item) => item.symbol);
-  const quotes = await apiClient.lowBuyQuotes(symbols, strategy, init);
+  const quotes = options.includeQuotes === false ? undefined : await apiClient.lowBuyQuotes(symbols, strategy, init);
   return { screener, priorityBoard, quotes, strategies, meta, loadedAt: new Date().toLocaleTimeString("zh-CN", { hour12: false }) };
 }
 
@@ -93,19 +93,25 @@ export function quoteStatus(data: PlaybookDataset | null): string {
   return text(quotes.updated_at ?? quotes.quote_timestamp ?? data?.loadedAt, "--");
 }
 
+export function mergePlaybookQuotes(data: PlaybookDataset | null, quotes: unknown): PlaybookDataset | null {
+  if (!data || quotes === undefined) return data;
+  return { ...data, quotes };
+}
+
 export function candidateFamilies(data: PlaybookDataset | null): PlaybookFamily[] {
   const board = boardRoot(data);
+  const quotes = quoteBySymbol(data);
   const sections = readArray<Record<string, unknown>>(board.family_sections);
   if (sections.length) {
     return sections.map((section) => ({
       key: text(section.family_key),
       title: text(section.family_text ?? section.family_key),
-      items: readArray<Record<string, unknown>>(section.items).map(candidateFromRecord),
+      items: readArray<Record<string, unknown>>(section.items).map((item) => candidateFromRecord(item, quotes)),
       performance: readRecord(section.performance),
     }));
   }
   const groups = new Map<string, PlaybookCandidate[]>();
-  candidatesFromPriority(data?.priorityBoard).forEach((candidate) => {
+  candidatesFromPriority(data?.priorityBoard, quotes).forEach((candidate) => {
     const key = candidate.lane || "baseline";
     groups.set(key, [...(groups.get(key) ?? []), candidate]);
   });
@@ -143,8 +149,8 @@ export async function shadowLifecycle(symbol: string, nextState: string) {
   });
 }
 
-function candidatesFromPriority(value: unknown): PlaybookCandidate[] {
-  return priorityRecordsFromBoard(value).map(candidateFromRecord);
+function candidatesFromPriority(value: unknown, quotes = new Map<string, Record<string, unknown>>()): PlaybookCandidate[] {
+  return priorityRecordsFromBoard(value).map((item) => candidateFromRecord(item, quotes));
 }
 
 function priorityRecordsFromBoard(value: unknown): Record<string, unknown>[] {
@@ -175,23 +181,41 @@ function priorityRecordsFromBoard(value: unknown): Record<string, unknown>[] {
   return fromScreener;
 }
 
-function candidateFromRecord(item: Record<string, unknown>): PlaybookCandidate {
+function candidateFromRecord(item: Record<string, unknown>, quotes = new Map<string, Record<string, unknown>>()): PlaybookCandidate {
+  const symbol = text(item.symbol);
+  const quote = quotes.get(symbol) ?? {};
+  const price = pickFirst(quote, ["latest_price", "last_price", "price"]) ?? pickFirst(item, ["latest_price", "price"]);
+  const change = pickFirst(quote, ["change_pct", "pct_chg", "change"]) ?? item.change_pct;
   const score = Number(pickFirst(item, ["priority_score", "production_score", "score"]) ?? 0);
+  const raw = Object.keys(quote).length
+    ? { ...item, latest_price: price, change_pct: change, live_quote: quote }
+    : item;
   return {
-    symbol: text(item.symbol),
+    symbol,
     name: text(item.name ?? item.stock_name, ""),
     lane: text(item.simple_bucket ?? item.display_lane ?? item.strategy_family, "baseline"),
     laneText: text(item.simple_bucket_text ?? item.display_lane_title ?? item.strategy_family_text, "候选"),
     action: text(item.buy_signal_text ?? item.next_action_text ?? item.action_summary, "观察"),
-    price: numberText(item.latest_price ?? item.price, "--"),
+    price: numberText(price, "--"),
     score: Number.isFinite(score) ? score : 0,
     scoreText: numberText(score, "--"),
-    changeText: pctText(item.change_pct, ""),
+    changeText: pctText(change, ""),
     riskText: text(item.risk_tier ?? item.data_quality_text ?? item.blocked_reason, ""),
     details: text(item.action_summary ?? item.primary_lane_reason ?? item.execution_note ?? item.strategy_performance_text, ""),
     strategy: text(item.strategy_title ?? item.strategy_key, ""),
-    raw: item,
+    raw,
   };
+}
+
+function quoteBySymbol(data: PlaybookDataset | null): Map<string, Record<string, unknown>> {
+  const root = readRecord(data?.quotes);
+  const records = readArray<Record<string, unknown>>(root.quotes).concat(readArray<Record<string, unknown>>(root.items));
+  const entries: Array<[string, Record<string, unknown>]> = [];
+  records.forEach((item) => {
+    const symbol = text(item.symbol, "");
+    if (symbol) entries.push([symbol, item]);
+  });
+  return new Map(entries);
 }
 
 function boardRoot(data: PlaybookDataset | null): Record<string, unknown> {
