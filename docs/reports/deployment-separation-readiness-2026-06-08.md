@@ -66,7 +66,7 @@ data
 | `deploy/frontend/Dockerfile` | 构建旧 `frontend/` 和 `frontend-next/`，产出独立 nginx 静态服务 |
 | `deploy/frontend/nginx.conf` | frontend-web 内部静态路由、SPA fallback、assets cache |
 | `deploy/nginx/tquant-separated-gateway.conf.template` | 网关层 `/api`、`/readyz`、`/next`、`/assets` 路由模板 |
-| `deploy/backend-api/Dockerfile` | 从现有 web runtime 镜像派生 API-only 镜像，只复制 `backend/app`、`backend/alembic`、`backend/scripts`，降低云端构建内存压力 |
+| `backend/deploy/backend-api/Dockerfile` | 从现有 web runtime 镜像派生 API-only 镜像，只复制 `backend/app`、`backend/alembic`、`backend/scripts`，降低云端构建内存压力 |
 | `docker-compose.separated.yml` | 分离拓扑 readiness compose，复用既有 `tquant-mysql_default` 网络和 MySQL/Redis 容器 |
 | `docs/operations/frontend-backend-separated-deployment-runbook.md` | 部署、健康检查、回滚手册 |
 
