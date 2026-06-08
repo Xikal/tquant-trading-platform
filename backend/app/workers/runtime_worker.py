@@ -203,13 +203,30 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
     if task_type == "latest_data_watchdog":
         from app.services.latest_data_watchdog import LatestDailyBarWatchdog
 
-        return LatestDailyBarWatchdog().run(
+        result = LatestDailyBarWatchdog().run(
             db,
             trade_date=str(payload.get("expected_trade_date") or payload.get("trade_date") or "") or None,
             notify=bool(payload.get("notify", True)),
             force_notify=bool(payload.get("force_notify", False)),
             enforce_watchdog_time_gate=bool(payload.get("enforce_watchdog_time_gate", True)),
         )
+        if result.get("ok"):
+            from app.services.latest_data_close_refresh import enqueue_after_close_followups
+
+            trade_date = str(
+                result.get("trade_date")
+                or result.get("expected_trade_date")
+                or payload.get("expected_trade_date")
+                or payload.get("trade_date")
+                or ""
+            )
+            if trade_date:
+                result["after_close_followups"] = enqueue_after_close_followups(
+                    db,
+                    trade_date=trade_date,
+                    reason="latest_data_watchdog_ok",
+                )
+        return result
     if task_type == "a_key_level_materialization_refresh":
         from app.services.key_levels.materialization import AKeyLevelMaterializationService
 
@@ -221,11 +238,13 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             sector_limit=max(1, min(int(payload["sector_limit"]), 1000)) if payload.get("sector_limit") else None,
             batch_size=max(1, min(int(payload["batch_size"]), 1000)) if payload.get("batch_size") else 250,
         )
-    if task_type in {"market_review_report", "paper_review_report"}:
+    if task_type == "market_review_report":
         from app.services.market.review import MarketReviewService
 
+        target_date = _payload_date(payload, "target_date")
         report = MarketReviewService(db).generate_review_report(
-            report_slot=str(payload.get("report_slot") or "midday")
+            report_slot=str(payload.get("report_slot") or "midday"),
+            target_date=target_date,
         )
         db.commit()
         return {
@@ -235,15 +254,51 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             "report_slot": report.report_slot,
             "report_date": report.report_date.isoformat() if report.report_date else "",
         }
+    if task_type == "paper_review_report":
+        from app.services.paper.archive import PaperArchiveService
+
+        target_date = _payload_date(payload, "target_date")
+        slot = str(payload.get("report_slot") or "midday")
+        reports = PaperArchiveService(db).generate_review_reports_for_active(
+            report_slot=slot,
+            target_date=target_date,
+        )
+        return {
+            "ok": True,
+            "scope": "paper",
+            "report_slot": slot,
+            "report_date": target_date.isoformat() if target_date else "",
+            "reports": reports,
+            "report_count": len(reports),
+        }
     if task_type == "low_buy_materialization_refresh":
-        from app.services.low_buy_materialization import refresh_latest_low_buy_materialization
+        from app.services.low_buy_materialization import (
+            refresh_latest_low_buy_materialization,
+            refresh_low_buy_close_review_snapshots,
+        )
+
+        strategies = [str(item) for item in payload.get("strategies") or []] or None
 
         result = refresh_latest_low_buy_materialization(
             limit=int(payload.get("limit") or 40),
             scan_limit=int(payload.get("scan_limit") or 480),
-            strategies=[str(item) for item in payload.get("strategies") or []] or None,
+            strategies=strategies,
         )
         _ensure_low_buy_materialization_complete(result)
+        if payload.get("build_close_review"):
+            trade_date = str(
+                payload.get("expected_trade_date")
+                or result.get("published_trade_date")
+                or (result.get("publish_status") or {}).get("published_trade_date")
+                or ""
+            )
+            result["close_review_snapshots"] = refresh_low_buy_close_review_snapshots(
+                strategies=strategies or [],
+                trade_date=trade_date,
+            )
+            if result["close_review_snapshots"].get("ok") is False:
+                skipped = result["close_review_snapshots"].get("skipped") or []
+                raise RuntimeError(f"low-buy close review refresh incomplete: {skipped}")
         return result
     if task_type == "market_state_gate_refresh":
         from app.services.decision_context.market_gate import market_gate_from_context
@@ -490,6 +545,13 @@ def _json_payload(raw: str) -> dict[str, Any]:
     except Exception:
         return {}
     return value if isinstance(value, dict) else {}
+
+
+def _payload_date(payload: dict[str, Any], key: str) -> date | None:
+    raw = str(payload.get(key) or "").strip()
+    if not raw:
+        return None
+    return date.fromisoformat(raw[:10])
 
 
 def _record_worker_heartbeat(db, *, worker_id: str) -> None:  # noqa: ANN001

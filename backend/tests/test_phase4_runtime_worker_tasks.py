@@ -79,6 +79,7 @@ def test_runtime_worker_executes_market_pulse_refresh(monkeypatch):
 def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
     db = _db()
     calls = []
+    followups = []
 
     class _Watchdog:
         def run(self, db_arg, *, trade_date=None, notify=True, force_notify=False, enforce_watchdog_time_gate=True):  # noqa: ANN001
@@ -86,6 +87,10 @@ def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
             return {"ok": False, "status": "alert_sent", "expected_trade_date": trade_date}
 
     monkeypatch.setattr("app.services.latest_data_watchdog.LatestDailyBarWatchdog", lambda: _Watchdog())
+    monkeypatch.setattr(
+        "app.services.latest_data_close_refresh.enqueue_after_close_followups",
+        lambda *args, **kwargs: followups.append((args, kwargs)) or {"ok": True},
+    )
 
     result = runtime_worker._execute_task(
         "latest_data_watchdog",
@@ -95,6 +100,34 @@ def test_runtime_worker_executes_latest_data_watchdog(monkeypatch):
 
     assert result == {"ok": False, "status": "alert_sent", "expected_trade_date": "2026-06-03"}
     assert calls == [(db, "2026-06-03", True, True, True)]
+    assert followups == []
+
+
+def test_runtime_worker_chains_followups_after_successful_latest_data_watchdog(monkeypatch):
+    db = _db()
+    calls = []
+    followups = []
+
+    class _Watchdog:
+        def run(self, db_arg, *, trade_date=None, notify=True, force_notify=False, enforce_watchdog_time_gate=True):  # noqa: ANN001
+            calls.append((db_arg, trade_date, notify, force_notify, enforce_watchdog_time_gate))
+            return {"ok": True, "status": "complete", "expected_trade_date": trade_date}
+
+    monkeypatch.setattr("app.services.latest_data_watchdog.LatestDailyBarWatchdog", lambda: _Watchdog())
+    monkeypatch.setattr(
+        "app.services.latest_data_close_refresh.enqueue_after_close_followups",
+        lambda db_arg, *, trade_date, reason: followups.append((db_arg, trade_date, reason)) or {"ok": True},
+    )
+
+    result = runtime_worker._execute_task(
+        "latest_data_watchdog",
+        {"expected_trade_date": "2026-06-03"},
+        db,
+    )
+
+    assert result["after_close_followups"] == {"ok": True}
+    assert calls == [(db, "2026-06-03", True, False, True)]
+    assert followups == [(db, "2026-06-03", "latest_data_watchdog_ok")]
 
 
 def test_runtime_worker_passes_expected_trade_date_to_daily_bar_refresh(monkeypatch):
@@ -188,6 +221,99 @@ def test_runtime_worker_low_buy_materialization_requires_priority_board_warmup(m
         assert "front_row_only" in str(exc)
     else:
         raise AssertionError("runtime worker must fail incomplete priority board warmup")
+
+
+def test_runtime_worker_routes_market_review_report_to_market_service(monkeypatch):
+    db = _db()
+    calls = []
+
+    class _MarketReviewService:
+        def __init__(self, db_arg):  # noqa: ANN001
+            calls.append(("init", db_arg))
+
+        def generate_review_report(self, *, report_slot, target_date):  # noqa: ANN001
+            calls.append(("generate", report_slot, target_date.isoformat() if target_date else ""))
+            return type(
+                "Report",
+                (),
+                {"id": 11, "report_slot": report_slot, "report_date": target_date},
+            )()
+
+    monkeypatch.setattr("app.services.market.review.MarketReviewService", _MarketReviewService)
+
+    result = runtime_worker._execute_task(
+        "market_review_report",
+        {"report_slot": "close", "target_date": "2026-06-03"},
+        db,
+    )
+
+    assert result == {
+        "ok": True,
+        "scope": "market",
+        "report_id": 11,
+        "report_slot": "close",
+        "report_date": "2026-06-03",
+    }
+    assert calls == [("init", db), ("generate", "close", "2026-06-03")]
+
+
+def test_runtime_worker_routes_paper_review_report_to_paper_archive(monkeypatch):
+    db = _db()
+    calls = []
+
+    class _PaperArchiveService:
+        def __init__(self, db_arg):  # noqa: ANN001
+            calls.append(("init", db_arg))
+
+        def generate_review_reports_for_active(self, *, report_slot, target_date):  # noqa: ANN001
+            calls.append(("generate", report_slot, target_date.isoformat() if target_date else ""))
+            return [{"account_id": 1, "report_id": 21, "report_slot": report_slot}]
+
+    monkeypatch.setattr("app.services.paper.archive.PaperArchiveService", _PaperArchiveService)
+
+    result = runtime_worker._execute_task(
+        "paper_review_report",
+        {"report_slot": "midday", "target_date": "2026-06-03"},
+        db,
+    )
+
+    assert result["ok"] is True
+    assert result["scope"] == "paper"
+    assert result["report_count"] == 1
+    assert result["report_date"] == "2026-06-03"
+    assert calls == [("init", db), ("generate", "midday", "2026-06-03")]
+
+
+def test_runtime_worker_builds_low_buy_close_review_when_requested(monkeypatch):
+    db = _db()
+    calls = []
+
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.refresh_latest_low_buy_materialization",
+        lambda **kwargs: calls.append(("materialize", kwargs))
+        or {
+            "ok": True,
+            "published_trade_date": "2026-06-03",
+            "priority_board_read_models": {"ok": True},
+        },
+    )
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.refresh_low_buy_close_review_snapshots",
+        lambda **kwargs: calls.append(("close_review", kwargs))
+        or {"ok": True, "trade_date": kwargs["trade_date"], "refreshed": [{"strategy": "first_board", "item_count": 1}]},
+    )
+
+    result = runtime_worker._execute_task(
+        "low_buy_materialization_refresh",
+        {"strategies": ["first_board"], "expected_trade_date": "2026-06-03", "build_close_review": True},
+        db,
+    )
+
+    assert result["close_review_snapshots"]["ok"] is True
+    assert calls == [
+        ("materialize", {"limit": 40, "scan_limit": 480, "strategies": ["first_board"]}),
+        ("close_review", {"strategies": ["first_board"], "trade_date": "2026-06-03"}),
+    ]
 
 
 def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):

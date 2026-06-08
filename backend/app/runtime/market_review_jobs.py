@@ -5,7 +5,8 @@ from datetime import date, time as dt_time
 
 from app.core.database import SessionLocal
 from app.core.timezone import beijing_now, beijing_today
-from app.services.market.review import MarketReviewService
+from app.services.latest_data_close_refresh import enqueue_market_review_reports_if_missing
+from app.services.market.trading_calendar import is_a_share_trading_day
 
 logger = logging.getLogger(__name__)
 _market_midday_review_last_run_date: date | None = None
@@ -20,10 +21,14 @@ def generate_midday_market_review_once() -> None:
     if _market_midday_review_last_run_date == today:
         return
     with SessionLocal() as db:
-        report = MarketReviewService(db).generate_review_report(report_slot="midday", target_date=today)
-        db.commit()
+        result = enqueue_market_review_reports_if_missing(
+            db,
+            trade_date=today.isoformat(),
+            slots=["midday"],
+            reason="runtime_scheduler_midday_review",
+        )
         _market_midday_review_last_run_date = today
-        logger.info("全市场午盘复盘完成: report_id=%s date=%s", report.id, today.isoformat())
+        logger.info("全市场午盘复盘任务已确认: date=%s result=%s", today.isoformat(), result)
 
 
 def generate_close_market_review_once() -> None:
@@ -34,22 +39,26 @@ def generate_close_market_review_once() -> None:
     if _market_close_review_last_run_date == today:
         return
     with SessionLocal() as db:
-        report = MarketReviewService(db).generate_review_report(report_slot="close", target_date=today)
-        db.commit()
+        result = enqueue_market_review_reports_if_missing(
+            db,
+            trade_date=today.isoformat(),
+            slots=["close"],
+            reason="runtime_scheduler_close_review",
+        )
         _market_close_review_last_run_date = today
-        logger.info("全市场收盘复盘完成: report_id=%s date=%s", report.id, today.isoformat())
+        logger.info("全市场收盘复盘任务已确认: date=%s result=%s", today.isoformat(), result)
 
 
 def market_midday_review_due() -> bool:
     now = beijing_now()
-    if now.weekday() >= 5:
+    if not is_a_share_trading_day(now.date()):
         return False
     return dt_time(hour=11, minute=35) <= now.time() < dt_time(hour=15, minute=0)
 
 
 def market_close_review_due() -> bool:
     now = beijing_now()
-    if now.weekday() >= 5:
+    if not is_a_share_trading_day(now.date()):
         return False
     return now.time() >= _configured_close_review_time()
 

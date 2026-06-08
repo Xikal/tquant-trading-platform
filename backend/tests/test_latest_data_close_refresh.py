@@ -20,20 +20,25 @@ class _FakeRepo:
 
 class _FakeQueue:
     last_payload = None
+    payloads = []
 
     def __init__(self, _db) -> None:
         pass
 
     def enqueue(self, payload):
         self.__class__.last_payload = payload
+        self.__class__.payloads.append(payload)
         return SimpleNamespace(id=7, status="queued")
 
 
 def _patch_base(monkeypatch, *, expected: str = "2026-05-18") -> None:
     monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: True)
     monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: expected)
-    monkeypatch.setattr(close_refresh, "DailyHistoryRepository", _FakeRepo)
     monkeypatch.setattr(close_refresh, "RuntimeTaskQueue", _FakeQueue)
+    monkeypatch.setattr(close_refresh, "_market_review_exists", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(close_refresh, "_paper_review_count", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(close_refresh, "_daily_bar_sla_exists", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(close_refresh, "_succeeded_task_exists", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(
         close_refresh,
         "daily_bar_freshness_status",
@@ -55,6 +60,7 @@ def test_after_close_enqueues_daily_bar_refresh_when_daily_bars_missing(monkeypa
     _FakeRepo.count = 0
     _FakeRepo.post_close_count = 0
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
 
     result = close_refresh.enqueue_latest_data_close_refresh(
         object(),
@@ -73,6 +79,7 @@ def test_after_close_enqueues_daily_bar_refresh_when_only_before_close_fetch_exi
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeRepo.post_close_count = 0
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
 
     result = close_refresh.enqueue_latest_data_close_refresh(
         object(),
@@ -122,6 +129,7 @@ def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
     monkeypatch.setattr(close_refresh, "latest_data_status", lambda _db, strategies: {"missing_strategies": []})
     monkeypatch.setattr(
         close_refresh,
@@ -141,6 +149,13 @@ def test_after_close_publishes_when_latest_data_is_complete(monkeypatch) -> None
     assert result["strategy_tracking_snapshot_task_status"] == "queued"
     assert _FakeQueue.last_payload.task_type == "strategy_tracking_snapshot_refresh"
     assert _FakeQueue.last_payload.payload["range_days"] == 30
+    followup_types = [item.task_type for item in _FakeQueue.payloads]
+    assert "market_review_report" not in followup_types
+    assert "paper_review_report" not in followup_types
+    assert "data_quality_sla_refresh" in followup_types
+    assert "low_buy_materialization_refresh" in followup_types
+    close_review_payload = next(item.payload for item in _FakeQueue.payloads if item.payload.get("build_close_review"))
+    assert close_review_payload["expected_trade_date"] == "2026-05-18"
     assert db.committed is True
 
 
@@ -149,6 +164,7 @@ def test_after_close_skips_when_already_published(monkeypatch) -> None:
     _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
     monkeypatch.setattr(
         close_refresh,
         "latest_data_status",
@@ -175,11 +191,15 @@ def test_after_close_skips_when_already_published(monkeypatch) -> None:
     assert result["strategy_tracking_snapshot_task_status"] == "queued"
     assert _FakeQueue.last_payload.task_type == "strategy_tracking_snapshot_refresh"
     assert _FakeQueue.last_payload.payload["reason"] == "after_close_latest_data_already_latest"
+    followup_types = [item.task_type for item in _FakeQueue.payloads]
+    assert "data_quality_sla_refresh" in followup_types
+    assert "low_buy_materialization_refresh" in followup_types
 
 
 def test_before_close_skips_without_touching_queue(monkeypatch) -> None:
     _patch_base(monkeypatch)
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
 
     result = close_refresh.enqueue_latest_data_close_refresh(
         object(),
@@ -196,6 +216,7 @@ def test_non_trading_day_skips_with_specific_action(monkeypatch) -> None:
     _patch_base(monkeypatch)
     monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: False)
     _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
 
     result = close_refresh.enqueue_latest_data_close_refresh(
         object(),
@@ -206,6 +227,100 @@ def test_non_trading_day_skips_with_specific_action(monkeypatch) -> None:
     assert result["action"] == "skip_non_trading_day"
     assert result["metric"] == "latest_data_close_refresh.skip_non_trading_day"
     assert _FakeQueue.last_payload is None
+
+
+def test_after_close_enqueues_review_reports_after_review_time(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+    monkeypatch.setattr(
+        close_refresh,
+        "latest_data_status",
+        lambda _db, strategies: {
+            "status": "success",
+            "published_trade_date": "2026-05-18",
+            "missing_strategies": [],
+        },
+    )
+
+    result = close_refresh.enqueue_latest_data_close_refresh(
+        object(),
+        now=datetime(2026, 5, 18, 15, 10),
+        strategies=["volume_shrink"],
+    )
+
+    assert result["action"] == "already_latest"
+    review_tasks = [(item.task_type, item.payload["report_slot"]) for item in _FakeQueue.payloads if "review_report" in item.task_type]
+    assert review_tasks == [
+        ("market_review_report", "midday"),
+        ("market_review_report", "close"),
+        ("paper_review_report", "midday"),
+        ("paper_review_report", "close"),
+    ]
+
+
+def test_after_close_followups_skip_reports_that_already_exist(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+    monkeypatch.setattr(close_refresh, "_market_review_exists", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(close_refresh, "_paper_review_count", lambda *_args, **_kwargs: 2)
+    monkeypatch.setattr(close_refresh, "_daily_bar_sla_exists", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(close_refresh, "_succeeded_task_exists", lambda *_args, **_kwargs: True)
+
+    result = close_refresh.enqueue_after_close_followups(
+        object(),
+        trade_date="2026-05-18",
+        now=datetime(2026, 5, 18, 15, 10),
+        strategies=["first_board"],
+    )
+
+    assert [item["action"] for item in result["market_review"]] == ["exists", "exists"]
+    assert [item["action"] for item in result["paper_review"]] == ["exists", "exists"]
+    assert result["data_quality_sla"]["action"] == "exists"
+    assert result["low_buy_close_review"]["action"] == "succeeded_task_exists"
+    assert _FakeQueue.payloads == []
+
+
+def test_after_close_followups_skip_non_trading_day(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+    monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: False)
+
+    result = close_refresh.enqueue_after_close_followups(
+        object(),
+        trade_date="2026-06-06",
+        now=datetime(2026, 6, 6, 15, 10),
+        strategies=["first_board"],
+    )
+
+    assert result["action"] == "skip_non_trading_day"
+    assert _FakeQueue.payloads == []
+
+
+def test_after_close_followups_catch_up_previous_trade_date_reviews(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+
+    result = close_refresh.enqueue_after_close_followups(
+        object(),
+        trade_date="2026-05-18",
+        now=datetime(2026, 5, 19, 10, 30),
+        strategies=["first_board"],
+    )
+
+    assert result["ok"] is True
+    review_tasks = [(item.task_type, item.payload["report_slot"]) for item in _FakeQueue.payloads if "review_report" in item.task_type]
+    assert review_tasks == [
+        ("market_review_report", "midday"),
+        ("market_review_report", "close"),
+        ("paper_review_report", "midday"),
+        ("paper_review_report", "close"),
+    ]
 
 
 def test_latest_data_watchdog_enqueue_skips_when_same_trade_date_already_notified(monkeypatch) -> None:

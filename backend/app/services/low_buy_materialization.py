@@ -143,6 +143,43 @@ def refresh_latest_low_buy_materialization(
     )
 
 
+def refresh_low_buy_close_review_snapshots(
+    *,
+    strategies: list[str],
+    trade_date: str,
+) -> dict[str, Any]:
+    from app.services.low_buy_screener import LowBuyScreenerService
+
+    required = sorted({item.strip() for item in strategies if item and item.strip()})
+    if not required:
+        return {"ok": False, "trade_date": trade_date, "reason": "missing_strategies", "refreshed": [], "skipped": []}
+    if not trade_date:
+        return {"ok": False, "trade_date": "", "reason": "missing_trade_date", "refreshed": [], "skipped": []}
+
+    screener = LowBuyScreenerService()
+    refreshed: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    with SessionLocal() as db:
+        for strategy in required:
+            try:
+                items = screener._runtime._build_close_review_snapshot(
+                    db=db,
+                    strategy=strategy,
+                    latest_trade_date=trade_date,
+                )
+                refreshed.append({"strategy": strategy, "item_count": len(items)})
+            except Exception as exc:
+                db.rollback()
+                skipped.append({"strategy": strategy, "reason": str(exc)})
+    return {
+        "ok": not skipped,
+        "trade_date": trade_date,
+        "strategies": required,
+        "refreshed": refreshed,
+        "skipped": skipped,
+    }
+
+
 def warm_priority_board_read_models(
     *,
     variants: list[str] | tuple[str, ...] | None = None,
