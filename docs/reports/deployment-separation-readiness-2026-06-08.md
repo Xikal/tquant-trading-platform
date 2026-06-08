@@ -66,7 +66,8 @@ data
 | `deploy/frontend/Dockerfile` | 构建旧 `frontend/` 和 `frontend-next/`，产出独立 nginx 静态服务 |
 | `deploy/frontend/nginx.conf` | frontend-web 内部静态路由、SPA fallback、assets cache |
 | `deploy/nginx/tquant-separated-gateway.conf.template` | 网关层 `/api`、`/readyz`、`/next`、`/assets` 路由模板 |
-| `docker-compose.separated.yml` | 本地分离拓扑 readiness compose |
+| `deploy/backend-api/Dockerfile` | 从现有 web runtime 镜像派生 API-only 镜像，只复制后端代码，降低云端构建内存压力 |
+| `docker-compose.separated.yml` | 分离拓扑 readiness compose，复用既有 `tquant-mysql_default` 网络和 MySQL/Redis 容器 |
 | `docs/operations/frontend-backend-separated-deployment-runbook.md` | 部署、健康检查、回滚手册 |
 
 ## 后端最小改动
@@ -119,13 +120,13 @@ MYSQL_PASSWORD=app \
 docker compose -f docker-compose.separated.yml config
 ```
 
-结果：compose config 可解析，`backend-api` 环境包含 `SERVE_FRONTEND_STATIC=false`。
+结果：compose config 可解析，`backend-api` 环境包含 `SERVE_FRONTEND_STATIC=false`；`frontend-web` 挂载 `frontend/dist` 与 `frontend-next/dist`；MySQL/Redis 通过既有 Docker network 访问，不重复创建数据库容器。
 
 建议后续本地完整启动验证：
 
 ```bash
-docker compose -f docker-compose.separated.yml build frontend-web backend-api
-docker compose -f docker-compose.separated.yml up -d frontend-web backend-api mysql redis gateway
+docker compose -f docker-compose.separated.yml build backend-api
+docker compose -f docker-compose.separated.yml up -d frontend-web backend-api gateway
 curl -fsS http://127.0.0.1:18080/
 curl -fsS http://127.0.0.1:18080/next/
 curl -fsS http://127.0.0.1:18090/readyz

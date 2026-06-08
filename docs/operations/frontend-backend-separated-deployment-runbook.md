@@ -24,7 +24,8 @@
 
 | 工件 | 文件 |
 | --- | --- |
-| frontend static image | `deploy/frontend/Dockerfile` |
+| frontend static image | `deploy/frontend/Dockerfile`，或生产上直接挂载已构建的 `frontend/dist` 与 `frontend-next/dist` |
+| backend api image | `deploy/backend-api/Dockerfile`，从现有 `tquant-web:mysql` runtime 派生，仅复制后端代码 |
 | frontend nginx | `deploy/frontend/nginx.conf` |
 | gateway nginx | `deploy/nginx/tquant-separated-gateway.conf.template` |
 | separated compose | `docker-compose.separated.yml` |
@@ -49,13 +50,13 @@ docker compose -f docker-compose.separated.yml config
 构建：
 
 ```bash
-docker compose -f docker-compose.separated.yml build frontend-web backend-api
+docker compose -f docker-compose.separated.yml build backend-api
 ```
 
 启动：
 
 ```bash
-docker compose -f docker-compose.separated.yml up -d mysql redis migration frontend-web backend-api gateway
+docker compose -f docker-compose.separated.yml up -d frontend-web backend-api gateway
 ```
 
 健康检查：
