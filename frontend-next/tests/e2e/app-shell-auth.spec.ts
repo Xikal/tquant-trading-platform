@@ -114,11 +114,12 @@ test("command palette opens by shortcut and routes a symbol to analysis", async 
   await expect(page.getByLabel("分析代码")).toHaveValue("000001");
 });
 
-test("command palette traps focus and restores the trigger focus on close", async ({ page }) => {
+test("command palette traps focus when opened by shortcut without a visible topbar button", async ({ page }) => {
   await installE2eAuthState(page);
   await page.goto("/next/monitor");
 
-  await page.getByRole("button", { name: "打开全局搜索" }).click();
+  await expect(page.getByRole("button", { name: "打开全局搜索" })).toHaveCount(0);
+  await openCommandPalette(page);
   await expect(page.getByRole("dialog", { name: "全局搜索" })).toBeVisible();
   await expect(page.getByPlaceholder("搜索页面、策略或输入 6 位股票代码")).toBeFocused();
 
@@ -129,7 +130,6 @@ test("command palette traps focus and restores the trigger focus on close", asyn
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "全局搜索" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "打开全局搜索" })).toBeFocused();
 });
 
 test("command palette routes named pages without losing app shell", async ({ page }) => {

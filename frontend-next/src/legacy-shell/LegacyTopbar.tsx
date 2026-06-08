@@ -65,9 +65,6 @@ export function LegacyTopbar(props: {
           <span class="legacy-topbar__chip legacy-topbar__chip--warn">网络离线</span>
         </Show>
         <span class="legacy-topbar__chip">实时流 {connectionStateText(liveQuoteSignals.connectionState())}</span>
-        <Button size="sm" ariaLabel="打开全局搜索" onClick={props.onOpenCommand}>
-          Cmd K
-        </Button>
         <UserMenu auth={props.auth} />
       </div>
     </header>
