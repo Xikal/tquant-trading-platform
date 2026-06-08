@@ -115,7 +115,6 @@ collect_changed_files() {
 resolve_deploy_scope() {
   local changed_file_list
   local scope_json
-  local scope
   changed_file_list="$(mktemp "/tmp/gupiao-deploy-changed-files-XXXXXX")"
   collect_changed_files > "$changed_file_list"
   scope_json="$(python3 "$ROOT_DIR/scripts/deploy_scope.py" --scope "$DEPLOY_TARGET_SCOPE" --changed-files-from "$changed_file_list")" || {
@@ -124,9 +123,8 @@ resolve_deploy_scope() {
     exit 2
   }
   rm -f "$changed_file_list"
-  scope="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])' <<< "$scope_json")"
+  DEPLOY_RESOLVED_SCOPE="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["scope"])' <<< "$scope_json")"
   DEPLOY_RESOLVED_UNITS="$(python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["units"]))' <<< "$scope_json")"
-  printf '%s\n' "$scope"
 }
 
 deploy_scope_has_unit() {
@@ -1815,7 +1813,7 @@ main() {
   validate_deploy_sync_mode
   require_cloud_host
   require_https_config
-  DEPLOY_RESOLVED_SCOPE="$(resolve_deploy_scope)"
+  resolve_deploy_scope
   log "resolved deploy scope: ${DEPLOY_RESOLVED_SCOPE}"
   log "requested deploy sync mode: ${DEPLOY_SYNC_MODE}"
   run_local_checks

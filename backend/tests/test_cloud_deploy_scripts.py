@@ -462,6 +462,19 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "/usr/share/nginx/html-next/" in frontend_dockerfile
 
 
+def test_deploy_scope_resolution_keeps_units_in_main_shell() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+
+    resolve_function = deploy_script.split("resolve_deploy_scope() {", 1)[1].split(
+        "deploy_scope_has_unit() {", 1
+    )[0]
+    main_function = deploy_script.split("main() {", 1)[1]
+    assert 'DEPLOY_RESOLVED_SCOPE="$(python3 -c' in resolve_function
+    assert 'DEPLOY_RESOLVED_UNITS="$(python3 -c' in resolve_function
+    assert 'DEPLOY_RESOLVED_SCOPE="$(resolve_deploy_scope)"' not in deploy_script
+    assert "resolve_deploy_scope" in main_function
+
+
 def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
 
