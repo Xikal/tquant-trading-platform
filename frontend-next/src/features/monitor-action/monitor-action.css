@@ -569,26 +569,34 @@
 
 .monitor-rank-row {
   display: grid;
+  gap: 7px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.monitor-rank-row:last-child {
+  border-bottom: 0;
+}
+
+.monitor-rank-row__main {
+  display: grid;
   width: 100%;
   grid-template-columns: 34px minmax(118px, 1.2fr) minmax(90px, 1fr) 58px minmax(76px, 0.7fr);
   align-items: center;
   gap: 8px;
   border: 0;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fff;
+  background: transparent;
   color: #334155;
   cursor: pointer;
   font-size: 10px;
-  padding: 7px 10px;
+  padding: 0;
   text-align: left;
 }
 
-.monitor-rank-row:hover {
+.monitor-rank-row:hover,
+.monitor-rank-row:focus-within {
   background: #f8fafc;
-}
-
-.monitor-rank-row:last-child {
-  border-bottom: 0;
 }
 
 .monitor-rank-row__order {
@@ -627,6 +635,86 @@
 .monitor-rank-row__score {
   font-family: "SFMono-Regular", Consolas, monospace;
   font-weight: 900;
+}
+
+.monitor-rank-row__facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.monitor-rank-fact {
+  min-width: 0;
+  border: 1px solid #f1f5f9;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 5px 6px;
+}
+
+.monitor-rank-fact small,
+.monitor-rank-fact strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-rank-fact small {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.monitor-rank-fact strong {
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.monitor-rank-fact--strong {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.monitor-rank-fact--strong strong {
+  color: #1d4ed8;
+}
+
+.monitor-rank-row__detail {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.monitor-rank-row__detail > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-detail-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 24px;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  background: #fff;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0 8px;
+}
+
+.monitor-detail-btn:hover {
+  background: #eff6ff;
 }
 
 .monitor-mini-badge {

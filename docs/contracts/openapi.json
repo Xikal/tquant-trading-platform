@@ -1,6 +1,65 @@
 {
   "components": {
     "schemas": {
+      "AdminTestUserCleanupRequest": {
+        "properties": {
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "prefixes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Prefixes",
+            "type": "array"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "AdminTestUserCleanupRequest",
+        "type": "object"
+      },
+      "AdminTestUserCleanupResponse": {
+        "properties": {
+          "deleted_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Deleted Counts",
+            "type": "object"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "matched_accounts": {
+            "title": "Matched Accounts",
+            "type": "integer"
+          },
+          "matched_users": {
+            "title": "Matched Users",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "dry_run",
+          "matched_users",
+          "matched_accounts"
+        ],
+        "title": "AdminTestUserCleanupResponse",
+        "type": "object"
+      },
       "AdminUserOut": {
         "properties": {
           "can_paper_trade": {
@@ -12177,6 +12236,42 @@
         "title": "LowBuyHardRiskOut",
         "type": "object"
       },
+      "LowBuyLifecycleSmokeFixtureRequest": {
+        "properties": {
+          "name": {
+            "default": "平安银行",
+            "maxLength": 64,
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "default": "frontend-next rollback smoke",
+            "maxLength": 160,
+            "title": "Reason",
+            "type": "string"
+          },
+          "signal_trade_date": {
+            "default": "2026-06-05",
+            "maxLength": 16,
+            "title": "Signal Trade Date",
+            "type": "string"
+          },
+          "strategy_key": {
+            "default": "first_board",
+            "maxLength": 80,
+            "title": "Strategy Key",
+            "type": "string"
+          },
+          "symbol": {
+            "default": "000001",
+            "maxLength": 16,
+            "title": "Symbol",
+            "type": "string"
+          }
+        },
+        "title": "LowBuyLifecycleSmokeFixtureRequest",
+        "type": "object"
+      },
       "LowBuyNextDayEventPlanOut": {
         "properties": {
           "confirmation_rules": {
@@ -15994,6 +16089,17 @@
             "title": "Cost Basis",
             "type": "number"
           },
+          "day_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Change Pct"
+          },
           "exit_model_shadow": {
             "additionalProperties": true,
             "title": "Exit Model Shadow",
@@ -16044,9 +16150,45 @@
             "title": "Opened At",
             "type": "string"
           },
+          "prev_close": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev Close"
+          },
           "quantity": {
             "title": "Quantity",
             "type": "integer"
+          },
+          "quote_data_quality": {
+            "default": "snapshot",
+            "title": "Quote Data Quality",
+            "type": "string"
+          },
+          "quote_data_quality_text": {
+            "default": "持仓快照价",
+            "title": "Quote Data Quality Text",
+            "type": "string"
+          },
+          "quote_is_stale": {
+            "default": true,
+            "title": "Quote Is Stale",
+            "type": "boolean"
+          },
+          "quote_source": {
+            "default": "paper_position_snapshot",
+            "title": "Quote Source",
+            "type": "string"
+          },
+          "quote_timestamp": {
+            "default": "",
+            "title": "Quote Timestamp",
+            "type": "string"
           },
           "smart_exit_action": {
             "default": "hold",
@@ -25030,6 +25172,81 @@
           }
         },
         "summary": "List Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/admin/users/test-cleanup": {
+      "post": {
+        "operationId": "cleanup_test_users_api_admin_users_test_cleanup_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTestUserCleanupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTestUserCleanupResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cleanup Test Users",
         "tags": [
           "admin"
         ]
@@ -38369,6 +38586,183 @@
           }
         ],
         "summary": "Low Buy Lifecycle View",
+        "tags": [
+          "screeners"
+        ]
+      }
+    },
+    "/api/screeners/low-buy/lifecycle/smoke-fixture": {
+      "post": {
+        "operationId": "create_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LowBuyLifecycleSmokeFixtureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Low Buy Lifecycle Smoke Fixture",
+        "tags": [
+          "screeners"
+        ]
+      }
+    },
+    "/api/screeners/low-buy/lifecycle/smoke-fixture/{symbol}": {
+      "delete": {
+        "operationId": "delete_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture__symbol__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "symbol",
+            "required": true,
+            "schema": {
+              "title": "Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal_trade_date",
+            "required": false,
+            "schema": {
+              "default": "2026-06-05",
+              "maxLength": 16,
+              "title": "Signal Trade Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "strategy_key",
+            "required": false,
+            "schema": {
+              "default": "first_board",
+              "maxLength": 80,
+              "title": "Strategy Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Admin-Token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Admin-Token"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Low Buy Lifecycle Smoke Fixture",
         "tags": [
           "screeners"
         ]

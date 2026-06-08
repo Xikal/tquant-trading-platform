@@ -5,7 +5,13 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.routes.paper_serializers import account_out, position_out, positions_response
+from app.api.routes.paper_serializers import (
+    account_out,
+    account_out_with_positions_overlay,
+    paper_position_live_overlays,
+    position_out,
+    positions_response,
+)
 from app.api.routes.paper_shared import market_data
 from app.core.admin_auth import require_admin_auth
 from app.core.config import get_settings
@@ -43,7 +49,9 @@ def get_paper_account(
     service.update_market_value(account.id)
     db.commit()
     db.refresh(account)
-    return account_out(account, db=db)
+    rows = PaperPositionService(db).get_positions(account.id)
+    overlays = paper_position_live_overlays(rows, market_data=market_data)
+    return account_out_with_positions_overlay(account, rows, overlays, db=db)
 
 
 @router.post("/account", response_model=PaperAccountOut)
@@ -122,12 +130,8 @@ def list_paper_positions(
 ) -> PaperPositionsResponse:
     account = PaperAccountService(db).get_or_create_default(current_user.id)
     rows = PaperPositionService(db).get_positions(account.id)
-    items = [position_out(row, db=db) for row in rows]
-    return PaperPositionsResponse(
-        positions=items,
-        total_market_value=round(sum(item.market_value for item in items), 2),
-        total_unrealized_pnl=round(sum(item.unrealized_pnl for item in items), 2),
-    )
+    overlays = paper_position_live_overlays(rows, market_data=market_data)
+    return positions_response(rows, db=db, quote_overlays=overlays)
 
 
 @router.get("/positions/{symbol}", response_model=PaperPositionOut)
@@ -140,7 +144,8 @@ def get_paper_position(
     row = PaperPositionService(db).get_position(account.id, symbol)
     if row is None:
         raise HTTPException(status_code=404, detail="模拟持仓不存在")
-    return position_out(row, db=db)
+    overlays = paper_position_live_overlays([row], market_data=market_data)
+    return position_out(row, db=db, quote_overlay=overlays.get(str(row.symbol or "")))
 
 
 @router.post("/positions/refresh", response_model=PaperPositionsResponse)

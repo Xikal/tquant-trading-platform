@@ -9,8 +9,15 @@ test("monitor readiness keeps production board order and local watchlist edits n
 
   await page.goto("/next/monitor");
   const rows = page.getByTestId("monitor-priority-order-table").locator(".monitor-rank-row");
+  await expect(page.getByText("市场修复但仍需确认").first()).toBeVisible();
+  await expect(page.getByText("小仓试错").first()).toBeVisible();
   await expect(rows.nth(0)).toContainText("000001");
   await expect(rows.nth(1)).toContainText("600000");
+  await expect(rows.nth(0)).toContainText("建议买入区间");
+  await expect(rows.nth(0)).toContainText("11.8-12.1");
+  await expect(rows.nth(0)).toContainText("买入信号");
+  await expect(rows.nth(0)).toContainText("接近买点，等待承接确认");
+  await expect(rows.nth(0).getByRole("button", { name: /详情/ })).toBeVisible();
 
   await page.getByRole("button", { name: "前排加权" }).click();
   await expect(page.getByText("浦发银行").first()).toBeVisible();

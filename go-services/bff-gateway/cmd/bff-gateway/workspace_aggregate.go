@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const schemaVersion = "v15"
+const schemaVersion = "v16"
 
 type aggregateResult struct {
 	status      int

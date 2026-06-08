@@ -295,10 +295,12 @@ function PaperPositionGrid(props: { positions: Record<string, unknown>[]; isPend
   );
 }
 
-function PaperPositionCard(props: { item: Record<string, unknown>; onOpenOrder: () => void }) {
+export function PaperPositionCard(props: { item: Record<string, unknown>; onOpenOrder: () => void }) {
   const item = () => props.item;
   const pnl = () => item().unrealized_pnl_pct ?? item().pnl_pct ?? item().pnl ?? item().unrealized_pnl;
   const tone = () => positionTone(pnl());
+  const quoteQuality = () => text(item().quote_data_quality_text ?? item().data_quality_text, "持仓快照价");
+  const quoteMeta = () => quoteUpdatedText(item());
   return (
     <article class={`paper-console-position paper-console-position--${tone()}`}>
       <div class="paper-console-position__head">
@@ -307,6 +309,10 @@ function PaperPositionCard(props: { item: Record<string, unknown>; onOpenOrder: 
           <span>{text(item().symbol ?? item().code)}</span>
         </div>
         <strong>{signedPercentText(pnl())}</strong>
+      </div>
+      <div class={`paper-console-position__quote-state paper-console-position__quote-state--${quoteTone(item())}`}>
+        <span>{quoteQuality()}</span>
+        <strong>{quoteMeta()}</strong>
       </div>
       <div class="paper-console-position__qty">
         <div>
@@ -326,6 +332,12 @@ function PaperPositionCard(props: { item: Record<string, unknown>; onOpenOrder: 
         <div>
           <span>最新</span>
           <strong>{decimalText(item().latest_price ?? item().last_price ?? item().current)}</strong>
+        </div>
+        <div>
+          <span>今日</span>
+          <strong class={positionTone(item().day_change_pct) === "positive" ? "paper-text-red" : positionTone(item().day_change_pct) === "negative" ? "paper-text-green" : ""}>
+            {signedPercentText(item().day_change_pct)}
+          </strong>
         </div>
       </div>
       <div class="paper-console-position__actions" aria-label={`${text(item().symbol ?? item().code)} 操作`}>
@@ -379,6 +391,20 @@ function positionTone(value: unknown): "positive" | "negative" | "neutral" {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed === 0) return "neutral";
   return parsed > 0 ? "positive" : "negative";
+}
+
+function quoteTone(item: Record<string, unknown>): "fresh" | "stale" | "snapshot" {
+  const quality = String(item.quote_data_quality ?? item.data_quality ?? "").toLowerCase();
+  if (quality === "fresh" || quality === "ok") return "fresh";
+  if (quality === "snapshot" || quality === "unavailable" || item.quote_is_stale === undefined) return "snapshot";
+  return "stale";
+}
+
+function quoteUpdatedText(item: Record<string, unknown>): string {
+  const timestamp = text(item.quote_timestamp ?? item.updated_at, "");
+  if (!timestamp) return text(item.quote_source, "未返回时间");
+  const compact = timestamp.replace("T", " ").replace("Z", "").slice(0, 19);
+  return compact || text(item.quote_source, "未返回时间");
 }
 
 function ActivityIcon() {

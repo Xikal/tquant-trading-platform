@@ -31,6 +31,7 @@ from app.models.entities import (
     RiskEvent,
     User,
 )
+from app.services.bff.paper_workspace import build_paper_workspace
 
 
 class PaperRouteTests(unittest.TestCase):
@@ -105,7 +106,8 @@ class PaperRouteTests(unittest.TestCase):
         buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=100, current_price=4.0)
         self.assertEqual(buy.status_code, 200)
 
-        account = self.client.get("/api/paper/account", headers=headers)
+        with patch("app.api.routes.paper_account.market_data.get_quotes_batch", return_value={}):
+            account = self.client.get("/api/paper/account", headers=headers)
         self.assertEqual(account.status_code, 200)
         body = account.json()
         expected_market_value = round(float(buy.json()["avg_fill_price"]) * 100, 2)
@@ -337,6 +339,74 @@ class PaperRouteTests(unittest.TestCase):
             self.assertEqual(len(trade_count), 1)
             self.assertEqual(lot.quantity, 200)
             self.assertEqual(lot.remaining, 200)
+
+    def test_positions_read_path_overlays_live_quote_without_persisting(self) -> None:
+        headers = self._register("paper_position_live_overlay")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=200, current_price=4.0)
+        self.assertEqual(buy.status_code, 200)
+
+        quote = SimpleNamespace(
+            last_price=4.25,
+            timestamp="2026-06-08 14:56:00",
+            data_quality="fresh",
+            source_quality="fresh",
+            data_source="unit_quote_cache",
+            is_stale=False,
+            change_pct=1.23,
+            prev_close=4.2,
+        )
+        with patch("app.api.routes.paper_account.market_data.get_quotes_batch", return_value={"510300": quote}) as batch:
+            positions = self.client.get("/api/paper/positions", headers=headers)
+
+        self.assertEqual(positions.status_code, 200)
+        batch.assert_called_once()
+        item = positions.json()["positions"][0]
+        self.assertEqual(item["latest_price"], 4.25)
+        self.assertEqual(item["market_value"], 850.0)
+        expected_unrealized = round((4.25 - item["cost_basis"]) * 200, 2)
+        expected_unrealized_pct = expected_unrealized / (item["cost_basis"] * 200) * 100
+        self.assertEqual(item["unrealized_pnl"], expected_unrealized)
+        self.assertAlmostEqual(item["unrealized_pnl_pct"], expected_unrealized_pct, places=4)
+        self.assertEqual(item["quote_data_quality"], "fresh")
+        self.assertEqual(item["quote_data_quality_text"], "实时行情已叠加")
+        self.assertEqual(item["quote_timestamp"], "2026-06-08 14:56:00")
+        self.assertFalse(item["quote_is_stale"])
+        self.assertEqual(positions.json()["total_market_value"], 850.0)
+
+        with self.Session() as db:
+            persisted = db.execute(select(PaperPosition)).scalar_one()
+            self.assertNotEqual(float(persisted.latest_price), 4.25)
+
+    def test_paper_workspace_builder_overlays_live_quote_without_persisting(self) -> None:
+        headers = self._register("paper_workspace_live_overlay")
+        buy = self._paper_order(headers, symbol="510300", name="沪深300ETF", quantity=200, current_price=4.0)
+        self.assertEqual(buy.status_code, 200)
+
+        quote = SimpleNamespace(
+            last_price=4.3,
+            timestamp="2026-06-08 14:58:00",
+            data_quality="fresh",
+            source_quality="fresh",
+            data_source="unit_quote_cache",
+            is_stale=False,
+            change_pct=2.14,
+            prev_close=4.21,
+        )
+        with self.Session() as db:
+            user = db.execute(select(User).where(User.username == "paper_workspace_live_overlay")).scalar_one()
+            with patch("app.services.bff.paper_workspace.market_data.get_quotes_batch", return_value={"510300": quote}) as batch:
+                payload = build_paper_workspace(db, current_user=user, order_limit=5, trade_limit=5, run_limit=5)
+            persisted = db.execute(select(PaperPosition)).scalar_one()
+
+        batch.assert_called()
+        self.assertIsNotNone(payload.account)
+        self.assertEqual(len(payload.positions), 1)
+        self.assertEqual(payload.positions[0].latest_price, 4.3)
+        self.assertEqual(payload.positions[0].quote_data_quality_text, "实时行情已叠加")
+        self.assertEqual(payload.positions[0].day_change_pct, 2.14)
+        self.assertEqual(payload.positions[0].market_value, 860.0)
+        self.assertEqual(payload.account.market_value, 860.0)
+        self.assertNotEqual(float(persisted.latest_price), 4.3)
 
     def test_etf_round_trip_closes_position_and_records_sell_trade(self) -> None:
         headers = self._register("paper_round_trip")

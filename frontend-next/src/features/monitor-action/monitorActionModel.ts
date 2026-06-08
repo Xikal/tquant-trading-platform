@@ -20,16 +20,32 @@ export interface MonitorPriorityItem {
   summary: string;
   position: string;
   keyLevel: string;
+  entryRange: string;
+  signal: string;
+  stopLoss: string;
+  detailLines: string[];
   badges: string[];
+}
+
+export interface MonitorMarketStatus {
+  badge: string;
+  primary: string;
+  secondary: string;
+  hint: string;
+  dataState: string;
+  tone: "green" | "red" | "amber";
 }
 
 export interface MonitorActionModel {
   root: Record<string, unknown>;
   snapshot: Record<string, unknown>;
   board: Record<string, unknown>;
+  pulse: Record<string, unknown>;
+  breadth: Record<string, unknown>;
   priorityItems: MonitorPriorityItem[];
   watchItems: MonitorPriorityItem[];
   positions: Record<string, unknown>[];
+  marketStatus: MonitorMarketStatus;
   selected: () => MonitorPriorityItem | undefined;
   metrics: { label: string; value: string; tone?: "neutral" | "up" | "down" | "warn" }[];
   laneOptions: { value: MonitorLane; label: string; disabled?: boolean }[];
@@ -46,6 +62,8 @@ export function createMonitorActionModel(data: unknown, selectedSymbol: () => st
   const root = readRecord(data);
   const snapshot = readRecord(root.monitor_snapshot);
   const board = readRecord(snapshot.priority_board ?? root.priority_board);
+  const pulse = readRecord(root.market_pulse ?? snapshot.market_pulse);
+  const breadth = readRecord(root.market_breadth ?? snapshot.market_breadth);
   const priorityItems = priorityBoardRecords(board, root).map(priorityItem);
   const watchSource = readArray<Record<string, unknown>>(
     snapshot.watchlist_signals ?? root.watchlist_signals ?? root.watchlist ?? snapshot.watchlist,
@@ -64,9 +82,12 @@ export function createMonitorActionModel(data: unknown, selectedSymbol: () => st
     root,
     snapshot,
     board,
+    pulse,
+    breadth,
     priorityItems,
     watchItems,
     positions,
+    marketStatus: marketStatusFromPayload(board, pulse, breadth),
     selected,
     metrics: [
       { label: "立即处理", value: text(board.immediate_count ?? laneCount(priorityItems, "buy_now"), "0"), tone: "up" },
@@ -163,6 +184,36 @@ export const priorityColumns: ColumnDef<Record<string, unknown>>[] = [
   { header: "风险", cell: (ctx) => text(ctx.row.original.risk), enableSorting: false },
 ];
 
+export function marketStatusFromPayload(
+  board: Record<string, unknown>,
+  pulse: Record<string, unknown>,
+  breadth: Record<string, unknown> = {},
+): MonitorMarketStatus {
+  const pulseLevel = String(pickFirst(pulse, ["pulse_level", "level", "state"]) ?? "").toLowerCase();
+  const quality = String(pickFirst(pulse, ["data_quality"]) ?? pickFirst(board, ["data_quality"]) ?? "").toLowerCase();
+  const pulseText = text(pickFirst(pulse, ["pulse_text", "market_strength_text"]), "");
+  const suggestedAction = text(pickFirst(pulse, ["suggested_action", "action_text"]), "");
+  const boardState = text(pickFirst(board, ["market_state_category_text", "market_state_text"]), "");
+  const breadthState = text(pickFirst(breadth, ["state_text", "market_state_text"]), "");
+  const dataQualityText = text(
+    pickFirst(pulse, ["data_quality_text"]) ?? pickFirst(board, ["data_quality_text"]) ?? pickFirst(breadth, ["data_quality_text"]),
+    "后台刷新中",
+  );
+
+  const hasPulse = Boolean(pulseText || suggestedAction || pulseLevel);
+  const primary = pulseText || breadthState || text(pickFirst(board, ["market_state_text", "market_state_category_text"]), "未返回");
+  const secondary = suggestedAction || text(pickFirst(board, ["directional_bias_text", "market_direction_text"]), "");
+  const badge = statusBadgeText({ hasPulse, pulseLevel, quality, boardState, dataQualityText });
+  return {
+    badge,
+    primary,
+    secondary,
+    hint: secondary || (hasPulse ? dataQualityText : "等待后端市场状态"),
+    dataState: dataQualityText,
+    tone: statusTone(pulseLevel, quality, primary, boardState),
+  };
+}
+
 export function keyLevelRows(levels: Record<string, unknown>, selected?: MonitorPriorityItem): Record<string, unknown>[] {
   const direct = readArray<Record<string, unknown>>(levels.items ?? levels.levels ?? levels.key_levels);
   if (direct.length) return direct;
@@ -187,7 +238,13 @@ export function marketGateTone(value: unknown): "neutral" | "up" | "down" | "war
 function priorityItem(item: Record<string, unknown>, index: number): MonitorPriorityItem {
   const action = text(pickFirst(item, ["buy_signal_text", "next_action_text", "signal_state", "action_text", "action"]), "观察");
   const risk = text(pickFirst(item, ["risk_text", "risk_tier", "data_quality_text", "blocked_reason", "exclusion_reason", "risk_level"]), "");
+  const entryRange = entryRangeText(item);
+  const signal = text(pickFirst(item, ["buy_signal_text", "next_action_text", "buy_signal_hint", "trigger_condition"]), action);
+  const stopLoss = numberText(pickFirst(item, ["stop_loss", "stop_loss_price", "risk_price"]), "--");
   const lane = classifyLane(action, risk, item);
+  const position = text(pickFirst(item, ["suggested_position_text", "position_breakdown_text", "position_text"]), "");
+  const keyLevel = text(pickFirst(item, ["key_level_text", "support_pressure_text", "entry_level_text"]), "");
+  const summary = text(pickFirst(item, ["plain_language_summary", "reason", "action_summary", "strategy_notes"]), "");
   return {
     raw: item,
     order: index,
@@ -203,9 +260,19 @@ function priorityItem(item: Record<string, unknown>, index: number): MonitorPrio
     score: text(pickFirst(item, ["production_score", "score", "priority_score"]), "--"),
     action,
     risk,
-    summary: text(pickFirst(item, ["plain_language_summary", "reason", "action_summary", "strategy_notes"]), ""),
-    position: text(pickFirst(item, ["suggested_position_text", "position_breakdown_text", "position_text"]), ""),
-    keyLevel: text(pickFirst(item, ["key_level_text", "support_pressure_text", "entry_level_text"]), ""),
+    summary,
+    position,
+    keyLevel,
+    entryRange,
+    signal,
+    stopLoss,
+    detailLines: [
+      summary,
+      keyLevel,
+      text(pickFirst(item, ["trigger_condition"]), ""),
+      text(pickFirst(item, ["invalid_condition"]), ""),
+      text(pickFirst(item, ["execution_quality_text", "strategy_performance_text", "leader_strength_text"]), ""),
+    ].filter(Boolean).slice(0, 4),
     badges: readArray<string>(item.warning_tags ?? item.tags ?? item.badges).slice(0, 5),
   };
 }
@@ -237,4 +304,47 @@ function priorityStockCard(item: MonitorPriorityItem): StockCardItem {
     details: [item.summary, item.position, item.keyLevel].filter(Boolean).join(" · "),
     badges: item.badges,
   };
+}
+
+function entryRangeText(item: Record<string, unknown>): string {
+  const low = pickFirst(item, ["entry_zone_low", "entry_plan_low", "buy_zone_low", "support_price", "buy_price"]);
+  const high = pickFirst(item, ["entry_zone_high", "entry_plan_high", "buy_zone_high", "pressure_price"]);
+  const lowText = numberText(low, "");
+  const highText = numberText(high, "");
+  if (lowText && highText) return `${lowText}-${highText}`;
+  return lowText || highText || "--";
+}
+
+function statusBadgeText(options: {
+  hasPulse: boolean;
+  pulseLevel: string;
+  quality: string;
+  boardState: string;
+  dataQualityText: string;
+}): string {
+  if (!options.hasPulse) return options.boardState || "等待数据";
+  if (options.quality === "unavailable") return "数据不足";
+  if (options.quality === "partial") return "部分可用";
+  if (options.quality === "stale") return "缓存刷新";
+  const labels: Record<string, string> = {
+    strong: "偏强",
+    repair: "修复",
+    neutral: "中性",
+    defensive: "防守",
+    weak: "偏弱",
+    unavailable: "数据不足",
+  };
+  return labels[options.pulseLevel] || options.dataQualityText || "市场状态";
+}
+
+function statusTone(
+  pulseLevel: string,
+  quality: string,
+  primary: string,
+  boardState: string,
+): "green" | "red" | "amber" {
+  const raw = `${pulseLevel} ${quality} ${primary} ${boardState}`;
+  if (raw.includes("weak") || raw.includes("defensive") || raw.includes("偏弱") || raw.includes("转弱") || raw.includes("风险")) return "red";
+  if (raw.includes("strong") || raw.includes("repair") || raw.includes("偏强") || raw.includes("修复")) return "green";
+  return "amber";
 }

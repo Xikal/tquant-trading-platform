@@ -3,8 +3,14 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.routes.paper_serializers import account_out, order_out, position_out, trade_out
-from app.api.routes.paper_shared import agent_run_out, auto_trading_account_context
+from app.api.routes.paper_serializers import (
+    account_out_with_positions_overlay,
+    order_out,
+    paper_position_live_overlays,
+    position_out,
+    trade_out,
+)
+from app.api.routes.paper_shared import agent_run_out, auto_trading_account_context, market_data
 from app.core.config import get_settings
 from app.core.timezone import beijing_now_string
 from app.models.entities import PaperAgentRun, PaperTrade, User
@@ -64,13 +70,17 @@ def _account(db: Session, current_user: User):
     service.update_market_value(account.id)
     db.commit()
     db.refresh(account)
-    return account_out(account, db=db)
+    rows = PaperPositionService(db).get_positions(account.id)
+    overlays = paper_position_live_overlays(rows, market_data=market_data)
+    return account_out_with_positions_overlay(account, rows, overlays, db=db)
 
 
 def _positions(db: Session, account_id: int | None):
     if account_id is None:
         return []
-    return [position_out(row, db=db) for row in PaperPositionService(db).get_positions(account_id)]
+    rows = PaperPositionService(db).get_positions(account_id)
+    overlays = paper_position_live_overlays(rows, market_data=market_data)
+    return [position_out(row, db=db, quote_overlay=overlays.get(str(row.symbol or ""))) for row in rows]
 
 
 def _orders(db: Session, account_id: int | None, limit: int):

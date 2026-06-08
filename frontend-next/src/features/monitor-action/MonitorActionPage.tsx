@@ -66,10 +66,10 @@ export function MonitorActionPage() {
         const buyCount = createMemo(() => countLane(model.priorityItems, "buy_now"));
         const observeCount = createMemo(() => countLane(model.priorityItems, "observe"));
         const riskCount = createMemo(() => countLane(model.priorityItems, "risk"));
-        const marketState = createMemo(() => compactState(text(model.board.market_state_category_text ?? model.board.market_state_text, "--")));
-        const marketRead = createMemo(() => compactMarketRead(text(model.board.market_state_text ?? model.board.market_state_category_text, "--")));
+        const marketState = createMemo(() => compactState(model.marketStatus.badge));
+        const marketRead = createMemo(() => compactMarketRead(model.marketStatus.primary));
         const direction = createMemo(() => text(model.board.directional_bias_text ?? model.board.market_direction_text, "未返回"));
-        const dataState = createMemo(() => text(model.board.data_quality_text ?? model.dataQuality.status, "后台刷新中"));
+        const dataState = createMemo(() => model.marketStatus.dataState || text(model.board.data_quality_text ?? model.dataQuality.status, "后台刷新中"));
         const portfolioRisk = createMemo(() => text(nested(model.board, "portfolio_risk.risk_level"), "未返回"));
 
         return (
@@ -106,10 +106,10 @@ export function MonitorActionPage() {
                   <MetricTile
                     label="大盘量化状态"
                     badge={marketState()}
-                    badgeTone="amber"
+                    badgeTone={model.marketStatus.tone}
                     primary={marketRead()}
-                    secondary=""
-                    hint={marketRead() === "未返回" ? "等待后端市场状态" : "按后端市场状态控制试错仓位"}
+                    secondary={compactMarketRead(model.marketStatus.secondary)}
+                    hint={model.marketStatus.hint}
                     tone="amber"
                   />
                 </div>
@@ -127,7 +127,7 @@ export function MonitorActionPage() {
 
                   <div class="monitor-info-grid monitor-info-grid--five">
                     <InfoTile label="发布日方向" value={direction()} strong />
-                    <InfoTile label="市场状态" value={marketState()} tone="amber" title={marketRead()} />
+                    <InfoTile label="市场状态" value={marketState()} tone={model.marketStatus.tone === "green" ? "green" : "amber"} title={model.marketStatus.primary} />
                     <InfoTile label="热点板块" value={hotIndustries().join(" / ") || "暂无"} title={hotIndustries().join(" / ")} />
                     <InfoTile label="宽度情绪" value={text(model.board.breadth_text ?? model.board.market_breadth_text, "--")} tone="green" />
                     <InfoTile label="组合风险" value={portfolioRisk()} tone="green" />
@@ -199,16 +199,32 @@ export function MonitorActionPage() {
                     <Show when={visibleItems().length > 0} fallback={<EmptyLine text="暂无生产候选。" />}>
                       <For each={visibleItems()}>
                         {(item) => (
-                          <button type="button" class="monitor-rank-row" data-symbol={item.symbol} onClick={() => selectSymbol(item.symbol)}>
-                            <span class="monitor-rank-row__order">{String(item.order + 1).padStart(2, "0")}</span>
-                            <span class="monitor-rank-row__name">
-                              <strong>{item.name || item.symbol}</strong>
-                              <small>#{item.symbol}</small>
-                            </span>
-                            <span class="monitor-rank-row__strategy">{item.strategy}</span>
-                            <span class="monitor-rank-row__score">分:{item.score}</span>
-                            <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>
-                          </button>
+                          <article class="monitor-rank-row" data-symbol={item.symbol}>
+                            <button type="button" class="monitor-rank-row__main" onClick={() => selectSymbol(item.symbol)}>
+                              <span class="monitor-rank-row__order">{String(item.order + 1).padStart(2, "0")}</span>
+                              <span class="monitor-rank-row__name">
+                                <strong>{item.name || item.symbol}</strong>
+                                <small>#{item.symbol}</small>
+                              </span>
+                              <span class="monitor-rank-row__strategy">{item.strategy}</span>
+                              <span class="monitor-rank-row__score">分:{item.score}</span>
+                              <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>
+                            </button>
+                            <div class="monitor-rank-row__facts">
+                              <Fact label="现价" value={item.price} />
+                              <Fact label="建议买入区间" value={item.entryRange} />
+                              <Fact label="买入信号" value={item.signal} strong />
+                              <Fact label="止损" value={item.stopLoss} />
+                              <Fact label="仓位" value={item.position || "--"} />
+                            </div>
+                            <div class="monitor-rank-row__detail">
+                              <span>{item.detailLines[0] || item.summary || item.keyLevel || "后端未返回更多说明"}</span>
+                              <button type="button" class="monitor-detail-btn" onClick={() => openAnalysis(item.symbol)}>
+                                详情
+                                <MonitorIcon name="chevron" />
+                              </button>
+                            </div>
+                          </article>
                         )}
                       </For>
                     </Show>
@@ -377,6 +393,15 @@ function WarningBox(props: { tone: "red" | "amber"; icon: MonitorIconName; title
         <span>{props.body}</span>
       </div>
     </article>
+  );
+}
+
+function Fact(props: { label: string; value: string; strong?: boolean }) {
+  return (
+    <span class={`monitor-rank-fact${props.strong ? " monitor-rank-fact--strong" : ""}`}>
+      <small>{props.label}</small>
+      <strong>{props.value || "--"}</strong>
+    </span>
   );
 }
 

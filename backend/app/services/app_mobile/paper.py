@@ -3,8 +3,14 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.routes.paper_serializers import account_out, order_out, position_out, trade_out
-from app.api.routes.paper_shared import auto_trading_account_context, agent_run_out
+from app.api.routes.paper_serializers import (
+    account_out_with_positions_overlay,
+    order_out,
+    paper_position_live_overlays,
+    position_out,
+    trade_out,
+)
+from app.api.routes.paper_shared import agent_run_out, auto_trading_account_context, market_data
 from app.core.config import get_settings
 from app.models.entities import PaperAgentRun, PaperTrade
 from app.models.schema_defs.paper import (
@@ -34,6 +40,7 @@ class AppMobilePaperMixin:
 
         position_service = PaperPositionService(db)
         position_rows = position_service.get_positions(account.id)
+        position_overlays = paper_position_live_overlays(position_rows, market_data=market_data)
         order_rows = PaperOrderService(db).get_orders(account_id=account.id, limit=80)
         trade_rows = (
             db.execute(
@@ -50,8 +57,11 @@ class AppMobilePaperMixin:
         risk_events = PaperRiskCircuitBreaker(db).list_open_events(account.id, limit=8)
 
         return {
-            "account": account_out(account, db=db),
-            "positions": [position_out(row, db=db) for row in position_rows],
+            "account": account_out_with_positions_overlay(account, position_rows, position_overlays, db=db),
+            "positions": [
+                position_out(row, db=db, quote_overlay=position_overlays.get(str(row.symbol or "")))
+                for row in position_rows
+            ],
             "orders": [order_out(row) for row in order_rows],
             "trades": [trade_out(row) for row in trade_rows],
             "performance": PaperPerformanceOut(**performance_service.compute_overall(account.id)),

@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/test-cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cleanup Test Users */
+        post: operations["cleanup_test_users_api_admin_users_test_cleanup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/whitelist": {
         parameters: {
             query?: never;
@@ -3924,6 +3941,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/screeners/low-buy/lifecycle/smoke-fixture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Low Buy Lifecycle Smoke Fixture */
+        post: operations["create_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/screeners/low-buy/lifecycle/smoke-fixture/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Low Buy Lifecycle Smoke Fixture */
+        delete: operations["delete_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture__symbol__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/screeners/low-buy/lifecycle/{symbol}": {
         parameters: {
             query?: never;
@@ -5053,6 +5104,36 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminTestUserCleanupRequest */
+        AdminTestUserCleanupRequest: {
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run: boolean;
+            /** Prefixes */
+            prefixes?: string[];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
+        /** AdminTestUserCleanupResponse */
+        AdminTestUserCleanupResponse: {
+            /** Deleted Counts */
+            deleted_counts?: {
+                [key: string]: number;
+            };
+            /** Dry Run */
+            dry_run: boolean;
+            /** Matched Accounts */
+            matched_accounts: number;
+            /** Matched Users */
+            matched_users: number;
+            /** Ok */
+            ok: boolean;
+        };
         /** AdminUserOut */
         AdminUserOut: {
             /**
@@ -12028,6 +12109,34 @@ export interface components {
             /** Tags */
             tags?: string[];
         };
+        /** LowBuyLifecycleSmokeFixtureRequest */
+        LowBuyLifecycleSmokeFixtureRequest: {
+            /**
+             * Name
+             * @default 平安银行
+             */
+            name: string;
+            /**
+             * Reason
+             * @default frontend-next rollback smoke
+             */
+            reason: string;
+            /**
+             * Signal Trade Date
+             * @default 2026-06-05
+             */
+            signal_trade_date: string;
+            /**
+             * Strategy Key
+             * @default first_board
+             */
+            strategy_key: string;
+            /**
+             * Symbol
+             * @default 000001
+             */
+            symbol: string;
+        };
         /** LowBuyNextDayEventPlanOut */
         LowBuyNextDayEventPlanOut: {
             /** Confirmation Rules */
@@ -14497,6 +14606,8 @@ export interface components {
             available_quantity: number;
             /** Cost Basis */
             cost_basis: number;
+            /** Day Change Pct */
+            day_change_pct?: number | null;
             /** Exit Model Shadow */
             exit_model_shadow?: {
                 [key: string]: unknown;
@@ -14533,8 +14644,35 @@ export interface components {
              * Format: date-time
              */
             opened_at: string;
+            /** Prev Close */
+            prev_close?: number | null;
             /** Quantity */
             quantity: number;
+            /**
+             * Quote Data Quality
+             * @default snapshot
+             */
+            quote_data_quality: string;
+            /**
+             * Quote Data Quality Text
+             * @default 持仓快照价
+             */
+            quote_data_quality_text: string;
+            /**
+             * Quote Is Stale
+             * @default true
+             */
+            quote_is_stale: boolean;
+            /**
+             * Quote Source
+             * @default paper_position_snapshot
+             */
+            quote_source: string;
+            /**
+             * Quote Timestamp
+             * @default
+             */
+            quote_timestamp: string;
             /**
              * Smart Exit Action
              * @default hold
@@ -19832,6 +19970,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminUsersResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cleanup_test_users_api_admin_users_test_cleanup_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTestUserCleanupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTestUserCleanupResponse"];
                 };
             };
             /** @description Validation Error */
@@ -27262,6 +27436,79 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LowBuyLifecycleSmokeFixtureRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_low_buy_lifecycle_smoke_fixture_api_screeners_low_buy_lifecycle_smoke_fixture__symbol__delete: {
+        parameters: {
+            query?: {
+                signal_trade_date?: string;
+                strategy_key?: string;
+            };
+            header?: {
+                "X-Admin-Token"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                symbol: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

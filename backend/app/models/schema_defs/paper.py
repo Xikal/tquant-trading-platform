@@ -42,6 +42,13 @@ class PaperPositionOut(BaseModel):
     frozen_quantity: int = 0
     cost_basis: float
     latest_price: Optional[float] = None
+    quote_timestamp: str = ""
+    quote_data_quality: str = "snapshot"
+    quote_data_quality_text: str = "持仓快照价"
+    quote_source: str = "paper_position_snapshot"
+    quote_is_stale: bool = True
+    day_change_pct: float | None = None
+    prev_close: float | None = None
     market_value: float = 0.0
     unrealized_pnl: float = 0.0
     unrealized_pnl_pct: float = 0.0
