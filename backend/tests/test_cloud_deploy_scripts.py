@@ -596,6 +596,12 @@ def test_verify_remote_is_scope_aware_for_separated_topology() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
 
     verify_function = deploy_script.split("verify_deploy_scope_remote() {", 1)[1].split("verify_go_remote() {", 1)[0]
+    verify_frontend = deploy_script.split("verify_frontend_next_remote() {", 1)[1].split(
+        "verify_backend_api_remote() {", 1
+    )[0]
+    verify_backend = deploy_script.split("verify_backend_api_remote() {", 1)[1].split(
+        "verify_worker_remote() {", 1
+    )[0]
     assert "verify_frontend_next_remote" in verify_function
     assert "verify_backend_api_remote" in verify_function
     assert "verify_worker_remote" in verify_function
@@ -606,6 +612,10 @@ def test_verify_remote_is_scope_aware_for_separated_topology() -> None:
     assert 'BACKEND_API_PORT="$BACKEND_API_PORT"' in deploy_script
     assert "tquant-frontend-web health" in deploy_script
     assert "tquant-backend-api health" in deploy_script
+    assert "for _ in $(seq 1 30)" in verify_frontend
+    assert "for _ in $(seq 1 30)" in verify_backend
+    assert "sleep 2" in verify_frontend
+    assert "sleep 2" in verify_backend
 
 
 def test_deploy_scope_helper_recognizes_frontend_next_and_blocks_strategy_policy() -> None:

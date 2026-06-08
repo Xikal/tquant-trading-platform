@@ -1617,8 +1617,13 @@ set -euo pipefail
 cd "$CLOUD_PROJECT_DIR"
 test -f frontend-next/dist/index.html
 if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker inspect tquant-frontend-web >/dev/null 2>&1; then
-  STATUS=$(sudo docker inspect tquant-frontend-web --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
-  echo "tquant-frontend-web health:$STATUS"
+  STATUS=starting
+  for _ in $(seq 1 30); do
+    STATUS=$(sudo docker inspect tquant-frontend-web --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+    echo "tquant-frontend-web health:$STATUS"
+    case "$STATUS" in healthy|running) break ;; esac
+    sleep 2
+  done
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
   sudo docker exec tquant-frontend-web wget -qO- http://127.0.0.1/ >/tmp/frontend_next_home.html
   sudo docker exec tquant-frontend-web wget -qO- http://127.0.0.1/next/ >/tmp/frontend_next_route.html
@@ -1635,8 +1640,13 @@ verify_backend_api_remote() {
   cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" BACKEND_API_PORT="$BACKEND_API_PORT" DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" bash -s <<'REMOTE'
 set -euo pipefail
 if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker inspect tquant-backend-api >/dev/null 2>&1; then
-  STATUS=$(sudo docker inspect tquant-backend-api --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
-  echo "tquant-backend-api health:$STATUS"
+  STATUS=starting
+  for _ in $(seq 1 30); do
+    STATUS=$(sudo docker inspect tquant-backend-api --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+    echo "tquant-backend-api health:$STATUS"
+    case "$STATUS" in healthy|running) break ;; esac
+    sleep 2
+  done
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
   curl -sS -f --max-time 10 "http://127.0.0.1:${BACKEND_API_PORT:-18091}/readyz" >/tmp/gupiao_readyz.json
 else
