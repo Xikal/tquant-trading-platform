@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,8 @@ from app.services.monitor_snapshot_cache import (
 )
 from app.services.performance.read_model_metrics import record_read_model_cache_hit, record_read_model_cache_miss
 from app.services.user_sector_preferences import UserSectorPreferenceService, filter_monitor_snapshot_payload
+
+logger = logging.getLogger(__name__)
 
 
 def build_monitor_snapshot(
@@ -60,11 +63,39 @@ def build_monitor_snapshot(
             rows,
             reason="监控数据刷新任务已排队，先按观望处理。",
         ),
-        priority_board=_empty_priority_board(
+        priority_board=_fallback_priority_board_from_read_model(
+            db,
+            priority_limit=priority_limit,
+        )
+        or _empty_priority_board(
             warning="监控榜单刷新任务已排队，稍后会自动更新。",
         ),
         sector_etf_t0=_empty_sector_etf_t0(),
     )
+
+
+def _fallback_priority_board_from_read_model(db: Session, *, priority_limit: int) -> dict[str, Any] | None:
+    try:
+        from app.services.low_buy_screener import LowBuyScreenerService
+        from app.services.read_models.live_quote_overlay import apply_priority_board_live_overlay
+
+        board = LowBuyScreenerService().priority_board(
+            db=db,
+            limit=priority_limit,
+            refresh_mode="cache",
+            strategy_variant="baseline",
+        )
+        board = apply_priority_board_live_overlay(board)
+        payload = board.model_dump(mode="json")
+        if payload.get("items"):
+            return payload
+    except Exception as exc:  # pragma: no cover - defensive fallback path
+        logger.warning(
+            "monitor priority board fallback unavailable priority_limit=%s",
+            priority_limit,
+            exc_info=(type(exc), exc, exc.__traceback__),
+        )
+    return None
 
 
 def _empty_priority_board(*, warning: str) -> dict[str, Any]:

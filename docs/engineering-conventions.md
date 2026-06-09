@@ -2,7 +2,7 @@
 
 状态：默认生效
 适用范围：后续所有文档、后端、前端、脚本、测试与生成产物
-最后核验日期：2026-05-31
+最后核验日期：2026-06-09
 
 ## 1. 生效规则
 
@@ -312,27 +312,28 @@ Runbook 使用 `docs/operations/<topic>-runbook.md`。
 3. 新前端默认以 Web 端为范围。移动端、原生端、移动 parity 不自动进入范围；若用户未重新授权，只做桌面 Web 和必要响应式可用性。
 4. `/next/*` 与默认入口切换必须分层处理。`/next/*` 阴影入口可先验收，`/` 和旧业务路由切到新前端必须有单独 cutover 授权、回滚开关和动态 chunk 缺失检查。
 5. 登录、鉴权和入口连通性要优先验收。发现登录后无法进入页面、URL policy 拦截、IP/域名 cookie 不一致、403 权限态或 SPA fallback 吞 API 404 时，先修入口与鉴权，再谈逐页功能验收。
-6. 不允许前端重算生产策略口径。`priority_board`、`production_score`、策略排序、信号状态、风险标签、交易日日期都以后端契约为准；前端只做展示层筛选、格式化和用户排序，且不能覆盖后端生产顺序。
-7. API 契约优先。新增或修改接口时先跑 `npm run api:check`，前端类型使用生成契约；禁止依赖临时字段、样例字段、shadow-only 字段或硬编码测试数据驱动生产展示。
-8. 交易日和数据 freshness 必须由后端状态或交易日契约驱动。不能用自然日误判“今日缺数据”；周末、节假日、收盘后发布延迟、stale cache、fallback cache 都必须显示明确状态和原因。
-9. 行情和实时页面必须有 query policy。涉及实时价格、模拟盘持仓价格、推荐榜单、K 线、市场状态、监控图的读取，必须明确 `staleTime`、`refetchInterval`、窗口聚焦刷新、错误态和刷新中状态。
-10. 输入态和结果态必须分离。搜索框、当前输入 symbol、已完成分析结果 symbol、图表 symbol、quote symbol 不得共用可变状态；用户修改输入框不能污染已完成结果。
-11. 图表时间和数据格式必须按图表库契约转换。分钟级 K 线必须转 Unix 秒，日线字符串保持 `YYYY-MM-DD`；图表验收必须检查 canvas 非空、关键颜色采样或截图，不接受“容器存在”作为通过。
-12. 空态、stale、fallback、权限不足和超时必须显式展示。BFF 主数据可用但 fallback 失败时，不得把整页报错；stale cache、fallback cache、source timeout 必须用状态说明区分，不能展示成新鲜数据。
-13. 写操作默认受保护。生产验收中的真实写入只能使用隔离数据，并完成 rollback、读回一致和 403 权限断言；不能为了验收留下测试脏数据。
-14. CSS 不得继续全局堆叠。全局只保留 tokens、reset 和必要 adapter；登录、模拟盘、策略跟踪、回测、监控、设置等页面样式必须路由级或组件级加载，避免 legacy workspace CSS 全量进入首屏。
-15. 大依赖必须懒加载或替换。ECharts、表格、虚拟列表、worker、图表库不得无故进入首屏 chunk；简单曲线优先轻量 SVG/Canvas；必须通过 chunk profile 验证。
-16. 虚拟列表不能在未 ready 时渲染全量数据。初始 fallback 只能渲染首屏有限数量或等待 virtualizer ready，避免 `/paper`、榜单和持仓列表 DOM 爆炸。
-17. 视觉回归要有页面级证据。复刻旧前端样式、机甲风格、卡片布局或关键页面 parity 时，先确认旧截图或 style spec，再用 Playwright screenshot/parity 检查；不要只靠主观“像”。
-18. Browser/Playwright 本地验收要考虑运行时 URL policy。插件无法访问 `127.0.0.1` 时，改用 Playwright、允许的 in-app browser 目标或线上 IP；不要把浏览器插件拦截误判为应用故障。
-19. 线上验收必须用用户指定入口。用户要求用 IP 验收时，不得改用域名；HEAD 返回 405 时，用 GET HTML、asset、API 和远端容器状态判断。
-20. 部署与验收结论必须区分本地修复和线上状态。本地修复未部署时，只能写“本地已修复，线上仍可能未包含”；不得把本地测试通过说成线上通过。
-21. 独立部署是默认方向。`frontend-next` only 改动应只部署前端静态资源或 `frontend-web`，不得重建后端、跑 migration、重启 MySQL 或 worker；部署脚本 auto scope 必须识别 `frontend-next/**`。
-22. 前后端分离后，`backend-api` 默认 `SERVE_FRONTEND_STATIC=false`。API-only readyz 不应依赖 frontend dist；`/api/*` 404 必须返回 JSON，不能被 SPA fallback 吞掉。
-23. 旧前端停用不等于资源明显释放。旧前端主要是静态文件；真正影响卡顿的通常是 BFF 冷读、worker、DB、swap、bundle 体积和 DOM 数量，必须用 `docker stats`、`free -m`、`vmstat`、接口耗时和浏览器性能证据定位。
-24. 中断部署和 hash chunk 缺失必须按事故处理。上线包必须原子替换、读回 `index.html` 与 assets、验证动态 import chunk 200；临时容器内补文件只能作为应急恢复，不能当正式部署完成。
-25. 验收门禁按风险分层。普通 `frontend-next` 改动至少跑 `npm run api:check`、`npm run typecheck`、`npm run lint`、`npm test -- --run`、`npm run build`；涉及性能、入口或切流时加 `npm run e2e`、chunk/css budget、Playwright 截图、线上只读 smoke。
-26. 最终交付必须写清楚证据。至少说明是否改旧前端、是否改后端、是否改 `strategy_policy.py`、是否部署或切流、哪些命令通过、哪些线上状态只是只读观察。
+6. 持久登录必须按 httpOnly refresh cookie 设计。后端不把 refresh token 暴露给 JS 时，前端不得用 `localStorage` 中是否存在 refresh token 作为续期前置条件；必须有 cookie-backed refresh session 标记、401 后静默 refresh、启动恢复、退出清理和老会话迁移兜底，并补覆盖“refresh token 为空但 cookie 可续期”的回归测试。
+7. 不允许前端重算生产策略口径。`priority_board`、`production_score`、策略排序、信号状态、风险标签、交易日日期都以后端契约为准；前端只做展示层筛选、格式化和用户排序，且不能覆盖后端生产顺序。
+8. API 契约优先。新增或修改接口时先跑 `npm run api:check`，前端类型使用生成契约；禁止依赖临时字段、样例字段、shadow-only 字段或硬编码测试数据驱动生产展示。
+9. 交易日和数据 freshness 必须由后端状态或交易日契约驱动。不能用自然日误判“今日缺数据”；周末、节假日、收盘后发布延迟、stale cache、fallback cache 都必须显示明确状态和原因。
+10. 行情和实时页面必须有 query policy。涉及实时价格、模拟盘持仓价格、推荐榜单、K 线、市场状态、监控图的读取，必须明确 `staleTime`、`refetchInterval`、窗口聚焦刷新、错误态和刷新中状态。
+11. 输入态和结果态必须分离。搜索框、当前输入 symbol、已完成分析结果 symbol、图表 symbol、quote symbol 不得共用可变状态；用户修改输入框不能污染已完成结果。
+12. 图表时间和数据格式必须按图表库契约转换。分钟级 K 线必须转 Unix 秒，日线字符串保持 `YYYY-MM-DD`；图表验收必须检查 canvas 非空、关键颜色采样或截图，不接受“容器存在”作为通过。
+13. 空态、stale、fallback、权限不足和超时必须显式展示。BFF 主数据可用但 fallback 失败时，不得把整页报错；stale cache、fallback cache、source timeout 必须用状态说明区分，不能展示成新鲜数据。
+14. 写操作默认受保护。生产验收中的真实写入只能使用隔离数据，并完成 rollback、读回一致和 403 权限断言；不能为了验收留下测试脏数据。
+15. CSS 不得继续全局堆叠。全局只保留 tokens、reset 和必要 adapter；登录、模拟盘、策略跟踪、回测、监控、设置等页面样式必须路由级或组件级加载，避免 legacy workspace CSS 全量进入首屏。
+16. 大依赖必须懒加载或替换。ECharts、表格、虚拟列表、worker、图表库不得无故进入首屏 chunk；简单曲线优先轻量 SVG/Canvas；必须通过 chunk profile 验证。
+17. 虚拟列表不能在未 ready 时渲染全量数据。初始 fallback 只能渲染首屏有限数量或等待 virtualizer ready，避免 `/paper`、榜单和持仓列表 DOM 爆炸。
+18. 视觉回归要有页面级证据。复刻旧前端样式、机甲风格、卡片布局或关键页面 parity 时，先确认旧截图或 style spec，再用 Playwright screenshot/parity 检查；不要只靠主观“像”。
+19. Browser/Playwright 本地验收要考虑运行时 URL policy。插件无法访问 `127.0.0.1` 时，改用 Playwright、允许的 in-app browser 目标或线上 IP；不要把浏览器插件拦截误判为应用故障。
+20. 线上验收必须用用户指定入口。用户要求用 IP 验收时，不得改用域名；HEAD 返回 405 时，用 GET HTML、asset、API 和远端容器状态判断。
+21. 部署与验收结论必须区分本地修复和线上状态。本地修复未部署时，只能写“本地已修复，线上仍可能未包含”；不得把本地测试通过说成线上通过。
+22. 独立部署是默认方向。`frontend-next` only 改动应只部署前端静态资源或 `frontend-web`，不得重建后端、跑 migration、重启 MySQL 或 worker；部署脚本 auto scope 必须识别 `frontend-next/**`。
+23. 前后端分离后，`backend-api` 默认 `SERVE_FRONTEND_STATIC=false`。API-only readyz 不应依赖 frontend dist；`/api/*` 404 必须返回 JSON，不能被 SPA fallback 吞掉。
+24. 旧前端停用不等于资源明显释放。旧前端主要是静态文件；真正影响卡顿的通常是 BFF 冷读、worker、DB、swap、bundle 体积和 DOM 数量，必须用 `docker stats`、`free -m`、`vmstat`、接口耗时和浏览器性能证据定位。
+25. 中断部署和 hash chunk 缺失必须按事故处理。上线包必须原子替换、读回 `index.html` 与 assets、验证动态 import chunk 200；临时容器内补文件只能作为应急恢复，不能当正式部署完成。
+26. 验收门禁按风险分层。普通 `frontend-next` 改动至少跑 `npm run api:check`、`npm run typecheck`、`npm run lint`、`npm test -- --run`、`npm run build`；涉及性能、入口或切流时加 `npm run e2e`、chunk/css budget、Playwright 截图、线上只读 smoke。
+27. 最终交付必须写清楚证据。至少说明是否改旧前端、是否改后端、是否改 `strategy_policy.py`、是否部署或切流、哪些命令通过、哪些线上状态只是只读观察。
 
 ## 7. 新功能落位规则
 

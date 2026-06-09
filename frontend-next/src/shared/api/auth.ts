@@ -13,6 +13,7 @@ import type {
 
 const ACCESS_TOKEN_KEY = "tquant:auth:access_token";
 const REFRESH_TOKEN_KEY = "tquant:auth:refresh_token";
+const REFRESH_SESSION_KEY = "tquant:auth:refresh_session";
 const ADMIN_TOKEN_KEY = "tquant:admin_api_token";
 
 let memoryAccessToken = "";
@@ -37,20 +38,39 @@ export function getAuthRefreshToken(): string {
   return localStorage.getItem(REFRESH_TOKEN_KEY) ?? sessionStorage.getItem(REFRESH_TOKEN_KEY) ?? "";
 }
 
+export function hasAuthRefreshSession(): boolean {
+  if (typeof localStorage === "undefined") return false;
+  return Boolean(
+    getAuthRefreshToken()
+    || localStorage.getItem(REFRESH_SESSION_KEY)
+    || sessionStorage.getItem(REFRESH_SESSION_KEY),
+  );
+}
+
+export function canAttemptAuthRefresh(): boolean {
+  return hasAuthRefreshSession() || Boolean(getAuthAccessToken());
+}
+
 export function currentRefreshTokenRemembered(): boolean {
   if (typeof localStorage === "undefined") return true;
-  if (localStorage.getItem(REFRESH_TOKEN_KEY)) return true;
-  if (sessionStorage.getItem(REFRESH_TOKEN_KEY)) return false;
+  if (localStorage.getItem(REFRESH_TOKEN_KEY) || localStorage.getItem(REFRESH_SESSION_KEY)) return true;
+  if (sessionStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_SESSION_KEY)) return false;
   return true;
 }
 
-export function setAuthRefreshToken(token: string, remember = true): void {
+export function setAuthRefreshToken(token: string, remember = true, sessionActive = Boolean(token)): void {
   if (typeof localStorage === "undefined") return;
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   sessionStorage.removeItem(REFRESH_TOKEN_KEY);
-  if (!token) return;
+  localStorage.removeItem(REFRESH_SESSION_KEY);
+  sessionStorage.removeItem(REFRESH_SESSION_KEY);
   const storage = remember ? localStorage : sessionStorage;
-  storage.setItem(REFRESH_TOKEN_KEY, token);
+  if (token) storage.setItem(REFRESH_TOKEN_KEY, token);
+  if (sessionActive) storage.setItem(REFRESH_SESSION_KEY, "1");
+}
+
+export function clearAuthRefreshSession(): void {
+  setAuthRefreshToken("", true, false);
 }
 
 export function getAdminApiToken(): string {
@@ -75,7 +95,7 @@ export function buildAuthHeaders(): Record<string, string> {
 
 export function applyAuthTokenResponse(response: AuthTokenResponse, remember = true): AuthTokenResponse {
   setAuthAccessToken(response.access_token);
-  setAuthRefreshToken(response.refresh_token, remember);
+  setAuthRefreshToken(response.refresh_token, remember, true);
   return response;
 }
 
@@ -96,7 +116,7 @@ export const authApi = {
     ),
   logout: (payload: AuthLogoutRequest = { refresh_token: getAuthRefreshToken() }) => {
     setAuthAccessToken("");
-    setAuthRefreshToken("", true);
+    clearAuthRefreshSession();
     return requestOperation("authLogout", {}, { method: "POST", body: JSON.stringify(payload) });
   },
   setupTotp: () => requestOperation<AuthMfaSetupResponse>("authTotpSetup", {}, { method: "POST" }),

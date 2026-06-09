@@ -1,4 +1,10 @@
-import { buildAuthHeaders, currentRefreshTokenRemembered, getAuthRefreshToken, setAuthAccessToken, setAuthRefreshToken } from "./auth";
+import {
+  applyAuthTokenResponse,
+  buildAuthHeaders,
+  canAttemptAuthRefresh,
+  currentRefreshTokenRemembered,
+  getAuthRefreshToken,
+} from "./auth";
 import { ApiError, ApiTransportError } from "./errors";
 import { operationPath, type ApiOperationName, type OperationPathOptions, type QueryValue } from "./operations";
 import { recordTelemetry } from "../telemetry/clientTelemetry";
@@ -283,7 +289,7 @@ function shouldRefreshAuth(path: string, method: string | undefined): boolean {
 
 async function refreshAccessToken(timeoutMs: number, signal?: AbortSignal | null): Promise<boolean> {
   const refreshToken = getAuthRefreshToken();
-  if (!refreshToken) return false;
+  if (!canAttemptAuthRefresh()) return false;
   try {
     const response = await fetchWithTimeout(`${API_BASE}/api/auth/refresh`, {
       method: "POST",
@@ -294,8 +300,7 @@ async function refreshAccessToken(timeoutMs: number, signal?: AbortSignal | null
     }, timeoutMs);
     if (!response.ok) return false;
     const result = (await response.json()) as AuthTokenResponse;
-    setAuthAccessToken(result.access_token);
-    setAuthRefreshToken(result.refresh_token, currentRefreshTokenRemembered());
+    applyAuthTokenResponse(result, currentRefreshTokenRemembered());
     recordTelemetry({ kind: "api", name: "auth-refresh", status: "ok", meta: { path: "/api/auth/refresh" } });
     return true;
   } catch {

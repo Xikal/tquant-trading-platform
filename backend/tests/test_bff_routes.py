@@ -387,6 +387,114 @@ def test_monitor_workspace_view_action_projects_action_payload(monkeypatch) -> N
     assert payload["runtime"] is None
 
 
+def test_remote_monitor_adapter_rejects_degraded_go_gateway_payload(monkeypatch) -> None:
+    opened: list[str] = []
+    monkeypatch.setattr(
+        remote_adapters,
+        "get_settings",
+        lambda: SimpleNamespace(
+            tquant_bff_gateway_url="http://go-bff-gateway",
+            tquant_market_service_url="",
+        ),
+    )
+    monkeypatch.setattr(remote_adapters, "open_remote_bff_circuit", lambda base_url: opened.append(base_url))
+    monkeypatch.setattr(
+        remote_adapters,
+        "remote_bff_get",
+        lambda *args, **kwargs: {
+            "generated_at": "2026-06-09 09:45:00",
+            "monitor_snapshot": None,
+            "market_pulse": None,
+            "partial_errors": [
+                {
+                    "source": "monitor_snapshot",
+                    "detail": "数据暂时不可用",
+                    "message": "source unavailable",
+                    "fallback_source": "go_bff_gateway",
+                },
+                {
+                    "source": "market_pulse",
+                    "detail": "数据暂时不可用",
+                    "message": "source unavailable",
+                    "fallback_source": "go_bff_gateway",
+                },
+            ],
+        },
+    )
+
+    result = remote_adapters.load_remote_monitor_workspace(
+        priority_limit=18,
+        sector_limit=8,
+        per_sector_limit=8,
+        hedge_limit=4,
+        view="action",
+    )
+
+    assert result is None
+    assert opened == ["http://go-bff-gateway"]
+
+
+def test_monitor_workspace_falls_back_when_remote_monitor_adapter_returns_none(monkeypatch) -> None:
+    app = FastAPI()
+    app.include_router(bff.router, prefix="/api")
+    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: object()
+    monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token=""))
+    monkeypatch.setattr(
+        workspace_cache,
+        "get_settings",
+        lambda: SimpleNamespace(
+            bff_workspace_cache_enabled=False,
+            bff_monitor_cache_ttl_seconds=0,
+            bff_paper_cache_ttl_seconds=0,
+            bff_strategy_cache_ttl_seconds=0,
+            bff_settings_cache_ttl_seconds=0,
+        ),
+    )
+    monkeypatch.setattr(
+        bff,
+        "load_remote_monitor_workspace",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        bff,
+        "build_monitor_snapshot",
+        lambda *args, **kwargs: {
+            "updated_at": "2026-06-09 09:46:00",
+            "watchlist_signals": [],
+            "priority_board": {
+                "latest_trade_date": "2026-06-08",
+                "total_candidates": 1,
+                "items": [{"symbol": "600000", "name": "浦发银行", "buy_signal_text": "今日放弃"}],
+            },
+        },
+    )
+    monkeypatch.setattr(
+        bff,
+        "latest_pulse_or_placeholder",
+        lambda *_args, **_kwargs: (
+            IntradayMarketPulse(
+                updated_at="2026-06-09 09:46:00",
+                data_quality="fresh",
+                pulse_level="repair",
+                pulse_text="市场状态来自本地缓存。",
+            ),
+            False,
+        ),
+    )
+    monkeypatch.setattr(bff, "build_market_review_summary", lambda *args, **kwargs: (None, []))
+
+    response = TestClient(app).get("/api/bff/v1/workspace/monitor?view=action")
+
+    assert response.status_code == 200
+    payload = response.json()
+    board = payload["monitor_snapshot"]["priority_board"]
+    assert board["items"][0]["symbol"] == "600000"
+    assert payload["market_pulse"]["pulse_text"] == "市场状态来自本地缓存。"
+    assert payload["partial_errors"] == []
+
+
 def test_monitor_workspace_view_action_skips_market_context_sources(monkeypatch) -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")

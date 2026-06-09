@@ -27,6 +27,19 @@ class LowBuyResultRepository:
             .first()
         )
 
+    def fetch_recent_trade_dates(self, limit: int = 14) -> list[str]:
+        rows = (
+            self.db.execute(
+                select(LowBuyScanSnapshot.latest_trade_date)
+                .distinct()
+                .order_by(desc(LowBuyScanSnapshot.latest_trade_date))
+                .limit(max(1, limit))
+            )
+            .scalars()
+            .all()
+        )
+        return sorted(str(row) for row in rows if row)
+
     def fetch_scan_summary(self, latest_trade_date: str, strategy_key: str) -> LowBuyScanSnapshot | None:
         return (
             self.db.execute(

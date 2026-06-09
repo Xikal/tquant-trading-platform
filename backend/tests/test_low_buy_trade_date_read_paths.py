@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from app.services.low_buy import pool as pool_module
+from app.services.low_buy import pool_trade_dates as trade_date_module
 from app.services.low_buy.pool import LowBuyPoolMixin
 
 
@@ -149,6 +150,62 @@ class LowBuyTradeDateReadPathTests(unittest.TestCase):
             )
         finally:
             pool_module.date = original_date
+
+    def test_recent_trade_dates_fallback_to_materialized_low_buy_dates_when_daily_store_is_empty(self) -> None:
+        service = _TradeDateService(latest_artifact_trade_date=None)
+        service._trade_dates_cache = {}
+        original_date = pool_module.date
+        original_session = pool_module.SessionLocal
+        original_daily_repository = pool_module.DailyHistoryRepository
+        original_result_repository = trade_date_module.LowBuyResultRepository
+
+        class _FakeDate:
+            @classmethod
+            def today(cls):
+                return original_date(2026, 6, 9)
+
+        class _FakeSession:
+            def __enter__(self):
+                return object()
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+        class _FakeDailyRepository:
+            def __init__(self, db):  # noqa: ARG002
+                pass
+
+            @staticmethod
+            def fetch_recent_trade_dates(count: int):  # noqa: ARG002
+                return []
+
+        class _FakeResultRepository:
+            def __init__(self, db):  # noqa: ARG002
+                pass
+
+            @staticmethod
+            def fetch_recent_trade_dates(limit: int = 14):  # noqa: ARG002
+                return ["2026-06-05", "2026-06-08", "2026-06-09"]
+
+            @staticmethod
+            def fetch_latest_trade_date(strategy_key=None):  # noqa: ARG002
+                return "2026-06-09"
+
+        try:
+            pool_module.date = _FakeDate
+            pool_module.SessionLocal = _FakeSession
+            pool_module.DailyHistoryRepository = _FakeDailyRepository
+            trade_date_module.LowBuyResultRepository = _FakeResultRepository
+
+            self.assertEqual(
+                service._get_recent_trade_dates(14),
+                ["2026-06-05", "2026-06-08", "2026-06-09"],
+            )
+        finally:
+            pool_module.date = original_date
+            pool_module.SessionLocal = original_session
+            pool_module.DailyHistoryRepository = original_daily_repository
+            trade_date_module.LowBuyResultRepository = original_result_repository
 
 
 if __name__ == "__main__":

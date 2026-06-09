@@ -120,6 +120,9 @@ class LowBuyTradeDateMixin:
 
         local_values = self._load_recent_trade_dates_from_local_store(count)
         trade_dates = self._with_intraday_trade_date(local_values, count=count)
+        trade_dates = self._with_low_buy_artifact_dates(trade_dates, count=count)
+        if len(trade_dates) < min(3, max(1, count)):
+            return trade_dates
         return self._cache_recent_trade_dates(cache_key, trade_dates)
 
     @staticmethod
@@ -146,6 +149,21 @@ class LowBuyTradeDateMixin:
             return []
         today = _date_cls().today().isoformat()
         return [item for item in values if item <= today][-count:]
+
+    def _with_low_buy_artifact_dates(self, values: list[str], *, count: int) -> list[str]:
+        if len(values) >= min(3, max(1, count)):
+            return sorted(set(values))[-count:]
+        try:
+            with _session_factory()() as db:
+                result_repository = LowBuyResultRepository(db)
+                artifact_dates = result_repository.fetch_recent_trade_dates(max(count, 14))
+                latest = result_repository.fetch_latest_trade_date()
+                recent = _daily_history_repository()(db).fetch_recent_trade_dates(max(count, 14))
+        except Exception:
+            return sorted(set(values))[-count:]
+        today = _date_cls().today().isoformat()
+        combined = [item for item in [*values, *recent, *artifact_dates, str(latest or "")] if item and item <= today]
+        return sorted(set(combined))[-count:]
 
     def _cache_recent_trade_dates(self, cache_key: str, values: list[str]) -> list[str]:
         cache = getattr(self, "_trade_dates_cache", None)

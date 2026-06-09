@@ -1,5 +1,6 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
+import { priorityEmptyText } from "./MonitorActionPage";
 import { createMonitorActionModel, priorityRowsForTable } from "./monitorActionModel";
 
 describe("monitor action priority board model", () => {
@@ -147,5 +148,11 @@ describe("monitor action priority board model", () => {
       expect(item.detailLines).toContain("缩量回踩到支撑位");
       dispose();
     });
+  });
+
+  it("explains empty buy lane without hiding existing candidates", () => {
+    expect(priorityEmptyText("buy_now", 10)).toContain("当前无确认买入信号");
+    expect(priorityEmptyText("buy_now", 10)).toContain("全部候选仍有 10 只");
+    expect(priorityEmptyText("all", 0)).toContain("榜单数据刷新中");
   });
 });

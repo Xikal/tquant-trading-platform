@@ -1,5 +1,13 @@
 import { createContext, createResource, createSignal, onMount, useContext, type JSX } from "solid-js";
-import { authApi, getAuthRefreshToken, setAuthAccessToken, setAuthRefreshToken } from "../../shared/api/auth";
+import {
+  applyAuthTokenResponse,
+  authApi,
+  canAttemptAuthRefresh,
+  clearAuthRefreshSession,
+  currentRefreshTokenRemembered,
+  getAuthRefreshToken,
+  setAuthAccessToken,
+} from "../../shared/api/auth";
 import { ApiError, errorMessage } from "../../shared/api/errors";
 import type { AuthMfaSetupResponse, AuthTokenResponse, AuthUser } from "../../shared/api/types";
 
@@ -43,8 +51,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
   const [error, setError] = createSignal("");
 
   async function applyToken(result: AuthTokenResponse, remember = true) {
-    setAuthAccessToken(result.access_token);
-    setAuthRefreshToken(result.refresh_token, remember);
+    applyAuthTokenResponse(result, remember);
     setUser(result.user);
     setStatus("authenticated");
     setError("");
@@ -61,7 +68,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
       const refreshed = await tryRefresh();
       if (refreshed) return;
       setAuthAccessToken("");
-      setAuthRefreshToken("", true);
+      clearAuthRefreshSession();
       setUser(null);
       setStatus("anonymous");
       if (firstError instanceof ApiError && firstError.status === 401) {
@@ -74,10 +81,10 @@ export function AuthProvider(props: { children: JSX.Element }) {
 
   async function tryRefresh() {
     const refreshToken = getAuthRefreshToken();
-    if (!refreshToken) return false;
+    if (!canAttemptAuthRefresh()) return false;
     try {
-      const result = await authApi.refresh({ refresh_token: refreshToken });
-      await applyToken(result);
+      const result = await authApi.refresh({ refresh_token: refreshToken }, currentRefreshTokenRemembered());
+      await applyToken(result, currentRefreshTokenRemembered());
       return true;
     } catch {
       return false;
@@ -112,7 +119,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
     logout: async () => {
       const refreshToken = getAuthRefreshToken();
       setAuthAccessToken("");
-      setAuthRefreshToken("", true);
+      clearAuthRefreshSession();
       setUser(null);
       setStatus("anonymous");
       await authApi.logout({ refresh_token: refreshToken }).catch(() => undefined);

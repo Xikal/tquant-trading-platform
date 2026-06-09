@@ -15,7 +15,9 @@ from app.models.entities import User
 
 from app.models.schema_defs.market import MarketBreadthResponse, MarketReviewStatusOut, SectorRelativeStrengthResponse
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
+from app.models.schema_defs.screener_parts.priority import LowBuyPriorityBoardResponse, LowBuyPriorityBoardItemOut
 from app.models.schema_defs.settings import RuntimeStatusResponse
+from app.services import monitor_snapshot_service
 
 
 def _db_with_user(user_id: int = 9):
@@ -101,6 +103,60 @@ def test_monitor_workspace_paired_hedge_reloads_detached_user(monkeypatch) -> No
     assert response.review_status is not None
     assert response.review_status.suggested_action == "午后控制追高"
     assert response.partial_errors == []
+
+
+def test_monitor_snapshot_cache_miss_uses_priority_board_read_model(monkeypatch) -> None:
+    db = _db_with_user(14)
+
+    monkeypatch.setattr(monitor_snapshot_service, "list_user_watchlist_rows", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(monitor_snapshot_service, "read_monitor_snapshot_cache", lambda *_args, **_kwargs: None)
+    enqueued: list[dict[str, int]] = []
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "enqueue_monitor_snapshot_refresh",
+        lambda _db, *, user_id, priority_limit: enqueued.append({"user_id": user_id, "priority_limit": priority_limit}),
+    )
+
+    class _FakeScreener:
+        def priority_board(self, **kwargs):
+            return LowBuyPriorityBoardResponse(
+                as_of_date="2026-06-09 10:00:00",
+                latest_trade_date="2026-06-08",
+                latest_available_trade_date="2026-06-08",
+                updated_at="2026-06-09 10:00:00",
+                total_candidates=1,
+                track_count=1,
+                read_path="priority_board_latest_successful_snapshot",
+                stale=True,
+                stale_reason="优先榜正在后台刷新，当前展示上次可用榜单。",
+                items=[
+                    LowBuyPriorityBoardItemOut(
+                        symbol="600000",
+                        name="浦发银行",
+                        strategy_key="first_board",
+                        strategy_title="首版回调",
+                        latest_price=10.0,
+                        change_pct=0.0,
+                        quote_timestamp="2026-06-09 10:00:00",
+                        entry_zone_low=9.8,
+                        entry_zone_high=10.1,
+                        stop_loss=9.4,
+                    )
+                ],
+            )
+
+    monkeypatch.setattr("app.services.low_buy_screener.LowBuyScreenerService", lambda: _FakeScreener())
+    monkeypatch.setattr("app.services.read_models.live_quote_overlay.apply_priority_board_live_overlay", lambda board: board)
+
+    response = monitor_snapshot_service.build_monitor_snapshot(
+        db,
+        current_user=User(id=14, username="researcher14", password_hash="x", is_active=True, roles=""),
+        priority_limit=18,
+    )
+
+    assert response.priority_board["items"][0]["symbol"] == "600000"
+    assert response.priority_board["read_path"] == "priority_board_latest_successful_snapshot"
+    assert enqueued == [{"user_id": 14, "priority_limit": 18}]
 
 
 def test_monitor_workspace_bundles_hourly_history_and_admin_runtime(monkeypatch) -> None:

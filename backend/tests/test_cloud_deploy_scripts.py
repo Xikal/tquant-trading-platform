@@ -486,7 +486,8 @@ def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
     assert "frontend_next_hot:separated_frontend_web" in hot_branch
     assert "frontend_next_hot:monolith_compat" in hot_branch
     assert 'FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE"' in hot_branch
-    assert 'sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web' in hot_branch
+    assert 'frontend_web_compose_file()' in hot_branch
+    assert 'sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web' in hot_branch
     assert "backend-api" not in hot_branch
     assert "docker_compose_build" not in hot_branch
     assert "migration" not in hot_branch

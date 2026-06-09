@@ -57,6 +57,7 @@ export function MonitorActionPage() {
       {(data) => {
         const model = createMonitorActionModel(data, selectedSymbol);
         const visibleItems = createMemo(() => model.laneItems(lane()));
+        const emptyText = createMemo(() => priorityEmptyText(lane(), model.priorityItems.length));
         const selected = createMemo(() => model.selected());
         const watchCards = createMemo(() => holdingCards(model, localHoldings()));
         const snapshotDate = createMemo(() => text(model.board.latest_trade_date ?? model.snapshot.latest_trade_date ?? model.root.generated_at));
@@ -196,7 +197,7 @@ export function MonitorActionPage() {
                         </button>
                       </div>
                     </div>
-                    <Show when={visibleItems().length > 0} fallback={<EmptyLine text="暂无生产候选。" />}>
+                    <Show when={visibleItems().length > 0} fallback={<EmptyLine text={emptyText()} />}>
                       <For each={visibleItems()}>
                         {(item) => (
                           <article class="monitor-rank-row" data-symbol={item.symbol}>
@@ -525,6 +526,14 @@ function Field(props: { label: string; value: string; placeholder: string; onInp
 
 function EmptyLine(props: { text: string }) {
   return <div class="monitor-empty-line">{props.text}</div>;
+}
+
+export function priorityEmptyText(lane: MonitorLane, total: number): string {
+  if (total <= 0) return "榜单数据刷新中，当前未返回生产候选。";
+  if (lane === "buy_now") return `当前无确认买入信号；全部候选仍有 ${total} 只，请切回“全部候选”查看观察/放弃原因。`;
+  if (lane === "observe") return `当前观察池为空；全部候选仍有 ${total} 只，请切回“全部候选”查看风险过滤结果。`;
+  if (lane === "risk") return `当前无风险/放弃分层；全部候选 ${total} 只。`;
+  return "暂无生产候选。";
 }
 
 type MonitorIconName =

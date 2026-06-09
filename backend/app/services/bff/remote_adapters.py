@@ -42,7 +42,8 @@ def load_remote_monitor_workspace(
     )
     go_response = _validate_remote_payload(MonitorWorkspaceBffResponse, go_payload, "monitor", settings.tquant_bff_gateway_url)
     if go_response is not None:
-        return go_response
+        if _monitor_response_usable(go_response, view=view, base_url=settings.tquant_bff_gateway_url):
+            return go_response
     payload = _load_remote(
         settings.tquant_market_service_url,
         "monitor",
@@ -55,7 +56,39 @@ def load_remote_monitor_workspace(
         },
         forward_headers=forward_headers,
     )
-    return _validate_remote_payload(MonitorWorkspaceBffResponse, payload, "monitor", settings.tquant_market_service_url)
+    response = _validate_remote_payload(MonitorWorkspaceBffResponse, payload, "monitor", settings.tquant_market_service_url)
+    if response is not None and _monitor_response_usable(response, view=view, base_url=settings.tquant_market_service_url):
+        return response
+    return None
+
+
+def _monitor_response_usable(response: MonitorWorkspaceBffResponse, *, view: str, base_url: str) -> bool:
+    missing: list[str] = []
+    if response.monitor_snapshot is None:
+        missing.append("monitor_snapshot")
+    if view in {"full", "action", "market"} and response.market_pulse is None:
+        missing.append("market_pulse")
+    if not missing:
+        return True
+
+    degraded_sources = {
+        str(error.source)
+        for error in response.partial_errors
+        if str(error.fallback_source or "") == "go_bff_gateway"
+        or "source unavailable" in str(error.message or "").lower()
+        or "source unavailable" in str(error.detail or "").lower()
+    }
+    if degraded_sources.intersection(missing):
+        logger.warning(
+            "remote monitor bff degraded workspace=monitor base_url=%s view=%s missing_sources=%s degraded_sources=%s",
+            base_url,
+            view,
+            sorted(missing),
+            sorted(degraded_sources),
+        )
+        open_remote_bff_circuit(base_url)
+        return False
+    return True
 
 
 def load_remote_paper_workspace(

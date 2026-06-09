@@ -114,6 +114,33 @@ describe("frontend-next operation client", () => {
     vi.unstubAllGlobals();
   });
 
+  it("refreshes read requests through the httpOnly refresh cookie when no JS refresh token is exposed", async () => {
+    vi.resetModules();
+    const localStorage = createMemoryStorage([["tquant:auth:access_token", "old-access"], ["tquant:auth:refresh_session", "1"]]);
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", createMemoryStorage());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ detail: "expired" }, 401))
+      .mockResolvedValueOnce(jsonResponse({ access_token: "cookie-access", refresh_token: "", expires_in: 3600, token_type: "bearer", user: authUser() }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { requestJson } = await import("../client");
+    await expect(requestJson("/api/read")).resolves.toEqual({ ok: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.map((call) => String(call[0]))).toEqual(["/api/read", "/api/auth/refresh", "/api/read"]);
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual(expect.objectContaining({
+      body: JSON.stringify({ refresh_token: "" }),
+      credentials: "include",
+      method: "POST",
+    }));
+    expect(fetchMock.mock.calls[2]?.[1]).toEqual(expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer cookie-access" }) }));
+    expect(localStorage.getItem("tquant:auth:refresh_session")).toBe("1");
+    vi.unstubAllGlobals();
+  });
+
   it("does not refresh and retry write requests on 401 responses", async () => {
     vi.stubGlobal("localStorage", createMemoryStorage([["tquant:auth:access_token", "old-access"], ["tquant:auth:refresh_token", "refresh-1"]]));
     vi.stubGlobal("sessionStorage", createMemoryStorage());
