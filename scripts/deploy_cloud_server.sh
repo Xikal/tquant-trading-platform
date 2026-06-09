@@ -684,6 +684,14 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
+  previous_dir=""
+  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1 && sudo docker exec tquant-app-mysql test -d /app/frontend-next/dist/assets 2>/dev/null; then
+    previous_dir="$(mktemp -d "/tmp/gupiao-frontend-next-prev-XXXXXX")"
+    sudo docker cp tquant-app-mysql:/app/frontend-next/dist/assets "$previous_dir/assets" 2>/dev/null || true
+  fi
+  if test -n "$previous_dir" && test -d "$previous_dir/assets" && test -d frontend-next/dist/assets; then
+    cp -a "$previous_dir/assets/." frontend-next/dist/assets/
+  fi
   updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
@@ -701,6 +709,7 @@ publish_frontend_next() {
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
+  if test -n "$previous_dir"; then rm -rf "$previous_dir"; fi
   echo "frontend_next:updated"
 }
 refresh_gateway_if_present() {
@@ -945,6 +954,9 @@ fi
 rm -rf frontend-next/dist
 mkdir -p frontend-next/dist
 cp -a "$WORK_DIR/dist/." frontend-next/dist/
+if test -d ".runtime/frontend-next-dist-backup-$TS/assets" && test -d frontend-next/dist/assets; then
+  cp -a ".runtime/frontend-next-dist-backup-$TS/assets/." frontend-next/dist/assets/
+fi
 chmod -R a+rX frontend-next/dist
 
 frontend_web_compose_file() {
@@ -966,8 +978,15 @@ if frontend_web_compose="$(frontend_web_compose_file)"; then
   updated=1
 fi
 if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+  if sudo docker exec tquant-app-mysql test -d /app/frontend-next/dist/assets 2>/dev/null; then
+    sudo docker cp tquant-app-mysql:/app/frontend-next/dist/assets "$WORK_DIR/container-assets" 2>/dev/null || true
+    if test -d "$WORK_DIR/container-assets"; then
+      mkdir -p frontend-next/dist/assets
+      cp -a "$WORK_DIR/container-assets/." frontend-next/dist/assets/
+    fi
+  fi
   sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
-  sudo docker cp "$WORK_DIR/dist/." tquant-app-mysql:/app/frontend-next/dist/
+  sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
   sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
   echo "frontend_next_hot:monolith_compat"
   updated=1
@@ -1233,6 +1252,14 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
+  previous_dir=""
+  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1 && sudo docker exec tquant-app-mysql test -d /app/frontend-next/dist/assets 2>/dev/null; then
+    previous_dir="$(mktemp -d "/tmp/gupiao-frontend-next-prev-XXXXXX")"
+    sudo docker cp tquant-app-mysql:/app/frontend-next/dist/assets "$previous_dir/assets" 2>/dev/null || true
+  fi
+  if test -n "$previous_dir" && test -d "$previous_dir/assets" && test -d frontend-next/dist/assets; then
+    cp -a "$previous_dir/assets/." frontend-next/dist/assets/
+  fi
   updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
@@ -1250,6 +1277,7 @@ publish_frontend_next() {
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
+  if test -n "$previous_dir"; then rm -rf "$previous_dir"; fi
   echo "frontend_next:updated"
 }
 refresh_gateway_if_present() {

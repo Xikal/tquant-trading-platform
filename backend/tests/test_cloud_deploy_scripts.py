@@ -488,6 +488,9 @@ def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
     assert 'FRONTEND_COMPOSE_FILE="$FRONTEND_COMPOSE_FILE"' in hot_branch
     assert 'frontend_web_compose_file()' in hot_branch
     assert 'sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web' in hot_branch
+    assert ".runtime/frontend-next-dist-backup-$TS/assets" in hot_branch
+    assert 'tquant-app-mysql:/app/frontend-next/dist/assets "$WORK_DIR/container-assets"' in hot_branch
+    assert 'cp -a "$WORK_DIR/container-assets/." frontend-next/dist/assets/' in hot_branch
     assert "elif sudo docker inspect tquant-app-mysql" not in hot_branch
     assert hot_branch.index('echo "frontend_next_hot:separated_frontend_web:$frontend_web_compose"') < hot_branch.index(
         'echo "frontend_next_hot:monolith_compat"'
@@ -520,6 +523,8 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
     assert "frontend_next:separated_frontend_web" in publish_function
     assert "frontend_next:monolith_compat" in publish_function
     assert "frontend_next:updated" in publish_function
+    assert 'tquant-app-mysql:/app/frontend-next/dist/assets "$previous_dir/assets"' in publish_function
+    assert 'cp -a "$previous_dir/assets/." frontend-next/dist/assets/' in publish_function
     assert "elif sudo docker inspect tquant-app-mysql" not in publish_function
     assert publish_function.index('echo "frontend_next:separated_frontend_web:$frontend_web_compose"') < publish_function.index(
         'echo "frontend_next:monolith_compat"'
