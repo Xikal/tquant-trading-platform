@@ -74,6 +74,7 @@ def test_mysql_compose_keeps_web_light_and_workers_independent() -> None:
     assert "RUNTIME_BACKGROUND_ROLE: scheduler" in compose
     assert "RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED:-true}" in compose
     assert "container_name: tquant-backtest-worker-mysql" in compose
+    assert 'profiles: ["backtest"]' in compose
     assert 'command: ["python", "-m", "app.workers.backtest_queue_worker"]' in compose
     assert "container_name: tquant-analytics-worker-mysql" in compose
     assert 'command: ["python", "/app/backend/scripts/analytics_worker.py"' in compose
@@ -136,7 +137,8 @@ def test_deploy_and_quick_verify_wait_for_independent_workers() -> None:
         assert "tquant-app-mysql" in script
         assert "tquant-runtime-scheduler-mysql" in script
         assert "tquant-runtime-worker-mysql" in script
-        assert "tquant-backtest-worker-mysql" in script
+        assert "DEPLOY_WITH_BACKTEST_WORKER" in script
+        assert "backtest_worker:skipped_on_demand" in script
         assert "tquant-analytics-worker-mysql" in script
         assert "analytics_worker_readyz:ok" in script
         assert "DEPLOY_WITH_ANALYTICS_WORKER" in script

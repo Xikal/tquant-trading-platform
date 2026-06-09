@@ -18,6 +18,7 @@ ROLE_CONTAINERS = {
     "backtest_worker": "tquant-backtest-worker-mysql",
     "analytics_worker": "tquant-analytics-worker-mysql",
 }
+OPTIONAL_CONTAINER_ROLES = {"analytics_worker", "backtest_worker"}
 
 POOL_ENV_KEYS = (
     "DB_POOL_SIZE",
@@ -163,6 +164,8 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
 
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})
+        if role.get("container_present") is False and role_name in OPTIONAL_CONTAINER_ROLES:
+            continue
         if role_name != "web" and "RUNTIME_LOW_PRIORITY_TASKS_PAUSED" not in env:
             warnings.append(f"low_priority_pause_env_missing={role_name}")
         if role.get("container_present") is False:

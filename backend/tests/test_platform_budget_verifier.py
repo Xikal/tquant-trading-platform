@@ -139,6 +139,28 @@ def test_platform_budget_report_blocks_web_heavy_tasks(tmp_path: Path) -> None:
     assert "web_analytics_enabled" in payload["evaluation"]["blocking"]
 
 
+def test_platform_budget_report_allows_optional_workers_to_be_stopped(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["backtest_worker"]["container_present"] = False  # type: ignore[index]
+    roles["backtest_worker"]["env"] = {}  # type: ignore[index]
+    roles["backtest_worker"]["pool_budget"] = 0  # type: ignore[index]
+    roles["analytics_worker"]["container_present"] = False  # type: ignore[index]
+    roles["analytics_worker"]["env"] = {}  # type: ignore[index]
+    roles["analytics_worker"]["pool_budget"] = 0  # type: ignore[index]
+    fixture["pool_budget"] = {"total": 16, "target": 40}
+
+    result = run_budget_report(fixture, tmp_path, "--fail-on-blocking")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "ok"
+    assert "container_missing=backtest_worker" not in payload["evaluation"]["warnings"]
+    assert "container_missing=analytics_worker" not in payload["evaluation"]["warnings"]
+    assert "low_priority_pause_env_missing=backtest_worker" not in payload["evaluation"]["warnings"]
+    assert "low_priority_pause_env_missing=analytics_worker" not in payload["evaluation"]["warnings"]
+
+
 def test_platform_budget_report_warns_on_large_pool_and_mysql_budget(tmp_path: Path) -> None:
     fixture = sample_budget_report(
         mysql={"max_connections": 300, "threads_connected": 8, "threads_running": 1},

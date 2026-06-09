@@ -18,7 +18,6 @@ describe("workspace page information hierarchy", () => {
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].heavyListSurface).toContain("VirtualCardList");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].heavyListSurface).toContain("DataTable");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.data.heavyListSurface).toEqual(["DataTable"]);
-    expect(WORKSPACE_PAGE_RESPONSIBILITIES.backtest.heavyListSurface).toContain("DataTable");
   });
 
   it("keeps data quality fallbacks visible on all core pages", () => {

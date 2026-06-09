@@ -592,7 +592,6 @@ function isCutoverRootRedirect(value: string): boolean {
     "/strategy-tracking",
     "/analysis",
     "/playbook",
-    "/backtest",
     "/data",
     "/settings",
   ].includes(path);

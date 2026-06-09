@@ -84,7 +84,7 @@ def build_maintenance_plan(
                 remote("sudo systemctl restart buildkit || true"),
                 remote("sudo logrotate -f /etc/logrotate.d/tquant-mysql-slow-log"),
                 remote("sudo docker compose -f docker-compose.mysql.yml up -d mysql"),
-                remote("sudo docker compose -f docker-compose.mysql.yml up -d app runtime-scheduler runtime-worker backtest-worker analytics-worker"),
+                remote("sudo docker compose -f docker-compose.mysql.yml up -d app runtime-scheduler runtime-worker analytics-worker"),
             ],
             destructive=False,
             requires_operator=True,

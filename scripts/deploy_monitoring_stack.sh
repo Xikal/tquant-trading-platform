@@ -53,7 +53,7 @@ ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "cd '${REMOTE_DIR}' && sudo env GRAFANA_ADMIN_PASSWORD=\"\$(printf '%s' '${grafana_password_b64}' | base64 -d)\" docker compose -f docker-compose.monitoring.yml up -d"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
-  "cd '${REMOTE_DIR}' && sudo docker compose -f docker-compose.mysql.yml up -d app runtime-worker backtest-worker"
+  "cd '${REMOTE_DIR}' && sudo docker compose -f docker-compose.mysql.yml up -d app runtime-worker"
 
 ssh "${ssh_opts[@]}" "${REMOTE_USER}@${REMOTE_HOST}" \
   "curl -fsS http://127.0.0.1:${PROMETHEUS_PORT:-19090}/-/ready >/dev/null && curl -fsS http://127.0.0.1:${GRAFANA_PORT:-13000}/api/health >/dev/null"

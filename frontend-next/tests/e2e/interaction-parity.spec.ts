@@ -3,17 +3,6 @@ import { installE2eAuthState } from "./auth-state";
 
 const shadowFlows = [
   {
-    kind: "shadow-panel",
-    route: "/next/backtest",
-    testId: "shadow-action-回测提交",
-    heading: "回测提交",
-    submitButton: "提交回测",
-    field: "初始资金",
-    value: "120000",
-    confirmText: "回测参数已进入二次确认",
-    doneText: "提交回测已记录",
-  },
-  {
     kind: "local-intent",
     route: "/next/data",
     heading: "应急数据控制面板",

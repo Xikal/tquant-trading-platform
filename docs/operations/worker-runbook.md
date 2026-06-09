@@ -13,7 +13,7 @@ database contracts as Web.
 | Runtime worker | `python -m app.workers.runtime_worker` | `runtime_tasks` | data backfill, latest-bar refresh, low-buy materialization, repair tasks |
 | Runtime scheduler | `python -m app.workers.runtime_scheduler` | scheduled enqueue logic | close refresh, watchdog, periodic data-quality enqueue |
 | Analytics worker | `backend/scripts/analytics_worker.py` | analytics RuntimeTask registry | On-demand Parquet export, DuckDB strategy report, analytics quality checks |
-| Backtest worker | `scripts/backtest_worker.py` | backtest job tables | queued backtest execution |
+| Backtest worker | `scripts/backtest_worker.py` | backtest job tables | On-demand queued backtest execution |
 
 Local wrappers:
 
@@ -124,13 +124,13 @@ Health:
 Inspect:
 
 ```bash
-docker compose -f docker-compose.mysql.yml logs --tail=200 backtest-worker
+docker compose --profile backtest -f docker-compose.mysql.yml logs --tail=200 backtest-worker
 ```
 
 Recover:
 
 ```bash
-docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
+docker compose --profile backtest -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
 ```
 
 Do not parallelize `portfolio_backtest_metrics` by month or recompute max5/max10

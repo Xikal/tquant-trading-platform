@@ -36,7 +36,7 @@ import { formatInteger, formatPrice } from "../workspace-shared/workspaceFormatt
 import { VirtualGrid } from "../../ui/grid/VirtualGrid";
 import { VirtualCardList } from "../../ui/list/VirtualCardList";
 import { usePaperUiStore, type PaperDetailGroupKey, type PaperDetailTabKey } from "../../stores/paperUiStore";
-import { PaperExitModelShadowSummaryPanel } from "../backtest/StrategyImprovementSummary";
+import { PaperExitModelShadowSummaryPanel } from "./PaperExitModelShadowSummary";
 
 export function PaperDetailTabs(props: PaperDetailTabsProps) {
   const tab = usePaperUiStore((state) => state.detailTab);

@@ -34,7 +34,6 @@ describe("WorkspacePageContent", () => {
 function workspaceProps() {
   return {
     AnalysisPage: NullPage,
-    BacktestPage: NullPage,
     DataConsolePage: NullPage as any,
     MonitorPage: NullPage as any,
     MonitorMarketPage: NullPage as any,

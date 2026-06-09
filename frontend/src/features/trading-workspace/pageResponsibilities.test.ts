@@ -14,7 +14,6 @@ describe("workspace page responsibilities", () => {
       "strategy-tracking",
       "paper",
       "data",
-      "backtest",
     ]);
 
     for (const page of WORKSPACE_DENOISED_PAGES) {
@@ -44,13 +43,11 @@ describe("workspace page responsibilities", () => {
     expect(pageResponsibilityHint("strategy-tracking", "fallback")).toContain("复盘");
     expect(pageResponsibilityHint("paper", "fallback")).toContain("持仓");
     expect(pageResponsibilityHint("data", "fallback")).toContain("覆盖率");
-    expect(pageResponsibilityHint("backtest", "fallback")).toContain("24个月");
   });
 
   it("keeps Shadow and Preview labels explicitly scoped to non-production modes", () => {
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.modeBadges).toContain("shadow");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].modeBadges).toContain("research");
-    expect(WORKSPACE_PAGE_RESPONSIBILITIES.backtest.modeBadges).toContain("preview");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.paper.modeBadges).toContain("paper");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].modeBadges).toContain("watch");
   });

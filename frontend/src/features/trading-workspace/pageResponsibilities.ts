@@ -1,7 +1,7 @@
 import type { Page } from "../workspace-shared/workspaceTypes";
 import type { ModeSafetyKind } from "../../ui/feedback/ModeSafetyBadges";
 
-export type DenoisedWorkspacePage = Extract<Page, "monitor" | "monitor-market" | "strategy-tracking" | "paper" | "data" | "backtest">;
+export type DenoisedWorkspacePage = Extract<Page, "monitor" | "monitor-market" | "strategy-tracking" | "paper" | "data">;
 
 export interface PageResponsibility {
   page: DenoisedWorkspacePage;
@@ -100,22 +100,6 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     featureFlagFallback: "关闭运行时兜底面板后保留数据健康总览和补数入口。",
     heavyListSurface: ["DataTable"],
     modeBadges: ["shadow", "preview", "research"],
-  },
-  backtest: {
-    page: "backtest",
-    label: "回测页",
-    coreQuestion: "策略是否值得保留",
-    firstScreenConclusion: "先展示 24 个月报告、样本外验证、组合收益和策略建议，研究细节进入二级面板。",
-    commandHint: "24个月报告和组合收益",
-    primaryQuestion: "策略是否值得保留或降级",
-    detailQuestion: "样本、组合收益、归因和容量哪里支持结论",
-    drilldownPattern: "报告结论 + 回测记录 + 研究二级面板",
-    primarySections: ["24 个月报告", "样本外验证", "组合收益", "策略建议"],
-    detailSections: ["回测记录", "归因明细", "相关性", "容量研究"],
-    emptyFallback: "数据不足 24 个月时显式 blocked 或触发 worker 补数任务，不展示半成品结论。",
-    featureFlagFallback: "关闭研究或优化 flag 后保留正式回测记录、状态和空态。",
-    heavyListSurface: ["DataTable", "VirtualCardList"],
-    modeBadges: ["preview", "research", "paper"],
   },
 };
 

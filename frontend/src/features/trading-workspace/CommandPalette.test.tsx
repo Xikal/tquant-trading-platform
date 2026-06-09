@@ -9,7 +9,7 @@ vi.mock("../../stores/workspaceStore", () => ({
 }));
 
 describe("CommandPalette", () => {
-  it("does not surface dense page hierarchy copy for strategy, backtest, and data entries", () => {
+  it("does not surface hidden backtest entry or dense hierarchy copy", () => {
     const queryClient = new QueryClient();
     const html = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
@@ -25,7 +25,7 @@ describe("CommandPalette", () => {
     );
 
     expect(html).toContain("打开策略跟踪页面");
-    expect(html).toContain("打开回测页面");
+    expect(html).not.toContain("打开回测页面");
     expect(html).toContain("打开数据页面");
     expect(html).not.toContain("信号表现、复盘、抗跌事实");
     expect(html).not.toContain("24个月报告和组合收益");

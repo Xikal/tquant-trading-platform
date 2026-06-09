@@ -1,24 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { StrategyImprovementReportResponse } from "../../api/backtests";
-import { PaperExitModelShadowSummaryContent, StrategyGovernanceSummaryContent } from "./StrategyImprovementSummary";
+import { PaperExitModelShadowSummaryContent } from "./PaperExitModelShadowSummary";
 
-describe("StrategyImprovementSummary", () => {
-  it("renders governance layers and blocked promotion reason", () => {
-    const html = renderToStaticMarkup(<StrategyGovernanceSummaryContent report={report} />);
-
-    expect(html).toContain("生产候选");
-    expect(html).toContain("深度低吸");
-    expect(html).toContain("高收益高回撤");
-    expect(html).toContain("首板回调");
-    expect(html).toContain("暂停/降权");
-    expect(html).toContain("主线首分歧低吸");
-    expect(html).toContain("参数晋级保持阻断");
-    expect(html).toContain("ETF T0 必须有分钟线覆盖率");
-    expect(html).toContain("随机切分禁止");
-    expect(html).toContain("防未来函数 pass");
-  });
-
+describe("PaperExitModelShadowSummary", () => {
   it("renders paper exit model as shadow-only with safety blockers", () => {
     const html = renderToStaticMarkup(<PaperExitModelShadowSummaryContent report={report} />);
 
@@ -52,42 +37,13 @@ const report: StrategyImprovementReportResponse = {
   },
   strategy_governance: {
     status: "available",
-    strategy_count: 3,
-    state_counts: {
-      positive_expectancy_candidate: 1,
-      high_return_high_drawdown: 1,
-      weak_strategy: 1,
-    },
-    items: [
-      {
-        strategy_key: "deep_pullback",
-        strategy_title: "深度低吸",
-        governance_state: "positive_expectancy_candidate",
-        recommended_action: "optimize_with_constraints",
-        profit_factor: 1.35,
-        win_rate_pct: 52.1,
-      },
-      {
-        strategy_key: "first_board",
-        strategy_title: "首板回调",
-        governance_state: "high_return_high_drawdown",
-        recommended_action: "add_market_state_position_exit_constraints",
-        profit_factor: 2.07,
-        win_rate_pct: 49.31,
-      },
-      {
-        strategy_key: "sector_mainline_first_divergence_low_buy",
-        strategy_title: "主线首分歧低吸",
-        governance_state: "weak_strategy",
-        recommended_action: "pause_or_downgrade_production_weight",
-        profit_factor: 0.86,
-        win_rate_pct: 33.07,
-      },
-    ],
+    strategy_count: 0,
+    state_counts: {},
+    items: [],
   },
   walk_forward: {
     status: "ready",
-    candidate_strategy_count: 3,
+    candidate_strategy_count: 0,
     window_count: 7,
     random_split_allowed: false,
   },
@@ -120,13 +76,6 @@ const report: StrategyImprovementReportResponse = {
       sell_flying_rate_pct: 0,
     },
   },
-  gates: [
-    {
-      key: "etf_t0_minute_coverage",
-      status: "fail",
-      severity: "blocking",
-      message: "ETF T0 必须有分钟线覆盖率，不能用日线代理验收。",
-    },
-  ],
+  gates: [],
   next_actions: [],
 };

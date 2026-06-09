@@ -1,7 +1,6 @@
 import {
   AimOutlined,
   DatabaseOutlined,
-  ExperimentOutlined,
   FundOutlined,
   LineChartOutlined,
   ReadOutlined,
@@ -26,7 +25,6 @@ export const PRIMARY_NAV: NavItem[] = [
   { key: "analysis", label: "量化分析", icon: <LineChartOutlined /> },
   { key: "playbook", label: "选股宝典", icon: <ReadOutlined /> },
   { key: "strategy-tracking", label: "策略跟踪", icon: <AimOutlined /> },
-  { key: "backtest", label: "回测页", icon: <ExperimentOutlined /> },
   { key: "paper", label: "模拟盘", icon: <WalletOutlined /> },
 ];
 
@@ -41,7 +39,6 @@ const TITLES: Record<Page, string> = {
   analysis: "量化分析",
   playbook: "选股宝典",
   "strategy-tracking": "策略跟踪",
-  backtest: "回测页",
   paper: "模拟盘",
   data: "数据中心",
   settings: "系统配置",

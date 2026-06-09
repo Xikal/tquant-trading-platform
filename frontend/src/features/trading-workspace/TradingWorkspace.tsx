@@ -496,9 +496,8 @@ function shortcutPage(key: string): Page | null {
   if (key === "2") return "analysis";
   if (key === "3") return "playbook";
   if (key === "4") return "strategy-tracking";
-  if (key === "5") return "backtest";
-  if (key === "6") return "paper";
-  if (key === "7") return "data";
-  if (key === "8") return "settings";
+  if (key === "5") return "paper";
+  if (key === "6") return "data";
+  if (key === "7") return "settings";
   return null;
 }

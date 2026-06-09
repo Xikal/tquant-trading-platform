@@ -9,7 +9,6 @@ const routes = [
   "/next/strategy-tracking",
   "/next/analysis",
   "/next/playbook",
-  "/next/backtest",
   "/next/data",
   "/next/settings",
 ] as const;

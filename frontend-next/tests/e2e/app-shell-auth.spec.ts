@@ -136,10 +136,10 @@ test("command palette routes named pages without losing app shell", async ({ pag
   await installE2eAuthState(page);
   await page.goto("/next/monitor");
   await openCommandPalette(page);
-  await page.getByPlaceholder("搜索页面、策略或输入 6 位股票代码").fill("回测");
+  await page.getByPlaceholder("搜索页面、策略或输入 6 位股票代码").fill("模拟盘");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/next\/backtest$/);
-  await expect(page.getByRole("heading", { name: "回测页" }).first()).toBeVisible();
+  await expect(page).toHaveURL(/\/next\/paper$/);
+  await expect(page.getByRole("heading", { name: "模拟盘" }).first()).toBeVisible();
 });
 
 test("command palette routes strategy commands to playbook and strategy tracking", async ({ page }) => {
@@ -180,7 +180,7 @@ test("compatibility routes redirect to their /next targets under auth guard and 
   const cases = [
     ["/next/emotion", "/next/monitor", "实时流 未连接", "text"],
     ["/next/low-buy", "/next/playbook", "选股宝典", "heading"],
-    ["/next/strategy", "/next/backtest", "回测页", "heading"],
+    ["/next/strategy", "/next/strategy-tracking", "策略跟踪", "heading"],
     ["/next/performance", "/next/paper", "模拟盘", "heading"],
   ] as const;
 

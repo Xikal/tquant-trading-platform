@@ -14,7 +14,8 @@ describe("webRoutes", () => {
   });
 
   it.each([
-    ["/strategy", "/backtest"],
+    ["/strategy", "/strategy-tracking"],
+    ["/backtest", "/monitor"],
     ["/emotion", "/monitor"],
   ])("redirects %s to %s", (path, target) => {
     const route = webRoutes.find((item) => item.path === path);
@@ -42,6 +43,7 @@ describe("webRoutes", () => {
     expect(pageFromPath("/strategy-tracking")).toBe("strategy-tracking");
     expect(pageFromPath("/monitor/market")).toBe("monitor-market");
     expect(pageFromPath("/data")).toBe("data");
+    expect(pageFromPath("/backtest")).toBe("monitor");
     expect(pageFromPath("/strategy")).toBe("monitor");
     expect(pageFromPath("/emotion")).toBe("monitor");
   });

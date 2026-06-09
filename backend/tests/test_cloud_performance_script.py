@@ -86,7 +86,7 @@ def test_mysql_compose_exposes_low_priority_task_pause_to_workers():
     assert "analytics_export_analysis_logs" in source
     assert "analytics_export_market_review_reports" in source
     assert "analytics_export_paper_review_reports" in source
-    for service in ("runtime-worker", "runtime-scheduler", "backtest-worker"):
+    for service in ("runtime-worker", "runtime-scheduler"):
         match = re.search(rf"^  {re.escape(service)}:\n(?P<body>(?:    .*\n)+)", source, flags=re.MULTILINE)
         assert match is not None
         service_block = match.group("body")
@@ -119,11 +119,12 @@ def test_mysql_compose_keeps_role_pool_budget_below_single_host_limit() -> None:
     assert "--max-connections=${MYSQL_MAX_CONNECTIONS:-300}" not in source
 
 
-def test_backtest_worker_can_read_shared_parquet_analysis_layer() -> None:
+def test_backtest_worker_is_on_demand_and_can_read_shared_parquet_analysis_layer() -> None:
     compose = Path(__file__).resolve().parents[1].parent / "docker-compose.mysql.yml"
     source = compose.read_text(encoding="utf-8")
     service_block = source.split("  backtest-worker:", 1)[1].split("\n\n  analytics-worker:", 1)[0]
 
+    assert 'profiles: ["backtest"]' in service_block
     assert 'INSTALL_ANALYTICS: "${BACKTEST_WORKER_INSTALL_ANALYTICS:-1}"' in service_block
     assert "TQUANT_ANALYTICS_ROOT: ${TQUANT_ANALYTICS_ROOT:-/app/backend/data/analytics}" in service_block
     assert "BACKTEST_PARQUET_DAILY_BARS_ENABLED: ${BACKTEST_PARQUET_DAILY_BARS_ENABLED:-false}" in service_block

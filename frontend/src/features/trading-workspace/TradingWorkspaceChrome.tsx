@@ -25,7 +25,6 @@ import {
 const { useBreakpoint } = Grid;
 
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
-const BacktestPage = lazy(async () => ({ default: (await import("../backtest/BacktestPage")).BacktestPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
 const MonitorMarketPage = lazy(async () => ({ default: (await import("../monitor/MonitorMarketPage")).MonitorMarketPage }));
 const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
@@ -38,7 +37,6 @@ const PAGES_WITHOUT_PRIORITY_STRIP: ReadonlySet<Page> = new Set([
   "monitor",
   "monitor-market",
   "strategy-tracking",
-  "backtest",
   "paper",
   "data",
 ]);
@@ -160,7 +158,6 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
             {shouldShowPagePriorityStrip(props.page) ? <PagePriorityStrip page={props.page} /> : null}
             <WorkspacePageContent
               AnalysisPage={AnalysisPage}
-              BacktestPage={BacktestPage}
               DataConsolePage={DataConsolePage}
               MonitorPage={MonitorPage}
               MonitorMarketPage={MonitorMarketPage}

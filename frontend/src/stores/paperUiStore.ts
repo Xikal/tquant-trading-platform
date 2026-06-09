@@ -23,6 +23,8 @@ interface PaperUiStore {
   recommendedOrdersOpen: boolean;
   recommendedOrdersLoading: boolean;
   recommendedOrdersError: string;
+  exitModelShadowLoading: boolean;
+  exitModelShadowError: string;
   clockMs: number;
   selectedMechaUnitId: PaperMechaUnitId;
   activeMechaEffect: PaperMechaEffectState | null;
@@ -35,6 +37,8 @@ interface PaperUiStore {
   setRecommendedOrdersOpen: (open: boolean) => void;
   setRecommendedOrdersLoading: (loading: boolean) => void;
   setRecommendedOrdersError: (error: string) => void;
+  setExitModelShadowLoading: (loading: boolean) => void;
+  setExitModelShadowError: (error: string) => void;
   setClockMs: (clockMs: number) => void;
   setSelectedMechaUnitId: (unitId: PaperMechaUnitId) => void;
   setActiveMechaEffect: (effect: PaperMechaEffectState | null) => void;
@@ -50,6 +54,8 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   recommendedOrdersOpen: false,
   recommendedOrdersLoading: false,
   recommendedOrdersError: "",
+  exitModelShadowLoading: false,
+  exitModelShadowError: "",
   clockMs: Date.now(),
   selectedMechaUnitId: "purple",
   activeMechaEffect: null,
@@ -62,6 +68,8 @@ export const usePaperUiStore = create<PaperUiStore>((set) => ({
   setRecommendedOrdersOpen: (recommendedOrdersOpen) => set({ recommendedOrdersOpen }),
   setRecommendedOrdersLoading: (recommendedOrdersLoading) => set({ recommendedOrdersLoading }),
   setRecommendedOrdersError: (recommendedOrdersError) => set({ recommendedOrdersError }),
+  setExitModelShadowLoading: (exitModelShadowLoading) => set({ exitModelShadowLoading }),
+  setExitModelShadowError: (exitModelShadowError) => set({ exitModelShadowError }),
   setClockMs: (clockMs) => set({ clockMs }),
   setSelectedMechaUnitId: (selectedMechaUnitId) => set({ selectedMechaUnitId }),
   setActiveMechaEffect: (activeMechaEffect) => set({ activeMechaEffect }),

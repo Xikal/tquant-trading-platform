@@ -2,7 +2,7 @@ import type { Page } from "../workspace-shared/workspaceTypes";
 import { ModeSafetyBadges } from "../../ui/feedback/ModeSafetyBadges";
 import { pageResponsibility } from "./pageResponsibilities";
 
-const PAGES_WITHOUT_INLINE_PRIORITY_STRIP: ReadonlySet<Page> = new Set(["strategy-tracking", "backtest", "data"]);
+const PAGES_WITHOUT_INLINE_PRIORITY_STRIP: ReadonlySet<Page> = new Set(["strategy-tracking", "data"]);
 
 export function PagePriorityStrip({ page }: { page: Page }) {
   if (PAGES_WITHOUT_INLINE_PRIORITY_STRIP.has(page)) return null;

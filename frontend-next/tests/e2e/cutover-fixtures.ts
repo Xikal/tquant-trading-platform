@@ -99,13 +99,6 @@ export async function installStrategyFixture(page: Page) {
   await page.route("**/api/trading-experience/relative-strength*", (route) => route.fulfill({ status: 200, json: { enabled: true, items: [{ symbol: "600000", rs_vs_index: 0.008 }] } }));
 }
 
-export async function installBacktestFixture(page: Page) {
-  await page.route("**/api/backtests/runs**", (route) => route.fulfill({ status: 200, json: { items: [{ id: 101, name: "frontend-next 低吸回测", status: "finished", strategy_keys: ["n_pattern_long_wash"], final_equity: 128900 }] } }));
-  await page.route("**/api/backtests/101", (route) => route.fulfill({ status: 200, json: { id: 101, name: "frontend-next 低吸回测", status: "finished", progress_pct: 100, final_equity: 128900, summary: { total_return: 0.289 } } }));
-  await page.route("**/api/backtests/101/equity", (route) => route.fulfill({ status: 200, json: { items: [{ date: "2025-01-01", equity: 100000 }, { date: "2026-06-05", equity: 128900 }] } }));
-  await page.route("**/api/backtests/101/trades", (route) => route.fulfill({ status: 200, json: { items: [{ trade_date: "2025-02-03", symbol: "000001", side: "buy", quantity: 1000, price: 10.2, reason: "突破确认" }] } }));
-}
-
 export async function installDataSettingsFixtures(page: Page, status = 200) {
   const maybeError = (payload: unknown) => (status >= 400 ? { status, json: { detail: "cutover readiness fixture error" } } : { status: 200, json: payload });
   await page.route("**/api/data-quality/coverage", (route) => route.fulfill(maybeError({ missing_dates: ["2026-06-05"], missing_symbols: [{ symbol: "000001", name: "平安银行", missing_days: 1 }] })));

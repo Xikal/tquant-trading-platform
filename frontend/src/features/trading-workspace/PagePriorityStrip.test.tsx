@@ -32,13 +32,11 @@ describe("PagePriorityStrip", () => {
 
   it("hides hierarchy copy from dense work pages in the workspace shell", () => {
     expect(shouldShowPagePriorityStrip("strategy-tracking")).toBe(false);
-    expect(shouldShowPagePriorityStrip("backtest")).toBe(false);
     expect(shouldShowPagePriorityStrip("data")).toBe(false);
   });
 
   it("does not render removed hierarchy copy when mounted directly for dense work pages", () => {
     expect(renderToStaticMarkup(<PagePriorityStrip page="strategy-tracking" />)).toBe("");
-    expect(renderToStaticMarkup(<PagePriorityStrip page="backtest" />)).toBe("");
     expect(renderToStaticMarkup(<PagePriorityStrip page="data" />)).toBe("");
   });
 });

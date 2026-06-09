@@ -11,7 +11,6 @@ const PaperPage = lazy(() => import("../features/paper/PaperPage").then((module)
 const StrategyTrackingPage = lazy(() => import("../features/strategy-tracking/StrategyTrackingPage").then((module) => ({ default: module.StrategyTrackingPage })));
 const AnalysisPage = lazy(() => import("../features/analysis/AnalysisPage").then((module) => ({ default: module.AnalysisPage })));
 const PlaybookPage = lazy(() => import("../features/playbook/PlaybookPage").then((module) => ({ default: module.PlaybookPage })));
-const BacktestPage = lazy(() => import("../features/backtest/BacktestPage").then((module) => ({ default: module.BacktestPage })));
 const DataConsolePage = lazy(() => import("../features/data-console/DataConsolePage").then((module) => ({ default: module.DataConsolePage })));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 
@@ -135,7 +134,7 @@ const paperRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "pap
 const strategyRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "strategy-tracking", component: guardedRouteComponent(StrategyTrackingPage, "策略跟踪") });
 const analysisRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "analysis", component: guardedRouteComponent(AnalysisPage, "量化分析") });
 const playbookRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "playbook", component: guardedRouteComponent(PlaybookPage, "选股宝典") });
-const backtestRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "backtest", component: guardedRouteComponent(BacktestPage, "回测页") });
+const backtestRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "backtest", component: () => <Navigate to="/next/monitor" search={true} /> });
 const dataRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "data", component: adminRouteComponent(DataConsolePage, "数据中心") });
 const settingsRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "settings", component: guardedRouteComponent(SettingsPage, "系统设置") });
 
@@ -149,13 +148,13 @@ const paperCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "
 const strategyCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "strategy-tracking", component: shellGuardedRouteComponent(StrategyTrackingPage, "策略跟踪") });
 const analysisCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "analysis", component: shellGuardedRouteComponent(AnalysisPage, "量化分析") });
 const playbookCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "playbook", component: shellGuardedRouteComponent(PlaybookPage, "选股宝典") });
-const backtestCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "backtest", component: shellGuardedRouteComponent(BacktestPage, "回测页") });
+const backtestCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "backtest", component: () => <Navigate to="/next/monitor" search={true} /> });
 const dataCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "data", component: shellAdminRouteComponent(DataConsolePage, "数据中心") });
 const settingsCutoverRoute = createRoute({ getParentRoute: () => rootRoute, path: "settings", component: shellGuardedRouteComponent(SettingsPage, "系统设置") });
 
 const emotionCompatRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "emotion", component: () => <Navigate to="/next/monitor" search={true} /> });
 const lowBuyCompatRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "low-buy", component: () => <Navigate to="/next/playbook" search={true} /> });
-const strategyCompatRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "strategy", component: () => <Navigate to="/next/backtest" search={true} /> });
+const strategyCompatRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "strategy", component: () => <Navigate to="/next/strategy-tracking" search={true} /> });
 const performanceCompatRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "performance", component: () => <Navigate to="/next/paper" search={true} /> });
 
 export const routeTree = rootRoute.addChildren([

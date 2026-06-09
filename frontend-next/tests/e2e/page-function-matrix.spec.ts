@@ -3,7 +3,6 @@ import { installE2eAuthState } from "./auth-state";
 import {
   captureApiWrites,
   installAnalysisFixture,
-  installBacktestFixture,
   installDataSettingsFixtures,
   installMonitorActionFixture,
   installPaperFixture,
@@ -172,26 +171,22 @@ test("/next/playbook covers candidate selection, quote refresh, analysis route, 
   expect(writes()).toEqual([]);
 });
 
-test("/next/backtest covers run selection, tabs, chart, trades, and protected task controls", async ({ page }) => {
+test("/next/backtest redirects to action desk without loading backtest APIs", async ({ page }) => {
   await installE2eAuthState(page);
-  await installBacktestFixture(page);
+  await installMonitorActionFixture(page);
   const writes = captureApiWrites(page);
+  const backtestRequests: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/backtests")) {
+      backtestRequests.push(`${request.method()} ${request.url()}`);
+    }
+  });
 
   await page.goto("/next/backtest");
-  await expect(page.getByRole("heading", { name: "回测页" }).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "运行列表" })).toBeVisible();
-  await page.getByRole("button", { name: "查看分析" }).click();
-  await page.getByRole("radio", { name: "结果概览" }).click();
-  await expect(page.getByRole("img", { name: "回测权益曲线" })).toBeVisible();
-  await expect(page.locator(".backtest-chart-card .chart-frame svg")).toHaveCount(1);
-  await page.getByRole("radio", { name: "成交明细" }).click();
-  await expect(page.getByText("突破确认")).toBeVisible();
-  await page.getByRole("radio", { name: "研究闭环" }).click();
-  const taskPanel = page.getByRole("heading", { name: "回测任务控制" }).locator("xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' backtest-terminal-shadow ')][1]");
-  await taskPanel.getByRole("button", { name: "确认" }).click();
-  await taskPanel.getByRole("button", { name: "取消任务" }).click();
-  await expect(page.getByText("取消任务已记录")).toBeVisible();
+  await expect(page).toHaveURL(/\/next\/monitor$/);
+  await expect(page.getByRole("heading", { name: "我的持仓监测" })).toBeVisible();
   expect(writes()).toEqual([]);
+  expect(backtestRequests).toEqual([]);
 });
 
 test("/next/data covers admin dashboard, token gate, search, and local maintenance intent", async ({ page }) => {

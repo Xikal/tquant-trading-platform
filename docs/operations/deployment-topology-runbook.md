@@ -14,7 +14,7 @@ analytics, and backtest work runs outside Web.
 | Runtime worker | `runtime-worker` | `scripts/run_platform_component.sh runtime-worker` | data refresh, materialization, repair, close-refresh tasks |
 | Runtime scheduler | `runtime-scheduler` | `scripts/run_platform_component.sh scheduler` | schedules runtime tasks, does not serve Web requests |
 | Analytics worker | `analytics-worker` profile | `scripts/run_platform_component.sh analytics-worker` | On-demand Parquet export, DuckDB reports, data-quality analytics tasks |
-| Backtest worker | `backtest-worker` | `scripts/run_platform_component.sh backtest-worker` | queued backtest jobs and long-running backtest execution |
+| Backtest worker | `backtest-worker` profile | `scripts/run_platform_component.sh backtest-worker` | On-demand queued backtest jobs and long-running backtest execution |
 | MySQL | `mysql` | local SQLite only for development | production operational fact store |
 | Redis | `redis` | optional locally | cache/rate-limit support |
 
@@ -32,7 +32,7 @@ docker compose -f docker-compose.mysql.yml ps
 docker compose -f docker-compose.mysql.yml logs --tail=120 runtime-worker
 docker compose -f docker-compose.mysql.yml logs --tail=120 runtime-scheduler
 docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=120 analytics-worker
-docker compose -f docker-compose.mysql.yml logs --tail=120 backtest-worker
+docker compose --profile backtest -f docker-compose.mysql.yml logs --tail=120 backtest-worker
 ```
 
 Worker-specific checks:
@@ -51,7 +51,7 @@ Worker-specific checks:
 | Restart runtime worker | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker` | Claimed tasks recover through queue retry/failure rules |
 | Restart scheduler | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-scheduler` | New scheduled tasks resume; existing queued tasks stay intact |
 | Restart analytics worker on demand | `docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker` | Analytics tasks continue after claim/retry handling |
-| Restart backtest worker | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker` | Queued backtests continue; running jobs must be inspected before retry |
+| Restart backtest worker on demand | `docker compose --profile backtest -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker` | Queued backtests continue; running jobs must be inspected before retry |
 
 Do not enable background scheduling loops in the Web process. Web defaults keep
 `RUNTIME_BACKGROUND_JOBS_ENABLED=false`.
@@ -109,7 +109,7 @@ scripts/run_platform_component.sh analytics-worker
 scripts/run_platform_component.sh backtest-worker
 ```
 
-Use `--print-command` to inspect the exact command without starting a process.
+Use `--print-command` to inspect the exact command without starting a process. Backtest worker is an on-demand research process, not a default production resident.
 
 ## Optional Analytics Worker
 
@@ -156,7 +156,7 @@ docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate app
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-scheduler
 docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
-docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
+docker compose --profile backtest -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
 ```
 
 Release rollback:
@@ -164,7 +164,7 @@ Release rollback:
 1. Stop write-heavy workers before restoring data:
 
    ```bash
-   docker compose --profile analytics -f docker-compose.mysql.yml stop runtime-scheduler runtime-worker analytics-worker backtest-worker
+   docker compose --profile analytics --profile backtest -f docker-compose.mysql.yml stop runtime-scheduler runtime-worker analytics-worker backtest-worker
    ```
 
 2. Restore the database backup or previous MySQL volume snapshot.

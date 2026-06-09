@@ -8,7 +8,6 @@ export const queryKeys = {
   paperWorkspace: ["paper", "workspace"] as const,
   settings: ["settings"] as const,
   settingsWorkspace: ["settings", "workspace"] as const,
-  backtestRuns: (limit: number) => ["backtest", "runs", limit] as const,
   strategyTracking: (params: Record<string, unknown>) => ["strategy-tracking", params] as const,
   strategyTrackingDetail: (itemId: string | null) => ["strategy-tracking", "detail", itemId] as const,
   strategyTrackingHoldingAnalysis: (params: Record<string, unknown>) =>

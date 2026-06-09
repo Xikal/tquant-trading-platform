@@ -967,8 +967,10 @@ def test_cloud_deploy_starts_runtime_scheduler_container() -> None:
     assert "tquant-runtime-worker-mysql" in deploy_script
     assert "runtime-scheduler" in deploy_script
     assert "runtime-worker" in deploy_script
-    assert "app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
-    assert "app runtime-scheduler runtime-worker backtest-worker" in deploy_script
+    assert "app_runtime_services" in deploy_script
+    assert "DEPLOY_WITH_BACKTEST_WORKER" in deploy_script
+    assert 'DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_WITH_BACKTEST_WORKER="$DEPLOY_WITH_BACKTEST_WORKER" bash -s' in deploy_script
+    assert "backtest_worker:skipped_on_demand" in deploy_script
     assert "analytics_worker:skipped_on_demand" in deploy_script
     assert "DEPLOY_WITH_ANALYTICS_WORKER" in deploy_script
     assert "--profile analytics" in deploy_script

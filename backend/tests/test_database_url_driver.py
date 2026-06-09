@@ -98,8 +98,9 @@ def test_cloud_deploy_makes_analytics_worker_dependency_readiness_explicit() -> 
     assert 'DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"' in deploy_script
     assert "with_analytics_worker()" in deploy_script
     assert "--profile analytics" in deploy_script
-    assert "up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
-    assert "up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker" in deploy_script
+    assert "app_runtime_services" in deploy_script
+    assert "DEPLOY_WITH_BACKTEST_WORKER" in deploy_script
+    assert "backtest_worker:skipped_on_demand" in deploy_script
     assert "ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql" in deploy_script
     assert "analytics_worker_readyz:ok" in deploy_script
     assert "analytics_worker:skipped_on_demand" in deploy_script

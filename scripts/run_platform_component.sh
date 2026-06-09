@@ -12,7 +12,7 @@ Components:
   web               FastAPI/Gunicorn-compatible local Web process
   runtime-worker    RuntimeTask worker for refresh/materialization jobs
   analytics-worker  Analytics RuntimeTask worker with DuckDB/Parquet dependency check
-  backtest-worker   Persistent backtest DB worker
+  backtest-worker   On-demand backtest DB worker
   scheduler         Runtime scheduler process
 
 This is a local process entrypoint. Production uses docker-compose.mysql.yml

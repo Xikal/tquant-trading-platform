@@ -4,7 +4,6 @@ export type Page =
   | "analysis"
   | "playbook"
   | "strategy-tracking"
-  | "backtest"
   | "paper"
   | "data"
   | "settings";

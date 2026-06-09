@@ -4,7 +4,6 @@ export type NextPage =
   | "analysis"
   | "playbook"
   | "strategy-tracking"
-  | "backtest"
   | "paper"
   | "data"
   | "settings";
@@ -24,9 +23,8 @@ export const nextRoutes: NextRoute[] = [
   { page: "analysis", label: "量化分析", shortLabel: "分析页", path: "/next/analysis", legacyPath: "/analysis", commandIndex: 3 },
   { page: "playbook", label: "选股宝典", shortLabel: "宝典页", path: "/next/playbook", legacyPath: "/playbook", commandIndex: 4 },
   { page: "strategy-tracking", label: "策略跟踪", shortLabel: "复盘页", path: "/next/strategy-tracking", legacyPath: "/strategy-tracking", commandIndex: 5 },
-  { page: "backtest", label: "回测页", shortLabel: "回测页", path: "/next/backtest", legacyPath: "/backtest", commandIndex: 6 },
-  { page: "paper", label: "模拟盘", shortLabel: "账户页", path: "/next/paper", legacyPath: "/paper", commandIndex: 7 },
-  { page: "data", label: "数据中心", shortLabel: "数据页", path: "/next/data", legacyPath: "/data", commandIndex: 8 },
+  { page: "paper", label: "模拟盘", shortLabel: "账户页", path: "/next/paper", legacyPath: "/paper", commandIndex: 6 },
+  { page: "data", label: "数据中心", shortLabel: "数据页", path: "/next/data", legacyPath: "/data", commandIndex: 7 },
   { page: "settings", label: "系统配置", shortLabel: "配置页", path: "/next/settings", legacyPath: "/settings" },
 ];
 
@@ -35,6 +33,6 @@ export const nextRouteByPage = Object.fromEntries(nextRoutes.map((route) => [rou
 export const compatibilityRoutes = [
   { from: "/next/emotion", to: "/next/monitor" },
   { from: "/next/low-buy", to: "/next/playbook" },
-  { from: "/next/strategy", to: "/next/backtest" },
+  { from: "/next/strategy", to: "/next/strategy-tracking" },
   { from: "/next/performance", to: "/next/paper" },
 ] as const;
