@@ -1,4 +1,4 @@
-import { requestOperation } from "./client";
+import { requestOperation, type RequestJsonOptions } from "./client";
 import type {
   AuthLoginRequest,
   AuthLogoutRequest,
@@ -100,7 +100,7 @@ export function applyAuthTokenResponse(response: AuthTokenResponse, remember = t
 }
 
 export const authApi = {
-  me: () => requestOperation<AuthMeResponse>("authMe"),
+  me: (init: RequestJsonOptions = {}) => requestOperation<AuthMeResponse>("authMe", {}, init),
   paperAccess: () => requestOperation<PaperAccessResponse>("authPaperAccess"),
   login: (payload: AuthLoginRequest, remember = true) =>
     requestOperation<AuthTokenResponse>("authLogin", {}, { method: "POST", body: JSON.stringify(payload) }).then((response) =>
@@ -110,8 +110,8 @@ export const authApi = {
     requestOperation<AuthTokenResponse>("authRegister", {}, { method: "POST", body: JSON.stringify(payload) }).then((response) =>
       applyAuthTokenResponse(response, remember),
     ),
-  refresh: (payload: AuthRefreshRequest = { refresh_token: getAuthRefreshToken() }, remember = true) =>
-    requestOperation<AuthTokenResponse>("authRefresh", {}, { method: "POST", body: JSON.stringify(payload) }).then((response) =>
+  refresh: (payload: AuthRefreshRequest = { refresh_token: getAuthRefreshToken() }, remember = true, init: RequestJsonOptions = {}) =>
+    requestOperation<AuthTokenResponse>("authRefresh", {}, { ...init, method: "POST", body: JSON.stringify(payload) }).then((response) =>
       applyAuthTokenResponse(response, remember),
     ),
   logout: (payload: AuthLogoutRequest = { refresh_token: getAuthRefreshToken() }) => {

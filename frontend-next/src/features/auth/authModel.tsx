@@ -46,6 +46,7 @@ export interface RegisterPayload {
 export type AuthRefreshAttempt = "refreshed" | "unavailable" | "invalid" | "failed";
 
 const AuthContext = createContext<AuthModel>();
+const AUTH_RESTORE_TIMEOUT_MS = 4_000;
 
 export function AuthProvider(props: { children: JSX.Element }) {
   const [status, setStatus] = createSignal<AuthStatus>("restoring");
@@ -62,7 +63,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
   async function restore() {
     setStatus("restoring");
     try {
-      const current = await authApi.me();
+      const current = await authApi.me({ timeoutMs: AUTH_RESTORE_TIMEOUT_MS, retry: false });
       setUser(current.user);
       setStatus("authenticated");
       setError("");
@@ -88,7 +89,11 @@ export function AuthProvider(props: { children: JSX.Element }) {
     const refreshToken = getAuthRefreshToken();
     if (!canAttemptAuthRefresh()) return "unavailable";
     try {
-      const result = await authApi.refresh({ refresh_token: refreshToken }, currentRefreshTokenRemembered());
+      const result = await authApi.refresh(
+        { refresh_token: refreshToken },
+        currentRefreshTokenRemembered(),
+        { timeoutMs: AUTH_RESTORE_TIMEOUT_MS, retry: false },
+      );
       await applyToken(result, currentRefreshTokenRemembered());
       return "refreshed";
     } catch (error) {
