@@ -726,7 +726,7 @@ publish_frontend_next() {
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
-  if test -n "$previous_dir"; then rm -rf "$previous_dir"; fi
+  if test -n "$previous_dir"; then sudo rm -rf "$previous_dir"; fi
   echo "frontend_next:updated"
 }
 refresh_gateway_if_present() {
@@ -1332,7 +1332,7 @@ publish_frontend_next() {
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
-  if test -n "$previous_dir"; then rm -rf "$previous_dir"; fi
+  if test -n "$previous_dir"; then sudo rm -rf "$previous_dir"; fi
   echo "frontend_next:updated"
 }
 refresh_gateway_if_present() {
