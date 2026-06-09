@@ -42,6 +42,10 @@ def sample_report(**overrides: object) -> dict[str, object]:
         "root": {"used_pct": 55},
         "memory": {"swap": {"used_pct": 10}},
         "docker": {"build_cache": {"size": "1.0GB", "size_bytes": 1_000_000_000}},
+        "docker_stats": {"count": 3, "total_memory_bytes": 900_000_000, "rows": []},
+        "swappiness": {"value": 10, "recommended_value": 10, "ok": True},
+        "separated_stack": {"running_count": 0, "running": [], "rows": []},
+        "app_workers": {"gunicorn_workers": 1, "app_workers_env": 1, "default_ok": True},
         "journal": {"usage": "300M", "usage_bytes": 300_000_000},
         "mysql": {
             "slow_log": {"size": "100M", "size_bytes": 100_000_000},
@@ -84,6 +88,9 @@ def test_platform_resource_report_warns_on_slow_log_cache_and_binlog_retention(t
     fixture = sample_report(
         memory={"swap": {"used_pct": 77}},
         docker={"build_cache": {"size": "6.0GB", "size_bytes": 6_000_000_000}},
+        swappiness={"value": 60, "recommended_value": 10, "ok": False},
+        separated_stack={"running_count": 3, "running": ["tquant-frontend-web", "tquant-backend-api", "tquant-separated-gateway"]},
+        app_workers={"gunicorn_workers": 2, "app_workers_env": 2, "default_ok": False},
         mysql={
             "slow_log": {"size": "3.1G", "size_bytes": 3_100_000_000},
             "variables": {"binlog_expire_logs_seconds": 2592000, "max_binlog_size": 1_073_741_824},
@@ -102,6 +109,9 @@ def test_platform_resource_report_warns_on_slow_log_cache_and_binlog_retention(t
     assert "mysql_slow_log_bytes=3100000000" in warnings
     assert "binlog_expire_logs_seconds=2592000" in warnings
     assert "max_binlog_size=1073741824" in warnings
+    assert "swappiness=60" in warnings
+    assert "separated_stack_running=3" in warnings
+    assert "app_gunicorn_workers=2" in warnings
 
 
 def test_platform_resource_report_parses_human_sizes_before_thresholds(tmp_path: Path) -> None:
@@ -129,6 +139,9 @@ def test_platform_resource_report_parses_mysql8_binary_logs() -> None:
     variable_parser = module["parse_mysql_variables"]
     backup_parser = module["parse_deploy_backups"]
     mysql_backup_parser = module["parse_mysql_backups"]
+    stats_parser = module["parse_docker_stats"]
+    separated_parser = module["parse_separated_stack"]
+    workers_parser = module["parse_app_worker_count"]
 
     payload = log_parser(
         "Log_name\tFile_size\tEncrypted\n"
@@ -155,6 +168,14 @@ def test_platform_resource_report_parses_mysql8_binary_logs() -> None:
     assert mysql_backups["count"] == 2
     assert mysql_backups["latest"]["path"].endswith("20260608.sql.gz")
     assert mysql_backups["total_bytes"] == 267_386_880
+    stats = stats_parser("tquant-app-mysql\t0.1%\t713.3MiB / 3.636GiB\t19.16%\n")
+    assert stats["count"] == 1
+    assert stats["rows"][0]["memory_used_bytes"] == 747_949_260
+    separated = separated_parser("tquant-frontend-web\tUp 40 minutes (healthy)\n")
+    assert separated["running_count"] == 1
+    workers = workers_parser('["sh","-c","exec gunicorn -k uvicorn.workers.UvicornWorker -w \\"${APP_WORKERS:-1}\\" --bind 0.0.0.0:8000 app.main:app"] ["APP_WORKERS=1"]')
+    assert workers["gunicorn_workers"] == 1
+    assert workers["app_workers_env"] == 1
 
 
 def test_platform_resource_report_warns_when_deploy_backups_exceed_retention(tmp_path: Path) -> None:
@@ -294,6 +315,10 @@ def test_platform_resource_report_supports_remote_ssh_collection_without_writes(
     assert "Collect from a remote host over SSH without changing state" in script
     assert "collect_remote" in script
     assert "sudo docker system df" in script
+    assert "sudo docker stats --no-stream" in script
+    assert "sysctl -n vm.swappiness" in script
+    assert "tquant-separated-gateway" in script
+    assert "tquant-app-mysql --format '{{json .Config.Cmd}} {{json .Config.Env}}'" in script
     assert "sudo journalctl --disk-usage" in script
     assert 'sudo du -sh "$mysql_data_dir"' in script
     assert 'sudo du -sh "$slow_log"' in script
@@ -326,6 +351,14 @@ def test_platform_resource_remote_collection_escapes_compose_env_placeholders(mo
                 "__SECTION__:docker_system_df",
                 "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE",
                 "Build Cache     42        0         5.9GB     5.9GB",
+                "__SECTION__:docker_stats",
+                "tquant-app-mysql\t0.1%\t713.3MiB / 3.636GiB\t19.16%",
+                "__SECTION__:swappiness",
+                "60",
+                "__SECTION__:separated_stack",
+                "tquant-frontend-web\tUp 40 minutes (healthy)",
+                "__SECTION__:app_workers",
+                '["sh","-c","exec gunicorn -k uvicorn.workers.UvicornWorker -w \\"${APP_WORKERS:-1}\\" --bind 0.0.0.0:8000 app.main:app"] ["APP_WORKERS=1"]',
                 "__SECTION__:journal",
                 "Archived and active journals take up 1.2G in the file system.",
                 "__SECTION__:mysql_volume",
@@ -359,6 +392,9 @@ def test_platform_resource_remote_collection_escapes_compose_env_placeholders(mo
     assert report["resource_configs"]["mysql_compose_resource_config"]["present"] is True
     assert report["mysql"]["variables"]["binlog_expire_logs_seconds"] == 259200
     assert report["mysql"]["variables"]["max_binlog_size"] == 1_073_741_824
+    assert report["swappiness"]["value"] == 60
+    assert report["separated_stack"]["running_count"] == 1
+    assert report["app_workers"]["gunicorn_workers"] == 1
     assert report["commands"]["ssh"]["returncode"] == 0
 
 
@@ -372,6 +408,8 @@ def test_platform_resource_limit_installer_is_dry_run_and_non_destructive() -> N
     assert "daemon-resource.json" in script
     assert "journald-resource.conf" in script
     assert "buildkitd-resource.toml" in script
+    assert "tquant-swappiness.conf" in script
+    assert "sudo sysctl --system" in script
     assert "mysql-resource.cnf" not in script
     assert "mysql-slow-logrotate.conf" in script
     assert "mysql_resource_cnf" not in script

@@ -57,6 +57,7 @@ DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
+DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
 VERIFY_WEB_IMAGE_SYNC=1
 RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
 RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
@@ -146,6 +147,8 @@ Options:
                  Image ref to tag as tquant-web:mysql when --prebuilt-images is enabled.
   --prebuilt-analytics-image <ref>
                  Image ref to tag as tquant-analytics:mysql when --prebuilt-images is enabled.
+  --with-analytics-worker
+                 Start and verify the optional analytics-worker profile.
   --prebuilt-go-bff-image <ref>
                  Image ref to tag as tquant-go-bff:mysql when --prebuilt-images is enabled.
   --prebuilt-go-market-read-image <ref>
@@ -271,6 +274,10 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${2:?missing prebuilt analytics image ref}"
       shift 2
       ;;
+    --with-analytics-worker)
+      DEPLOY_WITH_ANALYTICS_WORKER=1
+      shift
+      ;;
     --prebuilt-go-bff-image)
       DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${2:?missing prebuilt go bff image ref}"
       shift 2
@@ -382,6 +389,7 @@ export DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF
 export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF
 export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
 export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
+export DEPLOY_WITH_ANALYTICS_WORKER
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
 export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_PREFLIGHT_READ_ONLY REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
@@ -685,7 +693,7 @@ verify_remote() {
   if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" || "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
     VERIFY_WEB_IMAGE_SYNC=0
   fi
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
 set -euo pipefail
 dump_container_diagnostics() {
   local name="$1"
@@ -710,6 +718,12 @@ wait_for_container() {
   dump_container_diagnostics "$name"
   return 1
 }
+with_analytics_worker() {
+  case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -725,9 +739,14 @@ curl_retry() {
   done
   return 1
 }
-for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
+for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
+if with_analytics_worker; then
+  wait_for_container tquant-analytics-worker-mysql
+else
+  echo "analytics_worker:skipped_on_demand"
+fi
 if test "${VERIFY_WEB_IMAGE_SYNC:-1}" = "1"; then
   EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
   for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
@@ -780,13 +799,17 @@ if test -n "${MYSQL_ROOT_PASSWORD:-}"; then
 else
   echo mysql_tuning:skipped_missing_password
 fi
-sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+if with_analytics_worker; then
+  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 import duckdb, pyarrow  # noqa: F401
 from app.core.database import ping_database
 
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
+else
+  echo "analytics_worker_readyz:skipped_on_demand"
+fi
 sudo docker exec tquant-go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz >/tmp/go_bff_readyz.json
 sudo docker exec tquant-go-market-read-service wget -qO- http://127.0.0.1:8092/readyz >/tmp/go_market_readyz.json
 sudo docker exec tquant-go-scan-worker wget -qO- http://127.0.0.1:8093/readyz >/tmp/go_scan_readyz.json
@@ -886,6 +909,7 @@ CLOUD_AUTH_COOKIE_SECURE="$CLOUD_AUTH_COOKIE_SECURE" \
 CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" \
 FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
 FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
+DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
 VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \

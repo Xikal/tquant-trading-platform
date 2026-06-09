@@ -54,6 +54,7 @@ DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
+DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
@@ -458,6 +459,7 @@ remote_deploy_from_git() {
     DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
+    DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
@@ -521,13 +523,24 @@ require_prebuilt_ref() {
   fi
 }
 
+with_analytics_worker() {
+  case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 use_prebuilt_app_images() {
   case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
     1|true|yes)
       ;;
     auto)
-      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"; then
         echo "prebuilt_images:app_unavailable_fallback_build"
+        return 1
+      fi
+      if with_analytics_worker && test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+        echo "prebuilt_images:analytics_unavailable_fallback_build"
         return 1
       fi
       ;;
@@ -536,12 +549,16 @@ use_prebuilt_app_images() {
       ;;
   esac
   require_prebuilt_ref DEPLOY_PREBUILT_WEB_IMAGE_REF "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
-  require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  if with_analytics_worker; then
+    require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  fi
   echo "prebuilt_images:pull_app"
   sudo docker pull "$DEPLOY_PREBUILT_WEB_IMAGE_REF"
-  sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
   sudo docker tag "$DEPLOY_PREBUILT_WEB_IMAGE_REF" tquant-web:mysql
-  sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  if with_analytics_worker; then
+    sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
+    sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  fi
   echo "docker_build:skipped_prebuilt_app"
   return 0
 }
@@ -797,10 +814,16 @@ fi
 
 if has_unit worker && test "$DEPLOY_SCOPE" != all; then
   if ! use_prebuilt_app_images; then
-    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
     docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+    if with_analytics_worker; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    fi
   fi
-  sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  if with_analytics_worker; then
+    sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  else
+    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker
+  fi
   echo "workers:updated"
 fi
 
@@ -812,15 +835,22 @@ if test "$DEPLOY_SCOPE" = all; then
     else
       docker_compose_build "$CLOUD_COMPOSE_FILE" app
     fi
-    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    if with_analytics_worker; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    fi
   fi
   sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
   if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
     sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
     echo "backend_api:updated"
   else
-    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql 2>/dev/null || true
+    if with_analytics_worker; then
+      sudo docker rm -f tquant-analytics-worker-mysql 2>/dev/null || true
+      sudo docker compose --profile analytics -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    else
+      sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker
+    fi
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
     for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -835,28 +865,33 @@ if test "$DEPLOY_SCOPE" = all; then
     if ! use_prebuilt_app_images; then
       docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
     fi
-    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    if with_analytics_worker; then
+      sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    else
+      sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker
+    fi
     echo "workers:updated"
   fi
-  EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
-  ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
-  if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
-    echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
-    exit 1
-  fi
-  for _ in $(seq 1 30); do
-    ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-    echo "analytics-worker health:$ANALYTICS_STATUS"
-    if test "$ANALYTICS_STATUS" = healthy; then
-      break
+  if with_analytics_worker; then
+    EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
+    ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
+    if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
+      echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
+      exit 1
     fi
-    sleep 2
-  done
-  if test "$ANALYTICS_STATUS" != healthy; then
-    echo "analytics-worker did not become healthy" >&2
-    exit 1
-  fi
-  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+    for _ in $(seq 1 30); do
+      ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+      echo "analytics-worker health:$ANALYTICS_STATUS"
+      if test "$ANALYTICS_STATUS" = healthy; then
+        break
+      fi
+      sleep 2
+    done
+    if test "$ANALYTICS_STATUS" != healthy; then
+      echo "analytics-worker did not become healthy" >&2
+      exit 1
+    fi
+    sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 from app.core.database import ping_database
 from app.services.analytics.dependencies import require_analytics_dependencies
 
@@ -864,6 +899,9 @@ require_analytics_dependencies()
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
+  else
+    echo "analytics_worker:skipped_on_demand"
+  fi
   sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 fi
 
@@ -1096,6 +1134,7 @@ REMOTE
     DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="$DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
+    DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
@@ -1160,13 +1199,24 @@ require_prebuilt_ref() {
   fi
 }
 
+with_analytics_worker() {
+  case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 use_prebuilt_app_images() {
   case "${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}" in
     1|true|yes)
       ;;
     auto)
-      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}" || test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+      if test -z "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"; then
         echo "prebuilt_images:app_unavailable_fallback_build"
+        return 1
+      fi
+      if with_analytics_worker && test -z "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"; then
+        echo "prebuilt_images:analytics_unavailable_fallback_build"
         return 1
       fi
       ;;
@@ -1175,12 +1225,16 @@ use_prebuilt_app_images() {
       ;;
   esac
   require_prebuilt_ref DEPLOY_PREBUILT_WEB_IMAGE_REF "${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
-  require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  if with_analytics_worker; then
+    require_prebuilt_ref DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF "${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+  fi
   echo "prebuilt_images:pull_app"
   sudo docker pull "$DEPLOY_PREBUILT_WEB_IMAGE_REF"
-  sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
   sudo docker tag "$DEPLOY_PREBUILT_WEB_IMAGE_REF" tquant-web:mysql
-  sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  if with_analytics_worker; then
+    sudo docker pull "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF"
+    sudo docker tag "$DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" tquant-analytics:mysql
+  fi
   echo "docker_build:skipped_prebuilt_app"
   return 0
 }
@@ -1421,10 +1475,16 @@ fi
 
 if has_unit worker && test "$DEPLOY_SCOPE" != all; then
   if ! use_prebuilt_app_images; then
-    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
     docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
+    if with_analytics_worker; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    fi
   fi
-  sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  if with_analytics_worker; then
+    sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+  else
+    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker
+  fi
   echo "workers:updated"
 fi
 
@@ -1436,15 +1496,22 @@ if test "$DEPLOY_SCOPE" = all; then
     else
       docker_compose_build "$CLOUD_COMPOSE_FILE" app
     fi
-    docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    if with_analytics_worker; then
+      docker_compose_build "$RUNTIME_COMPOSE_FILE" analytics-worker
+    fi
   fi
   sudo docker compose -f "$DB_MIGRATION_COMPOSE_FILE" up --no-build --force-recreate --abort-on-container-exit --exit-code-from migration migration
   if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
     sudo docker compose -f "$BACKEND_API_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate backend-api
     echo "backend_api:updated"
   else
-    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql 2>/dev/null || true
-    sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    sudo docker rm -f tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql 2>/dev/null || true
+    if with_analytics_worker; then
+      sudo docker rm -f tquant-analytics-worker-mysql 2>/dev/null || true
+      sudo docker compose --profile analytics -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker
+    else
+      sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker
+    fi
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
     for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
@@ -1459,28 +1526,33 @@ if test "$DEPLOY_SCOPE" = all; then
     if ! use_prebuilt_app_images; then
       docker_compose_build "$RUNTIME_COMPOSE_FILE" runtime-scheduler runtime-worker backtest-worker
     fi
-    sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    if with_analytics_worker; then
+      sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker analytics-worker
+    else
+      sudo docker compose -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate runtime-scheduler runtime-worker backtest-worker
+    fi
     echo "workers:updated"
   fi
-  EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
-  ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
-  if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
-    echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
-    exit 1
-  fi
-  for _ in $(seq 1 30); do
-    ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
-    echo "analytics-worker health:$ANALYTICS_STATUS"
-    if test "$ANALYTICS_STATUS" = healthy; then
-      break
+  if with_analytics_worker; then
+    EXPECTED_ANALYTICS_IMAGE=$(sudo docker image inspect tquant-analytics:mysql --format '{{.Id}}')
+    ACTUAL_ANALYTICS_IMAGE=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.Image}}')
+    if test "$ACTUAL_ANALYTICS_IMAGE" != "$EXPECTED_ANALYTICS_IMAGE"; then
+      echo "tquant-analytics-worker-mysql is still running $ACTUAL_ANALYTICS_IMAGE; expected $EXPECTED_ANALYTICS_IMAGE" >&2
+      exit 1
     fi
-    sleep 2
-  done
-  if test "$ANALYTICS_STATUS" != healthy; then
-    echo "analytics-worker did not become healthy" >&2
-    exit 1
-  fi
-  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+    for _ in $(seq 1 30); do
+      ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{.State.Health.Status}}' 2>/dev/null || echo none)
+      echo "analytics-worker health:$ANALYTICS_STATUS"
+      if test "$ANALYTICS_STATUS" = healthy; then
+        break
+      fi
+      sleep 2
+    done
+    if test "$ANALYTICS_STATUS" != healthy; then
+      echo "analytics-worker did not become healthy" >&2
+      exit 1
+    fi
+    sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 from app.core.database import ping_database
 from app.services.analytics.dependencies import require_analytics_dependencies
 
@@ -1488,6 +1560,9 @@ require_analytics_dependencies()
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
+  else
+    echo "analytics_worker:skipped_on_demand"
+  fi
   sudo docker exec -u root tquant-app-mysql sh -c 'mkdir -p /app/backend/data && chown -R tquant:tquant /app/backend/data' || true
 fi
 
@@ -1597,7 +1672,7 @@ fi"
 
 verify_remote() {
   log "wait for container health"
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
 set -euo pipefail
 dump_container_diagnostics() {
   local name="$1"
@@ -1622,16 +1697,27 @@ wait_for_container() {
   dump_container_diagnostics "$name"
   exit 1
 }
-for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql; do
+with_analytics_worker() {
+  case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   wait_for_container "$name"
 done
-sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+if with_analytics_worker; then
+  wait_for_container tquant-analytics-worker-mysql
+  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 import duckdb, pyarrow  # noqa: F401
 from app.core.database import ping_database
 
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
+else
+  echo "analytics_worker:skipped_on_demand"
+fi
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -1743,20 +1829,33 @@ REMOTE
 
 verify_worker_remote() {
   log "verify worker deployment"
-  cloud_ssh bash -s <<'REMOTE'
+  cloud_ssh env DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
 set -euo pipefail
-for name in tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql tquant-analytics-worker-mysql; do
+with_analytics_worker() {
+  case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+for name in tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-backtest-worker-mysql; do
   STATUS=$(sudo docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
   echo "$name health:$STATUS"
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
 done
-sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
+if with_analytics_worker; then
+  STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
+  echo "tquant-analytics-worker-mysql health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+  sudo docker exec tquant-analytics-worker-mysql python - <<'PY'
 import duckdb, pyarrow  # noqa: F401
 from app.core.database import ping_database
 
 ping_database()
 print("analytics_worker_readyz:ok")
 PY
+else
+  echo "analytics_worker:skipped_on_demand"
+fi
 echo "workers:ok"
 REMOTE
 }

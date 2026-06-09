@@ -92,12 +92,16 @@ def test_mysql_deployment_templates_offload_analytics_to_worker() -> None:
     assert "import duckdb, pyarrow; from app.core.database import ping_database; ping_database()" in compose
 
 
-def test_cloud_deploy_waits_for_analytics_worker_dependency_readiness() -> None:
+def test_cloud_deploy_makes_analytics_worker_dependency_readiness_explicit() -> None:
     deploy_script = (ROOT_DIR / "scripts" / "deploy_cloud_server.sh").read_text(encoding="utf-8")
 
-    assert "build app analytics-worker" in deploy_script
+    assert 'DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"' in deploy_script
+    assert "with_analytics_worker()" in deploy_script
+    assert "--profile analytics" in deploy_script
     assert "up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
+    assert "up -d --no-build --force-recreate app runtime-scheduler runtime-worker backtest-worker" in deploy_script
     assert "ANALYTICS_STATUS=$(sudo docker inspect tquant-analytics-worker-mysql" in deploy_script
     assert "analytics_worker_readyz:ok" in deploy_script
+    assert "analytics_worker:skipped_on_demand" in deploy_script
     assert "require_analytics_dependencies()" in deploy_script
     assert "ping_database()" in deploy_script

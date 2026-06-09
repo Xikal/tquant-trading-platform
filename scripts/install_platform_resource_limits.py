@@ -42,6 +42,11 @@ INSTALL_ITEMS = (
         Path("/etc/buildkit/buildkitd.toml"),
     ),
     InstallItem(
+        "sysctl_swappiness",
+        ROOT_DIR / "deploy" / "sysctl" / "tquant-swappiness.conf",
+        Path("/etc/sysctl.d/99-tquant-swappiness.conf"),
+    ),
+    InstallItem(
         "mysql_slow_logrotate",
         ROOT_DIR / "deploy" / "mysql" / "mysql-slow-logrotate.conf",
         Path("/etc/logrotate.d/tquant-mysql-slow-log"),
@@ -127,6 +132,8 @@ def validate_templates() -> None:
     assert docker["log-opts"]["max-file"] == "3"
     buildkit = (ROOT_DIR / "deploy" / "buildkit" / "buildkitd-resource.toml").read_text(encoding="utf-8")
     assert 'maxUsedSpace = "2GB"' in buildkit
+    swappiness = (ROOT_DIR / "deploy" / "sysctl" / "tquant-swappiness.conf").read_text(encoding="utf-8")
+    assert "vm.swappiness=10" in swappiness
     slow_logrotate = (ROOT_DIR / "deploy" / "mysql" / "mysql-slow-logrotate.conf").read_text(encoding="utf-8")
     assert "copytruncate" in slow_logrotate
 
@@ -150,6 +157,7 @@ def main() -> int:
             "sudo systemctl restart docker",
             "sudo systemctl restart systemd-journald",
             "sudo systemctl restart buildkit || true",
+            "sudo sysctl --system",
             "sudo docker compose -f docker-compose.mysql.yml up -d mysql",
             "sudo logrotate -d /etc/logrotate.d/tquant-mysql-slow-log",
         ]

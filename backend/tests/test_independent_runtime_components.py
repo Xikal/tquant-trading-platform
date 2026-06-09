@@ -67,6 +67,8 @@ def test_mysql_compose_keeps_web_light_and_workers_independent() -> None:
     assert "container_name: tquant-runtime-worker-mysql" in compose
     assert 'command: ["python", "-m", "app.workers.runtime_worker"]' in compose
     assert "RUNTIME_BACKGROUND_ROLE: worker" in compose
+    assert "RUNTIME_WORKER_EMBED_SCHEDULER: ${RUNTIME_WORKER_EMBED_SCHEDULER:-false}" in compose
+    assert "RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS: ${RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS:-60}" in compose
     assert "container_name: tquant-runtime-scheduler-mysql" in compose
     assert 'command: ["python", "-m", "app.workers.runtime_scheduler"]' in compose
     assert "RUNTIME_BACKGROUND_ROLE: scheduler" in compose
@@ -137,8 +139,26 @@ def test_deploy_and_quick_verify_wait_for_independent_workers() -> None:
         assert "tquant-backtest-worker-mysql" in script
         assert "tquant-analytics-worker-mysql" in script
         assert "analytics_worker_readyz:ok" in script
+        assert "DEPLOY_WITH_ANALYTICS_WORKER" in script
+        assert "analytics_worker:skipped_on_demand" in script or "analytics_worker_readyz:skipped_on_demand" in script
     assert "wait_for_container" in deploy_script
     assert "wait_for_container" in quick_script
+
+
+def test_runtime_worker_supports_embedded_scheduler_grey_flag() -> None:
+    runtime_worker = read_repo_file("backend/app/workers/runtime_worker.py")
+    background_jobs = read_repo_file("backend/app/runtime/background_jobs.py")
+    config = read_repo_file("backend/app/core/config.py")
+
+    assert "runtime_worker_embed_scheduler: bool = False" in config
+    assert "runtime_scheduler_leader_lock_ttl_seconds: int = 60" in config
+    assert "if settings.runtime_worker_embed_scheduler:" in runtime_worker
+    assert "start_runtime_background_jobs()" in runtime_worker
+    assert "shutdown_runtime_background_jobs()" in runtime_worker
+    assert "_worker_embedded_scheduler_enabled" in background_jobs
+    assert 'component="runtime-scheduler"' in background_jobs
+    assert "runtime-worker-embedded-scheduler" in background_jobs
+    assert 'name="runtime_scheduler_heartbeat"' in background_jobs
 
 
 def test_runbooks_document_independent_health_and_rollback_commands() -> None:

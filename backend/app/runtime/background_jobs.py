@@ -45,6 +45,7 @@ from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, 
 from app.services.factor_mining.scheduler import enqueue_monthly_factor_mining_once
 from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
+from app.services.runtime_worker_health import record_platform_component_heartbeat
 from app.services.tasks import RuntimeTaskQueue
 from app.services.watchlist_signal_service import WatchlistSignalService
 
@@ -62,10 +63,11 @@ ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
 ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
 LATEST_DATA_WATCHDOG_AFTER = dt_time(hour=15, minute=25)
 _background_leader_lock_handle = None
+_background_leader_active = False
 
 
 def _background_jobs_enabled() -> bool:
-    if not settings.runtime_background_jobs_enabled:
+    if not settings.runtime_background_jobs_enabled and not _worker_embedded_scheduler_enabled():
         return False
     if settings.database_url.startswith("sqlite") and not settings.runtime_background_jobs_on_sqlite:
         return False
@@ -74,6 +76,32 @@ def _background_jobs_enabled() -> bool:
 
 def _runtime_background_role() -> str:
     return str(getattr(settings, "runtime_background_role", "scheduler") or "scheduler").strip().lower()
+
+
+def _worker_embedded_scheduler_enabled() -> bool:
+    return (
+        _runtime_background_role() == "worker"
+        and bool(getattr(settings, "runtime_worker_embed_scheduler", False))
+    )
+
+
+def _scheduler_heartbeat_worker_id() -> str:
+    if _worker_embedded_scheduler_enabled():
+        return "runtime-worker-embedded-scheduler"
+    return "runtime-scheduler"
+
+
+def _record_scheduler_heartbeat_once(status: str = "running") -> None:
+    try:
+        with SessionLocal() as db:
+            record_platform_component_heartbeat(
+                db,
+                component="runtime-scheduler",
+                worker_id=_scheduler_heartbeat_worker_id(),
+                status=status,
+            )
+    except Exception:
+        logger.exception("runtime scheduler heartbeat update failed")
 
 
 def _compact_background_mode_enabled() -> bool:
@@ -437,11 +465,14 @@ def _acquire_background_leader_lock() -> bool:
 
 
 def start_runtime_background_jobs() -> None:
+    global _background_leader_active
     if _runtime_background_role() == "web":
         logger.info("runtime background jobs disabled for web role")
         return
     background_leader = _background_jobs_enabled() and _acquire_background_leader_lock()
     if background_leader:
+        _background_leader_active = True
+        _record_scheduler_heartbeat_once(status="running")
         if _strategy_evolution_jobs_enabled():
             start_strategy_evolution_scheduler()
         if _startup_maintenance_enabled():
@@ -559,6 +590,12 @@ def start_runtime_background_jobs() -> None:
             interval_seconds=_interval_seconds("runtime_agent_daily_report_interval_seconds", 300, minimum=300),
             initial_delay_seconds=150,
         )
+        task_manager.register_loop(
+            name="runtime_scheduler_heartbeat",
+            target=_record_scheduler_heartbeat_once,
+            interval_seconds=_interval_seconds("runtime_scheduler_leader_lock_ttl_seconds", 60, minimum=30),
+            initial_delay_seconds=10,
+        )
         if _ml_jobs_enabled():
             task_manager.register_loop(
                 name="ml_signal_incremental_train_weekly",
@@ -593,6 +630,18 @@ def start_runtime_background_jobs() -> None:
 
 
 def shutdown_runtime_background_jobs(timeout: int = 30) -> None:
+    global _background_leader_active, _background_leader_lock_handle
+    if _background_leader_active:
+        _record_scheduler_heartbeat_once(status="stopping")
     stop_auto_trader()
     shutdown_strategy_evolution_scheduler()
     task_manager.shutdown(timeout=timeout)
+    _background_leader_active = False
+    if _background_leader_lock_handle is not None:
+        try:
+            fcntl.flock(_background_leader_lock_handle.fileno(), fcntl.LOCK_UN)
+            _background_leader_lock_handle.close()
+        except OSError:
+            logger.exception("failed to release runtime background leader lock")
+        finally:
+            _background_leader_lock_handle = None

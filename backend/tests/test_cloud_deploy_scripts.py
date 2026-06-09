@@ -347,11 +347,13 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     assert "docker_build:skipped_prebuilt_app" in deploy_script
     assert "docker_build:skipped_prebuilt_go" in deploy_script
     assert "prebuilt_images:app_unavailable_fallback_build" in deploy_script
+    assert "prebuilt_images:analytics_unavailable_fallback_build" in deploy_script
     assert "prebuilt_images:go_unavailable_fallback_build" in deploy_script
 
     assert 'DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"' in quick_script
     assert "--prebuilt-images" in quick_script
     assert "--prebuilt-web-image <ref>" in quick_script
+    assert "--with-analytics-worker" in quick_script
     assert "prebuilt_images=${DEPLOY_PREBUILT_IMAGES_ENABLED}" in quick_script
     assert "export DEPLOY_PREBUILT_IMAGES_ENABLED" in quick_script
     assert "export DEPLOY_PREBUILT_WEB_IMAGE_REF" in quick_script
@@ -364,7 +366,9 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     assert 'IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"' in builder_script
     assert "PUSH_IMAGES=0" in builder_script
     assert "--push" in builder_script
-    assert 'COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build app analytics-worker' in builder_script
+    assert 'COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build app' in builder_script
+    assert 'COMPOSE_BAKE=false docker compose --profile analytics -f "$COMPOSE_FILE" build analytics-worker' in builder_script
+    assert "--with-analytics-worker" in builder_script
     assert 'COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build go-bff-gateway go-market-read-service go-scan-worker' in builder_script
     assert "DEPLOY_PREBUILT_WEB_IMAGE_REF" in builder_script
     assert "DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF" in builder_script
@@ -391,6 +395,9 @@ def test_cloud_cleanup_removes_extensionless_upload_packages_without_volume_prun
     assert "docker volumes:kept" in cleanup_script
     assert "sudo docker builder prune -f" in cleanup_script
     assert "sudo docker image prune -f" in cleanup_script
+    assert "STOP_SEPARATED_STACK" in cleanup_script
+    assert "docker-compose.separated.yml down" in cleanup_script
+    assert "proxy_pass http://127.0.0.1:18090" in cleanup_script
     assert "image prune -a" not in cleanup_script
     assert "volume prune" not in cleanup_script
 
@@ -960,6 +967,10 @@ def test_cloud_deploy_starts_runtime_scheduler_container() -> None:
     assert "runtime-scheduler" in deploy_script
     assert "runtime-worker" in deploy_script
     assert "app runtime-scheduler runtime-worker backtest-worker analytics-worker" in deploy_script
+    assert "app runtime-scheduler runtime-worker backtest-worker" in deploy_script
+    assert "analytics_worker:skipped_on_demand" in deploy_script
+    assert "DEPLOY_WITH_ANALYTICS_WORKER" in deploy_script
+    assert "--profile analytics" in deploy_script
     assert "tquant-runtime-scheduler-mysql" in quick_script
 
 

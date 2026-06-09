@@ -230,7 +230,8 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 - `DEPLOY_SYNC_MODE=package-only` 会打包当前项目，排除 `.runtime`、虚拟环境、`node_modules`、本地数据库运行配置等非发布内容。
 - 远端 GitHub clone/fetch 默认不使用；只有显式设置 `DEPLOY_SYNC_MODE=git-inplace` 或 `DEPLOY_SYNC_MODE=git-clone` 才启用。
 - 备份远端当前 `/home/ubuntu/gupiao-upload`。
-- 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-worker`、`backtest-worker`，不删除 MySQL volume。
+- 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-scheduler`、`runtime-worker`、`backtest-worker`，不删除 MySQL volume。
+- `analytics-worker` 默认按需，不是常驻部署验收项；只有设置 `DEPLOY_WITH_ANALYTICS_WORKER=1` 或 `scripts/quick_cloud_deploy.sh --with-analytics-worker` 时才拉起并校验。
 - 自动验证 `/readyz`、默认低吸接口和前端首页。
 - 部署日志输出 `sync_mode`、`changed_count`、`deleted_count`、`delta_bytes`、`full_bytes`、`upload_seconds`、`fallback_reason`，用于比较差量上传和全量包。
 
@@ -314,6 +315,19 @@ KEEP_BACKUPS=1 \
 - MySQL 数据卷。
 - App runtime 数据卷。
 
+如确认公网 nginx 仍代理到 `127.0.0.1:18090`，可在单独授权后停掉未对外服务的分离验证栈：
+
+```bash
+CLOUD_HOST=<server-ip-or-domain> \
+CLOUD_USER=ubuntu \
+CLOUD_SSH_KEY=/path/to/gupiao.pem \
+STOP_SEPARATED_STACK=1 \
+APPLY=1 \
+./scripts/cloud_server_cleanup.sh
+```
+
+脚本会先检查 nginx 中存在 `proxy_pass http://127.0.0.1:18090`；不满足则拒绝执行 separated stack stop。
+
 ### 7.1 SQLite 单容器
 
 ```bash
@@ -351,7 +365,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `runtime-scheduler` 容器独立运行 `python -m app.workers.runtime_scheduler`，负责周期性入队；Web 容器不打开调度循环
 - `backtest-worker` 容器独立消费回测任务
-- `analytics-worker` 容器独立消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check`、`data_quality_sla_refresh`、`data_repair_run` 等分析与数据质量任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
+- `analytics-worker` 通过 `profiles: ["analytics"]` 按需启动，消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check`、`data_quality_sla_refresh`、`data_repair_run` 等分析与数据质量任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
 - `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测
 - 默认数据库为 `t_quant`
 - 默认应用用户为 `tquant_app`
@@ -363,7 +377,8 @@ Go 主路径健康检查：
 docker compose -f docker-compose.mysql.yml exec go-bff-gateway wget -qO- http://127.0.0.1:8091/readyz
 docker compose -f docker-compose.mysql.yml exec go-market-read-service wget -qO- http://127.0.0.1:8092/readyz
 docker compose -f docker-compose.mysql.yml exec go-scan-worker wget -qO- http://127.0.0.1:8093/readyz
-docker compose -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; from app.core.database import ping_database; ping_database(); print('analytics-ready')"
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; from app.core.database import ping_database; ping_database(); print('analytics-ready')"
 ```
 
 行情读缓存指标：
@@ -410,7 +425,11 @@ cp .env.docker.example .env
 - `WEB_TQUANT_ANALYTICS_ENABLED`
   Web `/readyz` 的 Analytics 依赖检查开关，默认 `false`，避免未安装 `duckdb`/`pyarrow` 的 Web 镜像因为分析依赖缺失而降级。
 - `ANALYTICS_WORKER_TQUANT_ANALYTICS_ENABLED`
-  `analytics-worker` 的 Analytics 依赖检查开关，默认 `true`；该镜像通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`/`pyarrow`，启动时 fail-fast。
+  `analytics-worker` 的 Analytics 依赖检查开关，默认 `true`；该镜像通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`/`pyarrow`，启动时 fail-fast。该 worker 默认按需启动，部署时只有 `DEPLOY_WITH_ANALYTICS_WORKER=1` 或 quick deploy `--with-analytics-worker` 才纳入健康检查。
+- `RUNTIME_WORKER_EMBED_SCHEDULER`
+  默认 `false`。仅用于小内存机器灰度验证，让 `runtime-worker` 同时启动 scheduler background jobs。开启后仍使用 leader lock，并继续记录 `runtime-scheduler` heartbeat。不要在未观察一个完整交易日前停止独立 `runtime-scheduler`。
+- `RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS`
+  scheduler heartbeat 循环间隔下限，默认 `60` 秒；用于监控灰度期间的 scheduler 存活证据。
 - `TQUANT_DUCKDB_THREADS`
   DuckDB 查询线程数，容器默认 `2`。
 - `SCHEMA_COMPAT_REPAIR_ENABLED`
@@ -596,7 +615,7 @@ PYTHONPATH=. .venv/bin/python scripts/low_buy_materialization_health.py
 docker compose -f docker-compose.mysql.yml logs --tail=200 app
 docker compose -f docker-compose.mysql.yml logs --tail=200 runtime-worker
 docker compose -f docker-compose.mysql.yml logs --tail=200 backtest-worker
-docker compose -f docker-compose.mysql.yml logs --tail=200 analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=200 analytics-worker
 ```
 
 5. Analytics 报告任务验证：
@@ -610,7 +629,8 @@ with SessionLocal() as db:
     task = RuntimeTaskQueue(db).enqueue(RuntimeTaskCreate(task_type="strategy_24m_duckdb_report", payload={"manifest": "latest"}, max_attempts=1))
     print(task.id, task.status)
 PY
-docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs -f analytics-worker
 ```
 
 任务成功后线上产物应包含 `backend/data/analytics/reports/strategy_24m_duckdb_report.md` 和 `backend/data/analytics/reports/strategy_24m_duckdb_report.json`；仓库跟踪的 Markdown 摘要仍由 `backend/scripts/run_duckdb_strategy_report.py` 写到 `docs/reports/strategy_24m_duckdb_report.md`。如果日线数据或验证输入缺失，任务会失败并在 `runtime_task_events` 中记录阻断原因。
@@ -629,7 +649,8 @@ with SessionLocal() as db:
     print(task.id, task.task_type, task.status)
     print(dry.id, dry.task_type, dry.status)
 PY
-docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs -f analytics-worker
 curl -sS -H "Authorization: Bearer <TOKEN>" https://<domain>/api/data-quality/sla
 ```
 
@@ -670,7 +691,7 @@ with SessionLocal() as db:
     print(drift.id, drift.task_type, drift.status)
 PY
 docker compose -f docker-compose.mysql.yml logs -f runtime-worker
-docker compose -f docker-compose.mysql.yml logs -f analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs -f analytics-worker
 curl -sS -H "Authorization: Bearer <TOKEN>" https://<domain>/api/track-record/drift
 ```
 

@@ -13,7 +13,7 @@ analytics, and backtest work runs outside Web.
 | Web/API | `app` | `scripts/run_platform_component.sh web` | FastAPI app, lightweight reads, task submission, task status |
 | Runtime worker | `runtime-worker` | `scripts/run_platform_component.sh runtime-worker` | data refresh, materialization, repair, close-refresh tasks |
 | Runtime scheduler | `runtime-scheduler` | `scripts/run_platform_component.sh scheduler` | schedules runtime tasks, does not serve Web requests |
-| Analytics worker | `analytics-worker` | `scripts/run_platform_component.sh analytics-worker` | Parquet export, DuckDB reports, data-quality analytics tasks |
+| Analytics worker | `analytics-worker` profile | `scripts/run_platform_component.sh analytics-worker` | On-demand Parquet export, DuckDB reports, data-quality analytics tasks |
 | Backtest worker | `backtest-worker` | `scripts/run_platform_component.sh backtest-worker` | queued backtest jobs and long-running backtest execution |
 | MySQL | `mysql` | local SQLite only for development | production operational fact store |
 | Redis | `redis` | optional locally | cache/rate-limit support |
@@ -31,7 +31,7 @@ curl -fsS http://127.0.0.1:${CLOUD_APP_PORT:-18090}/metrics
 docker compose -f docker-compose.mysql.yml ps
 docker compose -f docker-compose.mysql.yml logs --tail=120 runtime-worker
 docker compose -f docker-compose.mysql.yml logs --tail=120 runtime-scheduler
-docker compose -f docker-compose.mysql.yml logs --tail=120 analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=120 analytics-worker
 docker compose -f docker-compose.mysql.yml logs --tail=120 backtest-worker
 ```
 
@@ -50,7 +50,7 @@ Worker-specific checks:
 | Restart Web only | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate app` | Existing queued tasks remain in `runtime_tasks` / backtest tables |
 | Restart runtime worker | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker` | Claimed tasks recover through queue retry/failure rules |
 | Restart scheduler | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-scheduler` | New scheduled tasks resume; existing queued tasks stay intact |
-| Restart analytics worker | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker` | Analytics tasks continue after claim/retry handling |
+| Restart analytics worker on demand | `docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker` | Analytics tasks continue after claim/retry handling |
 | Restart backtest worker | `docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker` | Queued backtests continue; running jobs must be inspected before retry |
 
 Do not enable background scheduling loops in the Web process. Web defaults keep
@@ -111,6 +111,42 @@ scripts/run_platform_component.sh backtest-worker
 
 Use `--print-command` to inspect the exact command without starting a process.
 
+## Optional Analytics Worker
+
+`analytics-worker` is not part of the default always-on small-host profile. Start
+and verify it only when running analytics exports, 24-month DuckDB reports, or
+data-quality repair tasks:
+
+```bash
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; from app.core.database import ping_database; ping_database(); print('analytics-ready')"
+```
+
+For deployment scripts, pass the explicit switch:
+
+```bash
+DEPLOY_WITH_ANALYTICS_WORKER=1 scripts/deploy_cloud_server.sh
+scripts/quick_cloud_deploy.sh --with-analytics-worker
+```
+
+After the job finishes, stop only the optional profile service:
+
+```bash
+docker compose --profile analytics -f docker-compose.mysql.yml stop analytics-worker
+```
+
+Default deploy and verify flows print `analytics_worker:skipped_on_demand` when
+the optional worker is intentionally absent.
+
+## Scheduler Grey Flag
+
+The default topology still runs the independent `runtime-scheduler` container.
+For small-host memory grey validation, `runtime-worker` can embed the scheduler
+only when `RUNTIME_WORKER_EMBED_SCHEDULER=true`. Keep the independent scheduler
+running until one full trading day confirms scheduled enqueue, latest-data
+watchdog, and close-publish behavior. If validation fails, set
+`RUNTIME_WORKER_EMBED_SCHEDULER=false` and recreate `runtime-scheduler`.
+
 ## Rollback
 
 Per-process rollback/restart:
@@ -119,7 +155,7 @@ Per-process rollback/restart:
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate app
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-scheduler
-docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
 docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
 ```
 
@@ -128,7 +164,7 @@ Release rollback:
 1. Stop write-heavy workers before restoring data:
 
    ```bash
-   docker compose -f docker-compose.mysql.yml stop runtime-scheduler runtime-worker analytics-worker backtest-worker
+   docker compose --profile analytics -f docker-compose.mysql.yml stop runtime-scheduler runtime-worker analytics-worker backtest-worker
    ```
 
 2. Restore the database backup or previous MySQL volume snapshot.

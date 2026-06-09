@@ -12,7 +12,7 @@ database contracts as Web.
 |---|---|---|---|
 | Runtime worker | `python -m app.workers.runtime_worker` | `runtime_tasks` | data backfill, latest-bar refresh, low-buy materialization, repair tasks |
 | Runtime scheduler | `python -m app.workers.runtime_scheduler` | scheduled enqueue logic | close refresh, watchdog, periodic data-quality enqueue |
-| Analytics worker | `backend/scripts/analytics_worker.py` | analytics RuntimeTask registry | Parquet export, DuckDB strategy report, analytics quality checks |
+| Analytics worker | `backend/scripts/analytics_worker.py` | analytics RuntimeTask registry | On-demand Parquet export, DuckDB strategy report, analytics quality checks |
 | Backtest worker | `scripts/backtest_worker.py` | backtest job tables | queued backtest execution |
 
 Local wrappers:
@@ -66,6 +66,21 @@ docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate run
 Web must keep `RUNTIME_BACKGROUND_JOBS_ENABLED=false`; scheduler owns periodic
 enqueue.
 
+### Scheduler Grey Mode
+
+`runtime-worker` may embed scheduler loops only during an explicit grey run:
+
+```bash
+RUNTIME_WORKER_EMBED_SCHEDULER=true docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker
+```
+
+The embedded path keeps using the runtime background leader lock and records a
+`runtime-scheduler` heartbeat with worker id `runtime-worker-embedded-scheduler`.
+Do not stop the independent scheduler until one full trading day confirms
+periodic enqueue, latest-data watchdog, quote refresh, materialization refresh,
+and close-publish behavior. Roll back by setting
+`RUNTIME_WORKER_EMBED_SCHEDULER=false` and recreating `runtime-scheduler`.
+
 ## Analytics Worker
 
 Health:
@@ -79,18 +94,24 @@ Health:
 Inspect:
 
 ```bash
-docker compose -f docker-compose.mysql.yml logs --tail=200 analytics-worker
-docker compose -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; print('analytics-ready')"
+docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=200 analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml exec analytics-worker python -c "import duckdb, pyarrow; print('analytics-ready')"
 ```
 
 Recover:
 
 ```bash
-docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
 ```
 
 If dependencies are missing, analytics-worker should fail fast. Do not silently
 fall back to Web computation.
+
+Stop after low-frequency analytics work completes:
+
+```bash
+docker compose --profile analytics -f docker-compose.mysql.yml stop analytics-worker
+```
 
 ## Backtest Worker
 

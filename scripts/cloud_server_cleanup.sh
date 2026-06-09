@@ -12,6 +12,7 @@ KEEP_BACKUPS="${KEEP_BACKUPS:-3}"
 KEEP_REPORT_DIRS="${KEEP_REPORT_DIRS:-1}"
 APPLY="${APPLY:-0}"
 PRUNE_DOCKER="${PRUNE_DOCKER:-1}"
+STOP_SEPARATED_STACK="${STOP_SEPARATED_STACK:-0}"
 
 log() {
   printf '[cleanup] %s\n' "$*"
@@ -34,6 +35,7 @@ KEEP_BACKUPS="${KEEP_BACKUPS}"
 KEEP_REPORT_DIRS="${KEEP_REPORT_DIRS}"
 APPLY="${APPLY}"
 PRUNE_DOCKER="${PRUNE_DOCKER}"
+STOP_SEPARATED_STACK="${STOP_SEPARATED_STACK}"
 
 run_or_echo() {
   if [[ "$APPLY" == "1" ]]; then
@@ -110,6 +112,21 @@ if [[ "$PRUNE_DOCKER" == "1" ]]; then
 fi
 
 echo
+echo "[optional separated stack stop]"
+if [[ "$STOP_SEPARATED_STACK" == "1" ]]; then
+  test -f "$PROJECT_DIR/docker-compose.separated.yml"
+  if sudo nginx -T 2>/dev/null | grep -q 'proxy_pass http://127.0.0.1:18090'; then
+    echo "separated_stack_stop:nginx_entry_still_18090"
+    run_or_echo "cd '$PROJECT_DIR' && sudo docker compose -f docker-compose.separated.yml down"
+  else
+    echo "separated_stack_stop:blocked_nginx_not_18090"
+    exit 3
+  fi
+else
+  echo "separated_stack_stop:skipped"
+fi
+
+echo
 echo "[safety checks]"
 test -d "$PROJECT_DIR"
 sudo docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
@@ -140,7 +157,7 @@ main() {
   remote_script >"$local_script"
   chmod +x "$local_script"
   cloud_scp_to "$local_script" "$remote_path"
-  cloud_ssh "CLOUD_PROJECT_DIR='$CLOUD_PROJECT_DIR' KEEP_BACKUPS='$KEEP_BACKUPS' KEEP_REPORT_DIRS='$KEEP_REPORT_DIRS' APPLY='$APPLY' PRUNE_DOCKER='$PRUNE_DOCKER' bash '$remote_path'; rm -f '$remote_path'"
+  cloud_ssh "CLOUD_PROJECT_DIR='$CLOUD_PROJECT_DIR' KEEP_BACKUPS='$KEEP_BACKUPS' KEEP_REPORT_DIRS='$KEEP_REPORT_DIRS' APPLY='$APPLY' PRUNE_DOCKER='$PRUNE_DOCKER' STOP_SEPARATED_STACK='$STOP_SEPARATED_STACK' bash '$remote_path'; rm -f '$remote_path'"
   rm -f "$local_script"
 }
 

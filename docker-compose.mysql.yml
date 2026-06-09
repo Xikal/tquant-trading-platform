@@ -2,11 +2,21 @@ name: tquant-mysql
 
 x-low-priority-task-types: &low_priority_task_types ${RUNTIME_LOW_PRIORITY_TASK_TYPES:-analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly}
 
+x-default-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: ${DOCKER_LOG_MAX_SIZE:-50m}
+    max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+
 services:
   mysql:
     image: docker.m.daocloud.io/library/mysql:8.4
     container_name: tquant-mysql
     restart: unless-stopped
+    mem_limit: ${MYSQL_MEM_LIMIT:-1024m}
+    memswap_limit: ${MYSQL_MEMSWAP_LIMIT:-1280m}
+    cpus: ${MYSQL_CPUS:-1.50}
+    logging: *default_logging
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-t_quant}
@@ -38,6 +48,10 @@ services:
     image: docker.m.daocloud.io/library/redis:7-alpine
     container_name: tquant-redis
     restart: unless-stopped
+    mem_limit: ${REDIS_MEM_LIMIT:-128m}
+    memswap_limit: ${REDIS_MEMSWAP_LIMIT:-192m}
+    cpus: ${REDIS_CPUS:-0.50}
+    logging: *default_logging
     command:
       - redis-server
       - --appendonly
@@ -74,6 +88,10 @@ services:
     image: tquant-web:mysql
     container_name: tquant-app-mysql
     restart: unless-stopped
+    mem_limit: ${APP_MEM_LIMIT:-768m}
+    memswap_limit: ${APP_MEMSWAP_LIMIT:-1024m}
+    cpus: ${APP_CPUS:-1.50}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -129,7 +147,7 @@ services:
       GLOBAL_RATE_LIMIT_MAX_CALLS: ${GLOBAL_RATE_LIMIT_MAX_CALLS:-120}
       GLOBAL_RATE_LIMIT_WINDOW_SECONDS: ${GLOBAL_RATE_LIMIT_WINDOW_SECONDS:-1}
       STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
-      APP_WORKERS: ${APP_WORKERS:-2}
+      APP_WORKERS: ${APP_WORKERS:-1}
       TQUANT_ANALYTICS_ENABLED: ${WEB_TQUANT_ANALYTICS_ENABLED:-false}
       TQUANT_RESEARCH_JOBS_ENABLED: ${TQUANT_RESEARCH_JOBS_ENABLED:-false}
       TQUANT_ML_JOBS_ENABLED: ${TQUANT_ML_JOBS_ENABLED:-false}
@@ -174,6 +192,10 @@ services:
     image: tquant-web:mysql
     container_name: tquant-runtime-worker-mysql
     restart: unless-stopped
+    mem_limit: ${RUNTIME_WORKER_MEM_LIMIT:-768m}
+    memswap_limit: ${RUNTIME_WORKER_MEMSWAP_LIMIT:-1024m}
+    cpus: ${RUNTIME_WORKER_CPUS:-1.50}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -216,6 +238,8 @@ services:
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       RUNTIME_BACKGROUND_ROLE: worker
+      RUNTIME_WORKER_EMBED_SCHEDULER: ${RUNTIME_WORKER_EMBED_SCHEDULER:-false}
+      RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS: ${RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS:-60}
       RUNTIME_WORKER_POLL_INTERVAL_SECONDS: ${RUNTIME_WORKER_POLL_INTERVAL_SECONDS:-5}
       RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED: ${RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED:-false}
       RUNTIME_STARTUP_CACHE_PREWARM_ENABLED: ${RUNTIME_STARTUP_CACHE_PREWARM_ENABLED:-true}
@@ -267,6 +291,10 @@ services:
     image: tquant-web:mysql
     container_name: tquant-runtime-scheduler-mysql
     restart: unless-stopped
+    mem_limit: ${RUNTIME_SCHEDULER_MEM_LIMIT:-640m}
+    memswap_limit: ${RUNTIME_SCHEDULER_MEMSWAP_LIMIT:-768m}
+    cpus: ${RUNTIME_SCHEDULER_CPUS:-1.00}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -282,8 +310,8 @@ services:
       APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
       API_PREFIX: ${API_PREFIX:-/api}
       DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${SCHEDULER_DB_POOL_SIZE:-4}
-      DB_MAX_OVERFLOW: ${SCHEDULER_DB_MAX_OVERFLOW:-4}
+      DB_POOL_SIZE: ${SCHEDULER_DB_POOL_SIZE:-2}
+      DB_MAX_OVERFLOW: ${SCHEDULER_DB_MAX_OVERFLOW:-2}
       DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
       DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:18080,http://127.0.0.1:18080,http://localhost:18090,http://127.0.0.1:18090}
@@ -311,6 +339,8 @@ services:
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED:-true}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       RUNTIME_BACKGROUND_ROLE: scheduler
+      RUNTIME_WORKER_EMBED_SCHEDULER: false
+      RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS: ${RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS:-60}
       RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED: ${RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED:-false}
       RUNTIME_STARTUP_CACHE_PREWARM_ENABLED: ${RUNTIME_STARTUP_CACHE_PREWARM_ENABLED:-true}
       RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED: ${RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED:-true}
@@ -381,6 +411,10 @@ services:
     image: tquant-web:mysql
     container_name: tquant-backtest-worker-mysql
     restart: unless-stopped
+    mem_limit: ${BACKTEST_WORKER_MEM_LIMIT:-512m}
+    memswap_limit: ${BACKTEST_WORKER_MEMSWAP_LIMIT:-768m}
+    cpus: ${BACKTEST_WORKER_CPUS:-1.00}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -437,6 +471,11 @@ services:
     image: tquant-analytics:mysql
     container_name: tquant-analytics-worker-mysql
     restart: unless-stopped
+    profiles: ["analytics"]
+    mem_limit: ${ANALYTICS_WORKER_MEM_LIMIT:-512m}
+    memswap_limit: ${ANALYTICS_WORKER_MEMSWAP_LIMIT:-768m}
+    cpus: ${ANALYTICS_WORKER_CPUS:-1.00}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -484,6 +523,10 @@ services:
     image: tquant-web:mysql
     container_name: tquant-migration-mysql
     restart: "no"
+    mem_limit: ${MIGRATION_MEM_LIMIT:-512m}
+    memswap_limit: ${MIGRATION_MEMSWAP_LIMIT:-768m}
+    cpus: ${MIGRATION_CPUS:-1.00}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -505,6 +548,10 @@ services:
     container_name: tquant-mysql-backup
     restart: unless-stopped
     profiles: ["backup"]
+    mem_limit: ${MYSQL_BACKUP_MEM_LIMIT:-256m}
+    memswap_limit: ${MYSQL_BACKUP_MEMSWAP_LIMIT:-384m}
+    cpus: ${MYSQL_BACKUP_CPUS:-0.50}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -528,6 +575,10 @@ services:
     image: tquant-go-bff:mysql
     container_name: tquant-go-bff-gateway
     restart: unless-stopped
+    mem_limit: ${GO_BFF_MEM_LIMIT:-128m}
+    memswap_limit: ${GO_BFF_MEMSWAP_LIMIT:-192m}
+    cpus: ${GO_BFF_CPUS:-0.50}
+    logging: *default_logging
     depends_on:
       app:
         condition: service_healthy
@@ -557,6 +608,10 @@ services:
     image: tquant-go-market-read:mysql
     container_name: tquant-go-market-read-service
     restart: unless-stopped
+    mem_limit: ${GO_MARKET_READ_MEM_LIMIT:-128m}
+    memswap_limit: ${GO_MARKET_READ_MEMSWAP_LIMIT:-192m}
+    cpus: ${GO_MARKET_READ_CPUS:-0.75}
+    logging: *default_logging
     depends_on:
       mysql:
         condition: service_healthy
@@ -583,6 +638,10 @@ services:
     image: tquant-go-scan-worker:mysql
     container_name: tquant-go-scan-worker
     restart: unless-stopped
+    mem_limit: ${GO_SCAN_WORKER_MEM_LIMIT:-128m}
+    memswap_limit: ${GO_SCAN_WORKER_MEMSWAP_LIMIT:-192m}
+    cpus: ${GO_SCAN_WORKER_CPUS:-0.50}
+    logging: *default_logging
     depends_on:
       app:
         condition: service_healthy

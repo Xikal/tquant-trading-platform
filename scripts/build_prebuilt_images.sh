@@ -9,6 +9,7 @@ IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"
 PUSH_IMAGES=0
 BUILD_GO_IMAGES=1
 BUILD_APP_IMAGES=1
+BUILD_ANALYTICS_IMAGE="${BUILD_ANALYTICS_IMAGE:-0}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.mysql.yml}"
 
 log() {
@@ -25,7 +26,9 @@ Options:
   --registry <prefix>   Registry/repository prefix, for example registry.example.com/tquant.
   --tag <tag>           Image tag. Defaults to GITHUB_SHA or local git short SHA.
   --push                Push tagged images after building. Default is local only.
-  --app-only            Build only web and analytics images.
+  --app-only            Build only app images.
+  --with-analytics-worker
+                        Also build the optional analytics-worker image.
   --go-only             Build only Go service images.
   --compose-file <path> Compose file to use. Defaults to docker-compose.mysql.yml.
   --help
@@ -49,6 +52,10 @@ while [[ $# -gt 0 ]]; do
     --app-only)
       BUILD_APP_IMAGES=1
       BUILD_GO_IMAGES=0
+      shift
+      ;;
+    --with-analytics-worker)
+      BUILD_ANALYTICS_IMAGE=1
       shift
       ;;
     --go-only)
@@ -92,9 +99,12 @@ cd "$ROOT_DIR"
 
 if [[ "$BUILD_APP_IMAGES" == "1" ]]; then
   log "build app images"
-  COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build app analytics-worker
+  COMPOSE_BAKE=false docker compose -f "$COMPOSE_FILE" build app
   tag_image tquant-web:mysql tquant-web DEPLOY_PREBUILT_WEB_IMAGE_REF
-  tag_image tquant-analytics:mysql tquant-analytics DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF
+  if [[ "$BUILD_ANALYTICS_IMAGE" == "1" ]]; then
+    COMPOSE_BAKE=false docker compose --profile analytics -f "$COMPOSE_FILE" build analytics-worker
+    tag_image tquant-analytics:mysql tquant-analytics DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF
+  fi
 fi
 
 if [[ "$BUILD_GO_IMAGES" == "1" ]]; then

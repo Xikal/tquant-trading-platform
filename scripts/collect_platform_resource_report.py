@@ -28,6 +28,7 @@ RESOURCE_CONFIG_PATHS = {
     "journald": Path("/etc/systemd/journald.conf"),
     "journald_dropin": Path("/etc/systemd/journald.conf.d/tquant-resource.conf"),
     "buildkit": Path("/etc/buildkit/buildkitd.toml"),
+    "sysctl_swappiness": Path("/etc/sysctl.d/99-tquant-swappiness.conf"),
     "mysql_slow_logrotate": Path("/etc/logrotate.d/tquant-mysql-slow-log"),
 }
 
@@ -152,6 +153,90 @@ def parse_docker_system_df(stdout: str) -> dict[str, Any]:
     return docker
 
 
+def parse_swappiness(stdout: str) -> dict[str, Any]:
+    text = stdout.strip()
+    try:
+        value = int(text.splitlines()[-1].strip())
+    except (IndexError, ValueError):
+        return {}
+    return {"value": value, "recommended_value": 10, "ok": value <= 10}
+
+
+def parse_docker_stats(stdout: str) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    total_memory_bytes = 0
+    for line in stdout.splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith(("NAME\t", "NAMES\t")):
+            continue
+        parts = raw.split("\t")
+        if len(parts) < 4:
+            continue
+        memory_usage = parts[2]
+        used_text = memory_usage.split("/", 1)[0].strip()
+        used_bytes = parse_size_to_bytes(used_text)
+        if isinstance(used_bytes, int):
+            total_memory_bytes += used_bytes
+        rows.append(
+            {
+                "name": parts[0],
+                "cpu_percent": parts[1],
+                "memory_usage": memory_usage,
+                "memory_used_bytes": used_bytes,
+                "memory_percent": parts[3],
+            }
+        )
+    return {
+        "count": len(rows),
+        "total_memory_bytes": total_memory_bytes,
+        "rows": rows,
+    }
+
+
+def parse_separated_stack(stdout: str) -> dict[str, Any]:
+    expected = {"tquant-frontend-web", "tquant-backend-api", "tquant-separated-gateway"}
+    rows = []
+    running = set()
+    for line in stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) < 2 or parts[0] == "NAME":
+            continue
+        name = parts[0].strip()
+        status = parts[1].strip()
+        rows.append({"name": name, "status": status})
+        if name in expected and status.lower().startswith(("up", "running", "healthy")):
+            running.add(name)
+    return {
+        "expected": sorted(expected),
+        "running": sorted(running),
+        "running_count": len(running),
+        "all_running": running == expected,
+        "rows": rows,
+    }
+
+
+def parse_app_worker_count(stdout: str) -> dict[str, Any]:
+    text = stdout.strip()
+    env_match = re.search(r"APP_WORKERS=([0-9]+)", text)
+    direct_match = re.search(r"(?:^|\s)-w\s+\\?\"?([0-9]+)\\?\"?", text)
+    fallback_match = re.search(r"\$\{APP_WORKERS:-([0-9]+)\}", text)
+    env_value = int(env_match.group(1)) if env_match else None
+    if env_value is not None:
+        worker_count = env_value
+    elif direct_match:
+        worker_count = int(direct_match.group(1))
+    elif fallback_match:
+        worker_count = int(fallback_match.group(1))
+    else:
+        worker_count = None
+    return {
+        "command": text,
+        "gunicorn_workers": worker_count,
+        "app_workers_env": env_value,
+        "default_ok": worker_count in (None, 1) and env_value in (None, 1),
+    }
+
+
 def parse_journal_usage(stdout: str) -> dict[str, Any]:
     match = re.search(r"([0-9]+(?:\.[0-9]+)?\s*[KMGTPE]?)", stdout, re.I)
     if not match:
@@ -269,6 +354,18 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
     if isinstance(build_cache_bytes, int) and build_cache_bytes >= thresholds["docker_build_cache_bytes"]:
         warnings.append(f"docker_build_cache_bytes={build_cache_bytes}")
 
+    swappiness = report.get("swappiness", {}).get("value")
+    if isinstance(swappiness, int) and swappiness > 10:
+        warnings.append(f"swappiness={swappiness}")
+
+    separated_stack = report.get("separated_stack", {})
+    if isinstance(separated_stack, dict) and separated_stack.get("running_count"):
+        warnings.append(f"separated_stack_running={separated_stack.get('running_count')}")
+
+    app_workers = report.get("app_workers", {}).get("gunicorn_workers")
+    if isinstance(app_workers, int) and app_workers > 1:
+        warnings.append(f"app_gunicorn_workers={app_workers}")
+
     expire_seconds = report.get("mysql", {}).get("variables", {}).get("binlog_expire_logs_seconds")
     if isinstance(expire_seconds, int) and expire_seconds > thresholds["binlog_expire_seconds"]:
         warnings.append(f"binlog_expire_logs_seconds={expire_seconds}")
@@ -301,6 +398,10 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
     commands = report.get("commands", {})
     for name in (
         "docker_system_df",
+        "docker_stats",
+        "swappiness",
+        "separated_stack",
+        "app_workers",
         "journal",
         "mysql_volume",
         "mysql_slow_log",
@@ -336,6 +437,14 @@ def collect_from_commands(commands: dict[str, CommandResult]) -> dict[str, Any]:
         "root": parse_df(commands.get("df_root", CommandResult("", 1, "", "")).stdout),
         "memory": parse_free(commands.get("free", CommandResult("", 1, "", "")).stdout),
         "docker": parse_docker_system_df(commands.get("docker_system_df", CommandResult("", 1, "", "")).stdout),
+        "docker_stats": parse_docker_stats(commands.get("docker_stats", CommandResult("", 1, "", "")).stdout),
+        "swappiness": parse_swappiness(commands.get("swappiness", CommandResult("", 1, "", "")).stdout),
+        "separated_stack": parse_separated_stack(
+            commands.get("separated_stack", CommandResult("", 1, "", "")).stdout
+        ),
+        "app_workers": parse_app_worker_count(
+            commands.get("app_workers", CommandResult("", 1, "", "")).stdout
+        ),
         "journal": parse_journal_usage(commands.get("journal", CommandResult("", 1, "", "")).stdout),
         "mysql": {
             "volume": {"rows": mysql_volume_rows},
@@ -369,6 +478,31 @@ def collect_live(mysql_data_dir: Path) -> dict[str, Any]:
         "df_root": run_command(["df", "-h", "/"]),
         "free": run_command(["free", "-m"]),
         "docker_system_df": run_command(["sudo", "docker", "system", "df"]),
+        "docker_stats": run_command(
+            [
+                "sudo",
+                "docker",
+                "stats",
+                "--no-stream",
+                "--format",
+                "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}",
+            ]
+        ),
+        "swappiness": run_command(["sysctl", "-n", "vm.swappiness"]),
+        "separated_stack": run_command(
+            [
+                "sh",
+                "-c",
+                "sudo docker ps --format '{{.Names}}\t{{.Status}}' | grep -E '^(tquant-frontend-web|tquant-backend-api|tquant-separated-gateway)\t' || true",
+            ]
+        ),
+        "app_workers": run_command(
+            [
+                "sh",
+                "-c",
+                "sudo docker inspect tquant-app-mysql --format '{{json .Config.Cmd}} {{json .Config.Env}}' 2>/dev/null || true",
+            ]
+        ),
         "journal": run_command(["sudo", "journalctl", "--disk-usage"]),
         "mysql_volume": run_command(["du", "-sh", str(mysql_data_dir)]),
         "mysql_slow_log": run_command(["du", "-sh", str(slow_log)]),
@@ -431,6 +565,14 @@ printf '__SECTION__:free\\n'
 free -m || true
 printf '__SECTION__:docker_system_df\\n'
 sudo docker system df || true
+printf '__SECTION__:docker_stats\\n'
+sudo docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' || true
+printf '__SECTION__:swappiness\\n'
+sysctl -n vm.swappiness || true
+printf '__SECTION__:separated_stack\\n'
+sudo docker ps --format '{{.Names}}\t{{.Status}}' | grep -E '^(tquant-frontend-web|tquant-backend-api|tquant-separated-gateway)\t' || true
+printf '__SECTION__:app_workers\\n'
+sudo docker inspect tquant-app-mysql --format '{{json .Config.Cmd}} {{json .Config.Env}}' 2>/dev/null || true
 printf '__SECTION__:journal\\n'
 sudo journalctl --disk-usage || true
 printf '__SECTION__:mysql_volume\\n'
@@ -534,6 +676,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"| 根分区使用率 | {report.get('root', {}).get('used_pct', 'unknown')}% |",
         f"| Swap 使用率 | {report.get('memory', {}).get('swap', {}).get('used_pct', 'unknown')}% |",
         f"| Docker build cache | {report.get('docker', {}).get('build_cache', {}).get('size', 'unknown')} |",
+        f"| Docker 常驻容器内存合计 | {report.get('docker_stats', {}).get('total_memory_bytes', 'unknown')} bytes |",
+        f"| swappiness | {report.get('swappiness', {}).get('value', 'unknown')} |",
+        f"| 分离验证栈运行容器数 | {report.get('separated_stack', {}).get('running_count', 'unknown')} |",
+        f"| app Gunicorn workers | {report.get('app_workers', {}).get('gunicorn_workers', 'unknown')} |",
         f"| Journal | {report.get('journal', {}).get('usage', 'unknown')} |",
         f"| MySQL slow log | {report.get('mysql', {}).get('slow_log', {}).get('size', 'unknown')} |",
         f"| binlog 保留秒数 | {report.get('mysql', {}).get('variables', {}).get('binlog_expire_logs_seconds', 'unknown')} |",

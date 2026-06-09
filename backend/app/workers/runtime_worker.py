@@ -15,6 +15,10 @@ from app.services.market_quote_cache_refresh import MarketQuoteCacheRefreshServi
 from app.services.monitor_snapshot_cache import build_and_store_monitor_snapshot
 from app.services.tasks import RuntimeTaskQueue
 from app.services.tasks.registry import task_definitions_for_worker
+from app.runtime.background_jobs import (
+    shutdown_runtime_background_jobs,
+    start_runtime_background_jobs,
+)
 from app.workers.heavy_research_tasks import (
     FACTOR_HEAVY_TASK_TYPES,
     HEAVY_RESEARCH_TASK_TYPES,
@@ -631,12 +635,18 @@ def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     settings = get_settings()
+    embedded_scheduler_started = False
     start_latest_data_close_scheduler()
     if settings.platform_autopilot_enabled:
         start_platform_autopilot_scheduler()
+    if settings.runtime_worker_embed_scheduler:
+        start_runtime_background_jobs()
+        embedded_scheduler_started = True
     try:
         RuntimeWorker().run_forever()
     finally:
+        if embedded_scheduler_started:
+            shutdown_runtime_background_jobs()
         if settings.platform_autopilot_enabled:
             stop_platform_autopilot_scheduler()
         stop_latest_data_close_scheduler()

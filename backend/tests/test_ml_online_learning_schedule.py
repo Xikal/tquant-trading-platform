@@ -229,6 +229,21 @@ def test_web_role_does_not_register_runtime_background_loops(monkeypatch) -> Non
     assert calls == []
 
 
+def test_shutdown_without_background_leader_does_not_write_scheduler_stopping(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr("app.runtime.background_jobs._background_leader_active", False)
+    monkeypatch.setattr("app.runtime.background_jobs._record_scheduler_heartbeat_once", lambda status="running": calls.append(status))
+    monkeypatch.setattr("app.runtime.background_jobs.stop_auto_trader", lambda: calls.append("auto-trader-stop"))
+    monkeypatch.setattr("app.runtime.background_jobs.shutdown_strategy_evolution_scheduler", lambda: calls.append("scheduler-stop"))
+    monkeypatch.setattr("app.runtime.background_jobs.task_manager.shutdown", lambda timeout=30: calls.append(f"shutdown:{timeout}"))
+
+    shutdown_runtime_background_jobs(timeout=11)
+
+    assert "stopping" not in calls
+    assert "shutdown:11" in calls
+
+
 def test_scheduler_role_registers_runtime_background_loops(monkeypatch) -> None:
     calls: list[str] = []
 

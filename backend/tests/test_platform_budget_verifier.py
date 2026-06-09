@@ -46,7 +46,7 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "RUNTIME_BACKGROUND_ROLE": "web",
                 "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
                 "TQUANT_ANALYTICS_ENABLED": "false",
-                "APP_WORKERS": "2",
+                "APP_WORKERS": "1",
             },
             "pool_budget": 8,
         },

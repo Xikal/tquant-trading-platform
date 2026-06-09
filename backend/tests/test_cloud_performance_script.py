@@ -86,12 +86,16 @@ def test_mysql_compose_exposes_low_priority_task_pause_to_workers():
     assert "analytics_export_analysis_logs" in source
     assert "analytics_export_market_review_reports" in source
     assert "analytics_export_paper_review_reports" in source
-    for service in ("runtime-worker", "runtime-scheduler", "backtest-worker", "analytics-worker"):
+    for service in ("runtime-worker", "runtime-scheduler", "backtest-worker"):
         match = re.search(rf"^  {re.escape(service)}:\n(?P<body>(?:    .*\n)+)", source, flags=re.MULTILINE)
         assert match is not None
         service_block = match.group("body")
         assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}" in service_block
         assert "RUNTIME_LOW_PRIORITY_TASK_TYPES: *low_priority_task_types" in service_block
+    analytics_block = source.split("  analytics-worker:", 1)[1].split("\n\n  migration:", 1)[0]
+    assert 'profiles: ["analytics"]' in analytics_block
+    assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}" in analytics_block
+    assert "RUNTIME_LOW_PRIORITY_TASK_TYPES: *low_priority_task_types" in analytics_block
 
 
 def test_mysql_compose_keeps_role_pool_budget_below_single_host_limit() -> None:
@@ -109,7 +113,7 @@ def test_mysql_compose_keeps_role_pool_budget_below_single_host_limit() -> None:
     assert "DB_MAX_OVERFLOW: ${SCHEDULER_DB_MAX_OVERFLOW:-2}" in source
     assert "DB_POOL_SIZE: ${ANALYTICS_DB_POOL_SIZE:-4}" in source
     assert "DB_MAX_OVERFLOW: ${ANALYTICS_DB_MAX_OVERFLOW:-4}" in source
-    assert "APP_WORKERS: ${APP_WORKERS:-2}" in source
+    assert "APP_WORKERS: ${APP_WORKERS:-1}" in source
     assert "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED: ${RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED:-false}" in source
     assert "RUNTIME_QUOTE_CACHE_REFRESH_INTERVAL_SECONDS: ${RUNTIME_QUOTE_CACHE_REFRESH_INTERVAL_SECONDS:-30}" in source
     assert "--max-connections=${MYSQL_MAX_CONNECTIONS:-300}" not in source

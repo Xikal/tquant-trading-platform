@@ -1,10 +1,20 @@
 name: tquant-separated
 
+x-default-logging: &default_logging
+  driver: json-file
+  options:
+    max-size: ${DOCKER_LOG_MAX_SIZE:-50m}
+    max-file: "${DOCKER_LOG_MAX_FILE:-3}"
+
 services:
   frontend-web:
     image: docker.m.daocloud.io/library/nginx:1.27-alpine
     container_name: tquant-frontend-web
     restart: unless-stopped
+    mem_limit: ${FRONTEND_WEB_MEM_LIMIT:-128m}
+    memswap_limit: ${FRONTEND_WEB_MEMSWAP_LIMIT:-192m}
+    cpus: ${FRONTEND_WEB_CPUS:-0.50}
+    logging: *default_logging
     ports:
       - "${FRONTEND_WEB_PORT:-18080}:80"
     networks:
@@ -29,6 +39,10 @@ services:
     image: tquant-backend-api:local
     container_name: tquant-backend-api
     restart: unless-stopped
+    mem_limit: ${BACKEND_API_MEM_LIMIT:-768m}
+    memswap_limit: ${BACKEND_API_MEMSWAP_LIMIT:-1024m}
+    cpus: ${BACKEND_API_CPUS:-1.50}
+    logging: *default_logging
     ports:
       - "${BACKEND_API_PORT:-18091}:8000"
     networks:
@@ -55,7 +69,7 @@ services:
       RUNTIME_BACKGROUND_ROLE: web
       GLOBAL_RATE_LIMIT_BACKEND: ${GLOBAL_RATE_LIMIT_BACKEND:-redis}
       STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
-      APP_WORKERS: ${APP_WORKERS:-2}
+      APP_WORKERS: ${APP_WORKERS:-1}
       TQUANT_BFF_GATEWAY_URL: ${TQUANT_BFF_GATEWAY_URL:-http://tquant-go-bff-gateway:8091}
       TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-http://tquant-go-market-read-service:8092}
       TQUANT_GO_SCAN_WORKER_URL: ${TQUANT_GO_SCAN_WORKER_URL:-http://tquant-go-scan-worker:8093}
@@ -74,6 +88,10 @@ services:
     image: docker.m.daocloud.io/library/nginx:1.27-alpine
     container_name: tquant-separated-gateway
     restart: unless-stopped
+    mem_limit: ${GATEWAY_MEM_LIMIT:-128m}
+    memswap_limit: ${GATEWAY_MEMSWAP_LIMIT:-192m}
+    cpus: ${GATEWAY_CPUS:-0.50}
+    logging: *default_logging
     depends_on:
       frontend-web:
         condition: service_healthy
