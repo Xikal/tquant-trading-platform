@@ -684,15 +684,20 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
+  updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
     echo "frontend_next:separated_frontend_web:$frontend_web_compose"
-  elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+    updated=1
+  fi
+  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
     sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
     sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
     sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
     echo "frontend_next:monolith_compat"
-  else
+    updated=1
+  fi
+  if test "$updated" != "1"; then
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
@@ -954,19 +959,22 @@ frontend_web_compose_file() {
   return 1
 }
 
+updated=0
 if frontend_web_compose="$(frontend_web_compose_file)"; then
   sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
   echo "frontend_next_hot:separated_frontend_web:$frontend_web_compose"
-else
-  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
-    sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
-    sudo docker cp "$WORK_DIR/dist/." tquant-app-mysql:/app/frontend-next/dist/
-    sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
-    echo "frontend_next_hot:monolith_compat"
-  else
-    echo "frontend_next_hot:no_running_target" >&2
-    exit 1
-  fi
+  updated=1
+fi
+if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+  sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
+  sudo docker cp "$WORK_DIR/dist/." tquant-app-mysql:/app/frontend-next/dist/
+  sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
+  echo "frontend_next_hot:monolith_compat"
+  updated=1
+fi
+if test "$updated" != "1"; then
+  echo "frontend_next_hot:no_running_target" >&2
+  exit 1
 fi
 echo "frontend_next_hot:updated"
 rm -rf "$WORK_DIR" "$REMOTE_PACKAGE"
@@ -1225,15 +1233,20 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
+  updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
     echo "frontend_next:separated_frontend_web:$frontend_web_compose"
-  elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
+    updated=1
+  fi
+  if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
     sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
     sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
     sudo docker exec -u root tquant-app-mysql sh -c 'chmod -R a+rX /app/frontend-next/dist'
     echo "frontend_next:monolith_compat"
-  else
+    updated=1
+  fi
+  if test "$updated" != "1"; then
     echo "frontend_next:no_running_target" >&2
     exit 1
   fi
