@@ -5,7 +5,10 @@ import {
   canAttemptAuthRefresh,
   clearAuthRefreshSession,
   currentRefreshTokenRemembered,
+  getAuthAccessToken,
+  getCachedAuthUser,
   getAuthRefreshToken,
+  setCachedAuthUser,
   setAuthAccessToken,
 } from "../../shared/api/auth";
 import { ApiError, errorMessage } from "../../shared/api/errors";
@@ -61,10 +64,19 @@ export function AuthProvider(props: { children: JSX.Element }) {
   }
 
   async function restore() {
-    setStatus("restoring");
+    const cachedUser = getCachedAuthUser();
+    const cachedAccessToken = getAuthAccessToken();
+    if (cachedAccessToken && cachedUser) {
+      setUser(cachedUser);
+      setStatus("authenticated");
+      setError("");
+    } else {
+      setStatus("restoring");
+    }
     try {
       const current = await authApi.me({ timeoutMs: AUTH_RESTORE_TIMEOUT_MS, retry: false });
       setUser(current.user);
+      setCachedAuthUser(current.user);
       setStatus("authenticated");
       setError("");
     } catch (firstError) {
@@ -74,6 +86,17 @@ export function AuthProvider(props: { children: JSX.Element }) {
       if (shouldClearStoredAuthAfterRestore(firstError, refreshAttempt, couldAttemptRefresh)) {
         setAuthAccessToken("");
         clearAuthRefreshSession();
+        setCachedAuthUser(null);
+        setUser(null);
+        setStatus("anonymous");
+        setError("");
+        return;
+      }
+      if (cachedAccessToken && cachedUser) {
+        setUser(cachedUser);
+        setStatus("authenticated");
+        setError(errorMessage(firstError));
+        return;
       }
       setUser(null);
       setStatus("anonymous");
@@ -131,6 +154,7 @@ export function AuthProvider(props: { children: JSX.Element }) {
       const refreshToken = getAuthRefreshToken();
       setAuthAccessToken("");
       clearAuthRefreshSession();
+      setCachedAuthUser(null);
       setUser(null);
       setStatus("anonymous");
       await authApi.logout({ refresh_token: refreshToken }).catch(() => undefined);

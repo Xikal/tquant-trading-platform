@@ -14,6 +14,7 @@ import type {
 const ACCESS_TOKEN_KEY = "tquant:auth:access_token";
 const REFRESH_TOKEN_KEY = "tquant:auth:refresh_token";
 const REFRESH_SESSION_KEY = "tquant:auth:refresh_session";
+const USER_CACHE_KEY = "tquant:auth:user";
 const ADMIN_TOKEN_KEY = "tquant:admin_api_token";
 
 let memoryAccessToken = "";
@@ -31,6 +32,24 @@ export function setAuthAccessToken(token: string): void {
     if (token) localStorage.setItem(ACCESS_TOKEN_KEY, token);
     else localStorage.removeItem(ACCESS_TOKEN_KEY);
   }
+}
+
+export function getCachedAuthUser(): AuthMeResponse["user"] | null {
+  if (typeof localStorage === "undefined") return null;
+  const raw = localStorage.getItem(USER_CACHE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthMeResponse["user"];
+  } catch {
+    localStorage.removeItem(USER_CACHE_KEY);
+    return null;
+  }
+}
+
+export function setCachedAuthUser(user: AuthMeResponse["user"] | null): void {
+  if (typeof localStorage === "undefined") return;
+  if (user) localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+  else localStorage.removeItem(USER_CACHE_KEY);
 }
 
 export function getAuthRefreshToken(): string {
@@ -96,6 +115,7 @@ export function buildAuthHeaders(): Record<string, string> {
 export function applyAuthTokenResponse(response: AuthTokenResponse, remember = true): AuthTokenResponse {
   setAuthAccessToken(response.access_token);
   setAuthRefreshToken(response.refresh_token, remember, true);
+  setCachedAuthUser(response.user);
   return response;
 }
 
@@ -117,6 +137,7 @@ export const authApi = {
   logout: (payload: AuthLogoutRequest = { refresh_token: getAuthRefreshToken() }) => {
     setAuthAccessToken("");
     clearAuthRefreshSession();
+    setCachedAuthUser(null);
     return requestOperation("authLogout", {}, { method: "POST", body: JSON.stringify(payload) });
   },
   setupTotp: () => requestOperation<AuthMfaSetupResponse>("authTotpSetup", {}, { method: "POST" }),

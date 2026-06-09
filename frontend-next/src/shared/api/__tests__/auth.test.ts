@@ -12,7 +12,7 @@ describe("frontend-next auth adapter", () => {
     vi.stubGlobal("localStorage", localStorage);
     vi.stubGlobal("sessionStorage", sessionStorage);
 
-    const { applyAuthTokenResponse, buildAuthHeaders, getAuthRefreshToken, hasAuthRefreshSession, setAdminApiToken } = await import("../auth");
+    const { applyAuthTokenResponse, buildAuthHeaders, getAuthRefreshToken, hasAuthRefreshSession, getCachedAuthUser, setAdminApiToken } = await import("../auth");
 
     applyAuthTokenResponse(
       {
@@ -36,6 +36,8 @@ describe("frontend-next auth adapter", () => {
 
     expect(getAuthRefreshToken()).toBe("refresh-1");
     expect(hasAuthRefreshSession()).toBe(true);
+    expect(getCachedAuthUser()?.username).toBe("tester");
+    expect(localStorage.getItem("tquant:auth:user")).toContain("\"username\":\"tester\"");
     expect(buildAuthHeaders()).toEqual({
       Authorization: "Bearer access-1",
       "X-Admin-Token": "admin-1",
@@ -83,6 +85,18 @@ describe("frontend-next auth adapter", () => {
     expect(currentRefreshTokenRemembered()).toBe(false);
     expect(localStorage.getItem("tquant:auth:refresh_session")).toBeNull();
     expect(sessionStorage.getItem("tquant:auth:refresh_session")).toBe("1");
+  });
+
+  it("drops malformed cached users instead of blocking auth restore", async () => {
+    const localStorage = createMemoryStorage();
+    localStorage.setItem("tquant:auth:user", "{broken-json");
+    vi.stubGlobal("localStorage", localStorage);
+    vi.stubGlobal("sessionStorage", createMemoryStorage());
+
+    const { getCachedAuthUser } = await import("../auth");
+
+    expect(getCachedAuthUser()).toBeNull();
+    expect(localStorage.getItem("tquant:auth:user")).toBeNull();
   });
 });
 
