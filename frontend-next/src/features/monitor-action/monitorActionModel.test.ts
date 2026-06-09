@@ -120,6 +120,7 @@ describe("monitor action priority board model", () => {
                   name: "平安银行",
                   strategy_title: "首板回调",
                   latest_price: 12.3,
+                  confirmed_trade_date: "2026-06-05",
                   entry_zone_low: 11.8,
                   entry_zone_high: 12.1,
                   stop_loss: 11.2,
@@ -142,6 +143,7 @@ describe("monitor action priority board model", () => {
       expect(item.signal).toBe("接近买点，等待承接确认");
       expect(item.stopLoss).toBe("11.2");
       expect(item.position).toBe("2成试错");
+      expect(item.recommendDate).toBe("2026-06-05");
       expect(item.detailLines).toContain("缩量回踩到支撑位");
       dispose();
     });

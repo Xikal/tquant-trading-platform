@@ -10,12 +10,29 @@ from app.services.market.shared import (
     guess_market,
     json,
     requests,
+    timedelta,
     time,
 )
 from app.services.market.minute_bar_store import MinuteBarSnapshotStore
 
 
 class MarketIntradayMixin:
+    def get_daily_bars(self, symbol: str, limit: int = 120) -> list[KlineBar]:
+        effective_limit = max(1, min(int(limit or 120), 250))
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=max(effective_limit * 2, 180))
+        result = self.provider_router.fetch_daily_history(
+            symbol,
+            start_date.strftime("%Y%m%d"),
+            end_date.strftime("%Y%m%d"),
+        )
+        if not result.usable or result.data is None:
+            raise DataSourceError(result.message or f"未获取到 {symbol} 的日线K线。")
+        bars = self._daily_frame_to_kline_bars(result.data)
+        if not bars:
+            raise DataSourceError(f"未解析到 {symbol} 的日线K线。")
+        return bars[-effective_limit:]
+
     def _fetch_sina_minute_bars_subprocess(self, symbol: str) -> list[KlineBar]:
         """Compatibility-safe slow fallback for legacy quote paths.
 
@@ -425,3 +442,40 @@ class MarketIntradayMixin:
         change_pct = round((close_price - open_price) / open_price * 100, 4) if open_price else None
         amplitude = round((high_price - low_price) / open_price * 100, 4) if open_price else None
         return KlineBar(timestamp=bucket_key, open=open_price, close=close_price, high=high_price, low=low_price, volume=volume, amount=amount, amplitude=amplitude, change_pct=change_pct, turnover=None)
+
+    @staticmethod
+    def _daily_frame_to_kline_bars(frame) -> list[KlineBar]:  # noqa: ANN001
+        bars: list[KlineBar] = []
+        try:
+            records = frame.to_dict("records")
+        except AttributeError:
+            records = list(frame or [])
+        for row in records:
+            if not isinstance(row, dict):
+                continue
+            timestamp = _safe_str(row.get("date") or row.get("trade_date") or row.get("timestamp"))
+            open_price = _safe_float(row.get("open") or row.get("open_price"))
+            close_price = _safe_float(row.get("close") or row.get("close_price"))
+            high_price = _safe_float(row.get("high") or row.get("high_price"))
+            low_price = _safe_float(row.get("low") or row.get("low_price"))
+            if not timestamp or close_price <= 0:
+                continue
+            open_price = open_price or close_price
+            high_price = max(high_price or close_price, open_price, close_price)
+            low_price = min(value for value in (low_price or close_price, open_price, close_price) if value > 0)
+            amplitude = round((high_price - low_price) / open_price * 100, 4) if open_price else None
+            bars.append(
+                KlineBar(
+                    timestamp=timestamp[:10],
+                    open=open_price,
+                    close=close_price,
+                    high=high_price,
+                    low=low_price,
+                    volume=_safe_float(row.get("volume")),
+                    amount=_safe_float(row.get("amount")),
+                    amplitude=amplitude,
+                    change_pct=_safe_float(row.get("pct_chg") or row.get("change_pct")),
+                    turnover=_safe_float(row.get("turnover")) or None,
+                )
+            )
+        return bars

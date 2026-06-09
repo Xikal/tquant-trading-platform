@@ -28,6 +28,8 @@ export interface AnalysisRequestPayload {
 export interface AnalysisSupplement {
   quote?: unknown;
   kline?: unknown;
+  dailyKline?: unknown;
+  intradayKline?: unknown;
   keyLevels?: unknown;
   anomaly?: unknown;
   errors: string[];
@@ -51,6 +53,8 @@ export interface BatchAnalysisRow {
 
 export const ANALYSIS_REQUEST_TIMEOUT_MS = 60_000;
 export const ANALYSIS_BATCH_REQUEST_TIMEOUT_MS = 90_000;
+export const ANALYSIS_DAILY_KLINE_LIMIT = 120;
+export const ANALYSIS_INTRADAY_KLINE_LIMIT = 120;
 
 export const defaultAnalysisForm: AnalysisFormState = {
   symbol: "",
@@ -77,22 +81,27 @@ export function buildAnalysisPayload(form: AnalysisFormState, symbol = form.symb
 export async function runAnalysisWorkflow(form: AnalysisFormState, init: RequestJsonOptions = {}): Promise<AnalysisSnapshot> {
   const payload = buildAnalysisPayload(form);
   const analysisInit = withDefaultTimeout(init, ANALYSIS_REQUEST_TIMEOUT_MS);
-  const [response, quote, kline, keyLevels, anomaly] = await Promise.allSettled([
+  const [response, quote, dailyKline, intradayKline, keyLevels, anomaly] = await Promise.allSettled([
     apiClient.analyzeSymbol(payload, analysisInit),
     apiClient.quote(payload.symbol, init),
-    apiClient.kline(payload.symbol, "5m", 120, init),
+    apiClient.kline(payload.symbol, "daily", ANALYSIS_DAILY_KLINE_LIMIT, init),
+    apiClient.kline(payload.symbol, "5m", ANALYSIS_INTRADAY_KLINE_LIMIT, init),
     apiClient.stockKeyLevels(payload.symbol, init),
     apiClient.marketIntradayAnomaly(payload.symbol, init),
   ]);
   if (response.status === "rejected") throw response.reason;
+  const dailyValue = settledValue(dailyKline);
+  const intradayValue = settledValue(intradayKline);
   return {
     response: response.value,
     supplement: {
       quote: settledValue(quote),
-      kline: settledValue(kline),
+      kline: dailyValue ?? intradayValue,
+      dailyKline: dailyValue,
+      intradayKline: intradayValue,
       keyLevels: settledValue(keyLevels),
       anomaly: settledValue(anomaly),
-      errors: [quote, kline, keyLevels, anomaly].filter((item) => item.status === "rejected").map((item) => errorMessage(item.reason)),
+      errors: [quote, dailyKline, intradayKline, keyLevels, anomaly].filter((item) => item.status === "rejected").map((item) => errorMessage(item.reason)),
     },
   };
 }
@@ -106,13 +115,39 @@ export async function runBatchAnalysis(form: AnalysisFormState, init: RequestJso
 }
 
 export function chartPoints(snapshot: AnalysisSnapshot | null): KlineCandlePoint[] {
-  const bars = readArray<Record<string, unknown>>(readRecord(snapshot?.supplement.kline).bars).length
-    ? readArray<Record<string, unknown>>(readRecord(snapshot?.supplement.kline).bars)
-    : readArray<Record<string, unknown>>(readRecord(snapshot?.response).bars);
+  return klinePointsFrom(snapshot, "daily");
+}
+
+export function intradayChartPoints(snapshot: AnalysisSnapshot | null): KlineCandlePoint[] {
+  return klinePointsFrom(snapshot, "intraday");
+}
+
+export function chartWindowLabel(snapshot: AnalysisSnapshot | null, mode: "daily" | "intraday"): string {
+  const count = mode === "daily" ? chartPoints(snapshot).length : intradayChartPoints(snapshot).length;
+  if (mode === "daily") return count ? `日线 ${count} 个交易日` : "日线 120D";
+  return count ? `5分钟 ${count} 根` : "5分钟盘中";
+}
+
+function klinePointsFrom(snapshot: AnalysisSnapshot | null, mode: "daily" | "intraday"): KlineCandlePoint[] {
+  const primary = mode === "daily" ? snapshot?.supplement.dailyKline : snapshot?.supplement.intradayKline;
+  const fallback = mode === "daily" ? snapshot?.supplement.kline : snapshot?.response;
+  const primaryBars = klineBarsForMode(primary, mode);
+  const bars = primaryBars.length ? primaryBars : klineBarsForMode(fallback, mode);
   const points = bars
     .map((bar) => candlePoint(bar))
     .filter((point): point is KlineCandlePoint => Boolean(point));
-  return points.length ? points.slice(-120) : [];
+  const limit = mode === "daily" ? ANALYSIS_DAILY_KLINE_LIMIT : ANALYSIS_INTRADAY_KLINE_LIMIT;
+  return points.length ? points.slice(-limit) : [];
+}
+
+function klineBarsForMode(value: unknown, mode: "daily" | "intraday"): Record<string, unknown>[] {
+  const record = readRecord(value);
+  const period = text(record.period, "");
+  if (period) {
+    const isDaily = period === "daily";
+    if ((mode === "daily" && !isDaily) || (mode === "intraday" && isDaily)) return [];
+  }
+  return readArray<Record<string, unknown>>(record.bars);
 }
 
 export function summaryMetrics(snapshot: AnalysisSnapshot | null) {

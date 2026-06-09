@@ -32784,8 +32784,8 @@
             "name": "period",
             "required": false,
             "schema": {
-              "default": "5m",
-              "pattern": "^(1m|5m|15m)$",
+              "default": "daily",
+              "pattern": "^(daily|1m|5m|15m)$",
               "title": "Period",
               "type": "string"
             }
@@ -32795,7 +32795,9 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 240,
+              "default": 120,
+              "maximum": 250,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

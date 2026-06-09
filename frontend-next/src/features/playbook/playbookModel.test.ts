@@ -72,6 +72,28 @@ describe("playbook priority board model", () => {
     expect(symbols).toEqual(["300750"]);
   });
 
+  it("keeps each recommendation date visible on candidate rows", () => {
+    const data = {
+      screener: {
+        strategy_key: "first_board",
+        latest_trade_date: "2026-06-05",
+        confirmed_candidates: [
+          { symbol: "603319", name: "美湖股份", confirmed_trade_date: "2026-06-05", board_date: "2026-05-29" },
+        ],
+        candidates: [
+          { symbol: "601208", name: "东材科技", quote_timestamp: "2026-06-04 15:03:00", board_date: "2026-05-28" },
+        ],
+      },
+    } as PlaybookDataset;
+
+    const candidates = candidateFamilies(data).flatMap((family) => family.items);
+
+    expect(candidates.map((item) => [item.symbol, item.recommendDate])).toEqual([
+      ["603319", "2026-06-05"],
+      ["601208", "2026-06-04"],
+    ]);
+  });
+
   it("counts grouped priority board candidates when top-level items are absent", () => {
     const data = { priorityBoard: groupedPriorityBoard } as PlaybookDataset;
 

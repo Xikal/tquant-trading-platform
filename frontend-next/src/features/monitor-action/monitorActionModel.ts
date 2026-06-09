@@ -21,6 +21,7 @@ export interface MonitorPriorityItem {
   position: string;
   keyLevel: string;
   entryRange: string;
+  recommendDate: string;
   signal: string;
   stopLoss: string;
   detailLines: string[];
@@ -245,6 +246,7 @@ function priorityItem(item: Record<string, unknown>, index: number): MonitorPrio
   const position = text(pickFirst(item, ["suggested_position_text", "position_breakdown_text", "position_text"]), "");
   const keyLevel = text(pickFirst(item, ["key_level_text", "support_pressure_text", "entry_level_text"]), "");
   const summary = text(pickFirst(item, ["plain_language_summary", "reason", "action_summary", "strategy_notes"]), "");
+  const recommendDate = recommendationDateText(item);
   return {
     raw: item,
     order: index,
@@ -264,9 +266,11 @@ function priorityItem(item: Record<string, unknown>, index: number): MonitorPrio
     position,
     keyLevel,
     entryRange,
+    recommendDate,
     signal,
     stopLoss,
     detailLines: [
+      recommendDate === "--" ? "" : `推荐日 ${recommendDate}`,
       summary,
       keyLevel,
       text(pickFirst(item, ["trigger_condition"]), ""),
@@ -313,6 +317,22 @@ function entryRangeText(item: Record<string, unknown>): string {
   const highText = numberText(high, "");
   if (lowText && highText) return `${lowText}-${highText}`;
   return lowText || highText || "--";
+}
+
+function recommendationDateText(item: Record<string, unknown>): string {
+  return text(
+    pickFirst(item, [
+      "recommendation_date",
+      "recommended_at",
+      "confirmed_trade_date",
+      "signal_trade_date",
+      "latest_trade_date",
+      "current_date",
+      "quote_timestamp",
+      "board_date",
+    ]),
+    "--",
+  ).slice(0, 10);
 }
 
 function statusBadgeText(options: {

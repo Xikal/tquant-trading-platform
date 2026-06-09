@@ -620,7 +620,7 @@
 
 .playbook-stock-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 860px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -675,6 +675,19 @@
 
 .playbook-text--down {
   color: #059669;
+}
+
+.playbook-date-pill {
+  display: inline-block;
+  border-radius: 4px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 3px 6px;
+  white-space: nowrap;
 }
 
 .playbook-state-pill {

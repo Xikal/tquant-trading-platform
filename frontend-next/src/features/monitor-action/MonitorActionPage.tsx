@@ -211,6 +211,7 @@ export function MonitorActionPage() {
                               <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>
                             </button>
                             <div class="monitor-rank-row__facts">
+                              <Fact label="推荐日" value={item.recommendDate} strong />
                               <Fact label="现价" value={item.price} />
                               <Fact label="建议买入区间" value={item.entryRange} />
                               <Fact label="买入信号" value={item.signal} strong />

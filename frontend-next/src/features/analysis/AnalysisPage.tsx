@@ -14,8 +14,10 @@ import {
   analysisReason,
   anomalyRecord,
   buildAnalysisPayload,
+  chartWindowLabel,
   chartPoints,
   defaultAnalysisForm,
+  intradayChartPoints,
   keyLevelRows,
   parseSymbols,
   paperOrderDraftSearch,
@@ -37,6 +39,7 @@ export function AnalysisPage() {
   const [batchRows, setBatchRows] = createSignal<BatchAnalysisRow[]>([]);
   const [status, setStatus] = createSignal<"idle" | "loading" | "batch" | "error">("idle");
   const [message, setMessage] = createSignal("");
+  const [klineMode, setKlineMode] = createSignal<"daily" | "intraday">("daily");
   let activeRequest: AbortController | null = null;
 
   const updateForm = <K extends keyof AnalysisFormState>(key: K, value: AnalysisFormState[K]) => setForm((current) => ({ ...current, [key]: value }));
@@ -59,7 +62,10 @@ export function AnalysisPage() {
     return quoteRecord(snapshot());
   });
   const currentAnomaly = createMemo(() => anomalyRecord(snapshot()));
-  const chartValues = createMemo(() => chartPoints(snapshot()));
+  const dailyChartValues = createMemo(() => chartPoints(snapshot()));
+  const intradayValues = createMemo(() => intradayChartPoints(snapshot()));
+  const chartValues = createMemo(() => (klineMode() === "daily" ? dailyChartValues() : intradayValues()));
+  const chartLabel = createMemo(() => chartWindowLabel(snapshot(), klineMode()));
   const hasValidSymbol = createMemo(() => currentSymbol().length === 6);
   const hasBatchSymbols = createMemo(() => parseSymbols(form().batchSymbols).length > 0);
   const actionHeadline = createMemo(() => text(suggestion().plain_action_text ?? suggestion().effective_action ?? suggestion().action, snapshot() ? "观察" : "等待量化信号"));
@@ -196,7 +202,16 @@ export function AnalysisPage() {
         </Show>
 
         <div class="analysis-clean-card analysis-clean-chart">
-          <div class="analysis-clean-title"><h3>K线与多因子指标联动监控区</h3></div>
+          <div class="analysis-clean-title analysis-clean-title--with-actions">
+            <div>
+              <h3>K线与多因子指标联动监控区</h3>
+              <span>{chartLabel()}</span>
+            </div>
+            <div class="analysis-kline-toggle" role="group" aria-label="K线周期">
+              <button type="button" classList={{ "is-active": klineMode() === "daily" }} onClick={() => setKlineMode("daily")}>日线120D</button>
+              <button type="button" classList={{ "is-active": klineMode() === "intraday" }} onClick={() => setKlineMode("intraday")}>5分钟盘中</button>
+            </div>
+          </div>
           <div class="analysis-kline-header">
             <span>开: <strong>{numberText(currentQuote().open_price, "--")}</strong></span>
             <span>高: <strong>{numberText(currentQuote().high_price, "--")}</strong></span>

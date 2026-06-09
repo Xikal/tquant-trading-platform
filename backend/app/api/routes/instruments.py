@@ -92,9 +92,17 @@ def get_quote(symbol: str):
 
 
 @router.get("/kline/{symbol}")
-def get_kline(symbol: str, period: str = Query("5m", pattern="^(1m|5m|15m)$"), limit: int = 240):
+def get_kline(
+    symbol: str,
+    period: str = Query("daily", pattern="^(daily|1m|5m|15m)$"),
+    limit: int = Query(120, ge=1, le=250),
+):
     try:
-        bars = market_data.get_intraday_bars(symbol, period=period, limit=limit)
+        bars = (
+            market_data.get_daily_bars(symbol, limit=limit)
+            if period == "daily"
+            else market_data.get_intraday_bars(symbol, period=period, limit=limit)
+        )
     except DataSourceError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"symbol": symbol, "period": period, "bars": [bar.model_dump() for bar in bars]}

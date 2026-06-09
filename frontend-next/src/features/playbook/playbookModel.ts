@@ -30,6 +30,7 @@ export interface PlaybookCandidate {
   scoreText: string;
   changeText: string;
   riskText: string;
+  recommendDate: string;
   details: string;
   strategy: string;
   raw: Record<string, unknown>;
@@ -209,6 +210,7 @@ function candidateFromRecord(item: Record<string, unknown>, quotes = new Map<str
     scoreText: numberText(score, "--"),
     changeText: pctText(change, ""),
     riskText: text(item.risk_tier ?? item.data_quality_text ?? item.blocked_reason, ""),
+    recommendDate: recommendationDateText(item),
     details: text(item.action_summary ?? item.primary_lane_reason ?? item.execution_note ?? item.strategy_performance_text, ""),
     strategy: text(item.strategy_title ?? item.strategy_key, ""),
     raw,
@@ -261,10 +263,27 @@ export function detailRows(candidate: PlaybookCandidate | null) {
     ["触发", text(raw.trigger_condition ?? raw.buy_signal_hint, "--")],
     ["失效", text(raw.invalid_condition, "--")],
     ["入场区间", `${numberText(raw.entry_zone_low, "--")} - ${numberText(raw.entry_zone_high, "--")}`],
+    ["推荐日期", recommendationDateText(raw)],
     ["止损", numberText(raw.stop_loss, "--")],
     ["仓位", text(raw.suggested_position_text ?? raw.position_breakdown_text, "--")],
     ["策略", text(candidate?.strategy, "--")],
   ];
+}
+
+function recommendationDateText(item: Record<string, unknown>): string {
+  return text(
+    pickFirst(item, [
+      "recommendation_date",
+      "recommended_at",
+      "confirmed_trade_date",
+      "signal_trade_date",
+      "latest_trade_date",
+      "current_date",
+      "quote_timestamp",
+      "board_date",
+    ]),
+    "--",
+  ).slice(0, 10);
 }
 
 export function performanceSummary(family: PlaybookFamily | null) {

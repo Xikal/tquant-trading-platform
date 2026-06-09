@@ -252,6 +252,7 @@ export function PlaybookPage() {
                         <th>代码 & 简称</th>
                         <th>最新价</th>
                         <th>日涨跌幅</th>
+                        <th>推荐日期</th>
                         <th>承接位</th>
                         <th>状态触发</th>
                         <th>操作建议</th>
@@ -269,6 +270,7 @@ export function PlaybookPage() {
                             </td>
                             <td>{item.price}</td>
                             <td class={item.changeText.startsWith("-") ? "playbook-text--down" : "playbook-text--up"}>{item.changeText || "--"}</td>
+                            <td><span class="playbook-date-pill">{item.recommendDate}</span></td>
                             <td>{numberText(readRecord(item.raw).entry_zone_low, "--")}</td>
                             <td><span class="playbook-state-pill">{item.riskText || item.details || "--"}</span></td>
                             <td>
