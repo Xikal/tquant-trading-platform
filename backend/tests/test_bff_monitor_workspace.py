@@ -237,6 +237,66 @@ def test_monitor_snapshot_stale_cache_uses_fresher_priority_board_read_model(mon
     assert enqueued == [{"user_id": 15, "priority_limit": 18}]
 
 
+def test_monitor_snapshot_stale_cache_probes_read_model_before_ttl_expires(monkeypatch) -> None:
+    db = _db_with_user(16)
+
+    monkeypatch.setattr(monitor_snapshot_service, "list_user_watchlist_rows", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "read_monitor_snapshot_cache",
+        lambda *_args, **_kwargs: MonitorSnapshotCacheHit(
+            payload={
+                "updated_at": "2026-06-09 10:00:00",
+                "watchlist_signals": [],
+                "priority_board": {
+                    "latest_trade_date": "2026-06-09",
+                    "updated_at": "2026-06-09 10:00:00",
+                    "data_quality": "stale",
+                    "read_path": "priority_board_latest_successful_snapshot",
+                    "total_candidates": 31,
+                    "immediate_count": 2,
+                    "focus_count": 12,
+                    "track_count": 14,
+                    "items": [{"symbol": "600237", "buy_signal_state": "soft_buy_now", "simple_bucket": "buy_now"}],
+                },
+                "sector_etf_t0": {},
+            },
+            needs_refresh=False,
+        ),
+    )
+    enqueued: list[dict[str, int]] = []
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "enqueue_monitor_snapshot_refresh",
+        lambda _db, *, user_id, priority_limit: enqueued.append({"user_id": user_id, "priority_limit": priority_limit}),
+    )
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "_fallback_priority_board_from_read_model",
+        lambda _db, *, priority_limit: {
+            "latest_trade_date": "2026-06-09",
+            "updated_at": "2026-06-09 10:00:00",
+            "data_quality": "stale",
+            "read_path": "priority_board_latest_successful_snapshot",
+            "total_candidates": 15,
+            "immediate_count": 2,
+            "focus_count": 9,
+            "track_count": 4,
+            "items": [{"symbol": "600237", "buy_signal_state": "soft_buy_now", "simple_bucket": "buy_now"}],
+        },
+    )
+
+    response = monitor_snapshot_service.build_monitor_snapshot(
+        db,
+        current_user=User(id=16, username="researcher16", password_hash="x", is_active=True, roles=""),
+        priority_limit=18,
+    )
+
+    assert response.priority_board["total_candidates"] == 15
+    assert response.priority_board["focus_count"] == 9
+    assert enqueued == []
+
+
 def test_monitor_workspace_bundles_hourly_history_and_admin_runtime(monkeypatch) -> None:
     db = _db_with_user(13)
     db.query(User).filter(User.id == 13).update({"roles": "admin"})

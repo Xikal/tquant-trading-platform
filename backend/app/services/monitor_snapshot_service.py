@@ -44,12 +44,14 @@ def build_monitor_snapshot(
     if cached is not None:
         record_read_model_cache_hit("monitor_workspace")
         payload = filter_monitor_snapshot_payload(cached.payload, excluded)
+        should_probe_priority_board = cached.needs_refresh or _priority_board_needs_read_model_probe(payload)
         if cached.needs_refresh:
             enqueue_monitor_snapshot_refresh(
                 db,
                 user_id=current_user.id,
                 priority_limit=priority_limit,
             )
+        if should_probe_priority_board:
             payload = _with_fresher_priority_board(
                 payload,
                 db,
@@ -157,6 +159,14 @@ def _is_stale_board(board: dict[str, Any]) -> bool:
     quality = str(board.get("data_quality") or "").lower()
     warning = str(board.get("snapshot_warning") or board.get("stale_reason") or "")
     return bool(board.get("stale")) or quality == "stale" or "刷新" in warning
+
+
+def _priority_board_needs_read_model_probe(payload: dict[str, Any]) -> bool:
+    board = payload.get("priority_board")
+    if not isinstance(board, dict):
+        return False
+    read_path = str(board.get("read_path") or "")
+    return _is_stale_board(board) or read_path == "priority_board_latest_successful_snapshot"
 
 
 def _board_signature(board: dict[str, Any]) -> tuple[Any, ...]:
