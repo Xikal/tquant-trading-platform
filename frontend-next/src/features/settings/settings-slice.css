@@ -103,7 +103,7 @@
 
 .settings-command-token {
   display: grid;
-  grid-template-columns: auto auto minmax(150px, 1fr) auto auto;
+  grid-template-columns: auto auto auto minmax(150px, 1fr) auto auto;
   gap: 6px;
   align-items: center;
   border: 1px solid var(--settings-line);
@@ -116,6 +116,17 @@
 
 .settings-command-token strong {
   font-size: 10px;
+  white-space: nowrap;
+}
+
+.settings-command-token__state {
+  border: 1px solid var(--settings-line);
+  border-radius: 999px;
+  background: var(--settings-surface);
+  color: var(--settings-muted);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
   white-space: nowrap;
 }
 
@@ -297,6 +308,51 @@
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settings-command-card-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.settings-command-module-state {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px;
+  max-width: 180px;
+  border: 1px solid var(--settings-line);
+  border-radius: 999px;
+  background: var(--settings-surface-muted);
+  color: var(--settings-muted);
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.settings-command-module-state strong {
+  color: var(--settings-amber);
+  font-weight: 900;
+}
+
+.settings-command-module-state em {
+  overflow: hidden;
+  font-style: normal;
+  font-weight: 800;
+  text-overflow: ellipsis;
+}
+
+.settings-command-module-state--ok {
+  border-color: color-mix(in srgb, var(--settings-emerald) 30%, var(--settings-line));
+  background: color-mix(in srgb, var(--settings-emerald) 9%, var(--settings-surface));
+}
+
+.settings-command-module-state--ok strong {
+  color: var(--settings-emerald);
 }
 
 .settings-command-card__icon {
@@ -1097,7 +1153,7 @@
   }
 
   .settings-command-token {
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto;
   }
 
   .settings-command-tools {
@@ -1125,11 +1181,17 @@
   }
 
   .settings-command-token {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   }
 
   .settings-command-token strong {
     display: none;
+  }
+
+  .settings-command-token__state {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .settings-command-tools {

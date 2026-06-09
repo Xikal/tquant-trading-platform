@@ -135,10 +135,10 @@ function MarketGateCard(props: { view: MarketView; active: boolean }) {
         <div class={`market-sentiment-status-block${props.view.gateBlocked ? " market-sentiment-status-block--block" : " market-sentiment-status-block--pass"}`}>
           <div>
             <span>生产阀门</span>
-            <b>{props.view.gateBlocked ? "BLOCK" : "PASS"}</b>
+            <b>{props.view.gateCode}</b>
           </div>
-          <strong>{props.view.gateBlocked ? "生产阻断" : "谨慎放行"}</strong>
-          <p>{props.view.gateBlocked ? "市场走弱限制开仓" : "允许小仓观察执行"}</p>
+          <strong>{props.view.gateDecisionText}</strong>
+          <p>{props.view.gateDecisionHint}</p>
         </div>
 
         <div class="market-sentiment-status-block">
@@ -163,6 +163,10 @@ function MarketGateCard(props: { view: MarketView; active: boolean }) {
 
       <div class="market-sentiment-interpretation">
         <p><strong>「状态：{props.view.marketState}」</strong>{props.view.marketRead}</p>
+        <div class="market-sentiment-data-tags">
+          <span>最后更新: <b>{props.view.dataUpdatedAt}</b></span>
+          <span>缓存状态: <b>{props.view.cacheState}</b></span>
+        </div>
         <div>
           <span>当前热点:</span>
           <For each={props.view.hotSectors}>
@@ -371,7 +375,10 @@ type MarketView = {
   etfRows: MarketEtf[];
   firepower: number;
   firepowerLabel: string;
+  gateCode: string;
   gateBlocked: boolean;
+  gateDecisionText: string;
+  gateDecisionHint: string;
   holdingCount: string;
   hotSectors: string[];
   hotStrength: string;
@@ -388,6 +395,7 @@ type MarketView = {
   riskCount: string;
   safetyLevel: string;
   syncStatus: string;
+  cacheState: string;
 };
 
 export function buildView(model: MarketPanelModel): MarketView {
@@ -426,7 +434,10 @@ export function buildView(model: MarketPanelModel): MarketView {
     etfRows,
     firepower,
     firepowerLabel: firepower <= 5 ? "[冰点]" : firepower < 35 ? "[低火力]" : "[活跃]",
+    gateCode: gateDecision.includes("block") || gateDecision.includes("阻断") || marketState.includes("退潮") ? "BLOCK" : gateDecision.includes("reduce") || gateDecision.includes("谨慎") ? "REDUCE" : "PASS",
     gateBlocked: gateDecision.includes("block") || gateDecision.includes("阻断") || marketState.includes("退潮"),
+    gateDecisionText: gateDecisionText(gateDecision, marketState),
+    gateDecisionHint: gateDecisionHint(gateDecision, marketState),
     holdingCount: text(board.holding_watch_count ?? nested(root, "paper.holding_count"), "0"),
     hotSectors,
     hotStrength: text(board.hot_strength_text ?? model.breadth.state_text ?? model.breadth.data_quality_text, "--"),
@@ -443,7 +454,22 @@ export function buildView(model: MarketPanelModel): MarketView {
     riskCount: String(riskItems.length || text(board.risk_count ?? board.warning_count, "0")),
     safetyLevel: text(board.safety_level, "LEVEL-ALPHA 3"),
     syncStatus: syncStatus(model),
+    cacheState: cacheStateText(model),
   };
+}
+
+function gateDecisionText(gateDecision: string, marketState: string): string {
+  const raw = `${gateDecision} ${marketState}`.toLowerCase();
+  if (raw.includes("block") || raw.includes("阻断") || raw.includes("退潮") || raw.includes("weak")) return "禁止开仓";
+  if (raw.includes("reduce") || raw.includes("谨慎") || raw.includes("warning") || raw.includes("震荡")) return "只观察";
+  return "允许小仓";
+}
+
+function gateDecisionHint(gateDecision: string, marketState: string): string {
+  const text = gateDecisionText(gateDecision, marketState);
+  if (text === "禁止开仓") return "市场或数据闸门未通过，只允许复盘观察";
+  if (text === "只观察") return "允许看盘和轻量跟踪，暂不主动加仓";
+  return "可按策略小仓试错，仍需确认买点与止损";
 }
 
 function buildLeaders(model: MarketPanelModel): MarketLeader[] {
@@ -526,4 +552,11 @@ function syncStatus(model: MarketPanelModel): string {
   if (model.root.stale === true) return "BFF: STALE";
   if (partials.length > 0) return `BFF: PARTIAL ${partials.length}`;
   return "BFF: ACTIVE";
+}
+
+function cacheStateText(model: MarketPanelModel): string {
+  const partials = readArray(model.root.partial_errors);
+  if (model.root.stale === true) return "使用缓存";
+  if (partials.length > 0) return "部分缓存";
+  return "实时数据";
 }

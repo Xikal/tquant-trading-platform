@@ -388,6 +388,66 @@
   color: #334155;
 }
 
+.strategy-signal-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.strategy-signal-lifecycle__step {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  background: #f8fafc;
+  padding: 5px 6px;
+}
+
+.strategy-signal-lifecycle__step em {
+  color: #94a3b8;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.strategy-signal-lifecycle__step strong {
+  overflow: hidden;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strategy-signal-lifecycle__step--green {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+}
+
+.strategy-signal-lifecycle__step--green strong {
+  color: #047857;
+}
+
+.strategy-signal-lifecycle__step--blue {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.strategy-signal-lifecycle__step--blue strong {
+  color: #1d4ed8;
+}
+
+.strategy-signal-lifecycle__step--amber {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.strategy-signal-lifecycle__step--amber strong {
+  color: #b45309;
+}
+
 .strategy-signal-row__metrics {
   display: flex;
   flex: none;
@@ -1230,5 +1290,20 @@
 
   .strategy-tracking-card-list {
     display: grid;
+  }
+
+  .strategy-signal-row__body {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .strategy-signal-lifecycle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .strategy-signal-row__metrics {
+    width: 100%;
+    flex-wrap: wrap;
   }
 }

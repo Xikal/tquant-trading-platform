@@ -66,6 +66,7 @@ export function AnalysisPage() {
   const intradayValues = createMemo(() => intradayChartPoints(snapshot()));
   const chartValues = createMemo(() => (klineMode() === "daily" ? dailyChartValues() : intradayValues()));
   const chartLabel = createMemo(() => chartWindowLabel(snapshot(), klineMode()));
+  const chartModeHint = createMemo(() => (klineMode() === "daily" ? "当前显示：日线约半年趋势" : "当前显示：5分钟仅看盘中确认"));
   const hasValidSymbol = createMemo(() => currentSymbol().length === 6);
   const hasBatchSymbols = createMemo(() => parseSymbols(form().batchSymbols).length > 0);
   const actionHeadline = createMemo(() => text(suggestion().plain_action_text ?? suggestion().effective_action ?? suggestion().action, snapshot() ? "观察" : "等待量化信号"));
@@ -77,6 +78,7 @@ export function AnalysisPage() {
   const resistanceLevel = createMemo(() => keyLevelRows(snapshot()).find((item) => String(item.direction) === "resistance") ?? keyLevelRows(snapshot())[1]);
   const aiSummary = createMemo(() => aiLines(snapshot())[0] ?? "AI 只解释，不放宽底线规则。");
   const canOpenPaperOrder = createMemo(() => Boolean(snapshot() && currentSymbol()));
+  const routeSymbolActive = createMemo(() => Boolean(routeSymbol() && routeSymbol() === currentSymbol()));
 
   onCleanup(() => activeRequest?.abort());
 
@@ -104,6 +106,13 @@ export function AnalysisPage() {
           <div class="analysis-clean-row">
             <aside class="analysis-clean-input">
               <h3>输入控制</h3>
+              <Show when={routeSymbolActive()}>
+                <div class="analysis-route-hint">
+                  <span>正在分析</span>
+                  <strong>{currentSymbol()}</strong>
+                  <em>来自榜单/持仓快捷入口</em>
+                </div>
+              </Show>
               <label class="analysis-clean-field">
                 <span>证券代码</span>
                 <input aria-label="分析代码" value={form().symbol} onInput={(event) => updateForm("symbol", event.currentTarget.value)} />
@@ -152,6 +161,11 @@ export function AnalysisPage() {
               <div class="analysis-clean-note">
                 <span>系统诊断判研原因</span>
                 <p>系统优先检索当前证券的价格档位、持仓配比、即时手续费率、综合风险系数以及多因子失效条件。</p>
+              </div>
+              <div class="analysis-decision-grid" aria-label="分析结果摘要">
+                <DecisionCard title="能不能买" value={actionHeadline()} body={executionText()} tone="warn" />
+                <DecisionCard title="多少钱买" value={numberText(supportLevel()?.price, "--")} body={`买入参考区间 ${numberText(suggestion().entry_zone_low ?? supportLevel()?.price, "--")} - ${numberText(suggestion().entry_zone_high ?? resistanceLevel()?.price, "--")}`} />
+                <DecisionCard title="什么情况放弃" value={text(suggestion().plain_invalid_condition ?? supportLevel()?.invalid_condition, "--")} body={invalidText()} tone="risk" />
               </div>
             </div>
           </div>
@@ -205,7 +219,7 @@ export function AnalysisPage() {
           <div class="analysis-clean-title analysis-clean-title--with-actions">
             <div>
               <h3>K线与多因子指标联动监控区</h3>
-              <span>{chartLabel()}</span>
+              <span>{chartLabel()} · {chartModeHint()}</span>
             </div>
             <div class="analysis-kline-toggle" role="group" aria-label="K线周期">
               <button type="button" classList={{ "is-active": klineMode() === "daily" }} onClick={() => setKlineMode("daily")}>日线120D</button>
@@ -314,6 +328,16 @@ function InfoBox(props: { title: string; body: string }) {
   return (
     <div class="analysis-info-box">
       <span>{props.title}</span>
+      <p>{props.body}</p>
+    </div>
+  );
+}
+
+function DecisionCard(props: { title: string; value: string; body: string; tone?: "warn" | "risk" }) {
+  return (
+    <div class={`analysis-decision-card${props.tone ? ` analysis-decision-card--${props.tone}` : ""}`}>
+      <span>{props.title}</span>
+      <strong>{props.value}</strong>
       <p>{props.body}</p>
     </div>
   );

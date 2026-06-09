@@ -57,6 +57,7 @@ describe("monitor market model", () => {
     const view = buildView(model);
 
     expect(view.syncStatus).toBe("BFF: ACTIVE");
+    expect(view.cacheState).toBe("实时数据");
     expect(view.dataUpdatedAt).toBe("2026-06-08 18:50:06");
     expect(view.medianChange).toBe("-3.10%");
     expect(view.hotSectors).toEqual(["通用设备", "通信设备", "半导体"]);
@@ -69,8 +70,24 @@ describe("monitor market model", () => {
   it("exposes stale and partial BFF states", () => {
     const stale = buildView(createMonitorMarketModel({ stale: true }));
     expect(stale.syncStatus).toBe("BFF: STALE");
+    expect(stale.cacheState).toBe("使用缓存");
 
     const partial = buildView(createMonitorMarketModel({ partial_errors: [{ source: "market_breadth" }] }));
     expect(partial.syncStatus).toBe("BFF: PARTIAL 1");
+    expect(partial.cacheState).toBe("部分缓存");
+  });
+
+  it("maps market gate decisions to direct user-facing actions", () => {
+    const blocked = buildView(createMonitorMarketModel({ monitor_snapshot: { priority_board: { market_gate_decision: "block" } } }));
+    expect(blocked.gateDecisionText).toBe("禁止开仓");
+    expect(blocked.gateCode).toBe("BLOCK");
+
+    const reduced = buildView(createMonitorMarketModel({ monitor_snapshot: { priority_board: { market_gate_decision: "reduce" } } }));
+    expect(reduced.gateDecisionText).toBe("只观察");
+    expect(reduced.gateCode).toBe("REDUCE");
+
+    const passed = buildView(createMonitorMarketModel({ monitor_snapshot: { priority_board: { market_gate_decision: "pass" } } }));
+    expect(passed.gateDecisionText).toBe("允许小仓");
+    expect(passed.gateCode).toBe("PASS");
   });
 });

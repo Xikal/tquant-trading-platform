@@ -43,6 +43,13 @@ export interface PlaybookFamily {
   performance: Record<string, unknown>;
 }
 
+export interface PlaybookDateGroup {
+  key: "today" | "yesterday" | "history";
+  title: string;
+  hint: string;
+  items: PlaybookCandidate[];
+}
+
 export const DEFAULT_PLAYBOOK_STRATEGY = "first_board";
 
 export async function loadPlaybookDataset(strategy: string, init: RequestJsonOptions = {}, options: { includeQuotes?: boolean } = {}): Promise<PlaybookDataset> {
@@ -270,6 +277,31 @@ export function detailRows(candidate: PlaybookCandidate | null) {
   ];
 }
 
+export function candidateDateGroups(items: PlaybookCandidate[], tradeDate: string): PlaybookDateGroup[] {
+  const today: PlaybookCandidate[] = [];
+  const yesterday: PlaybookCandidate[] = [];
+  const history: PlaybookCandidate[] = [];
+  const recommendationDates = Array.from(new Set(items.map((item) => normalizeDate(item.recommendDate)).filter(Boolean))).sort();
+  const normalizedTradeDate = normalizeDate(tradeDate) || recommendationDates.at(-1) || "";
+  const previousRecommendationDate = latestDateBefore(recommendationDates, normalizedTradeDate);
+  items.forEach((item) => {
+    const recommendationDate = normalizeDate(item.recommendDate);
+    if (recommendationDate && normalizedTradeDate && recommendationDate === normalizedTradeDate) {
+      today.push(item);
+    } else if (recommendationDate && recommendationDate === previousRecommendationDate) {
+      yesterday.push(item);
+    } else {
+      history.push(item);
+    }
+  });
+  const groups: PlaybookDateGroup[] = [
+    { key: "today", title: "今日推荐", hint: "后端当前交易日新入榜", items: today },
+    { key: "yesterday", title: "昨日延续", hint: "上一交易窗口延续观察", items: yesterday },
+    { key: "history", title: "历史观察", hint: "更早推荐，先看状态再行动", items: history },
+  ];
+  return groups.filter((group) => group.items.length > 0);
+}
+
 function recommendationDateText(item: Record<string, unknown>): string {
   return text(
     pickFirst(item, [
@@ -284,6 +316,15 @@ function recommendationDateText(item: Record<string, unknown>): string {
     ]),
     "--",
   ).slice(0, 10);
+}
+
+function normalizeDate(value: string): string {
+  const match = value.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : "";
+}
+
+function latestDateBefore(dates: string[], tradeDate: string): string {
+  return dates.filter((date) => date < tradeDate).at(-1) ?? "";
 }
 
 export function performanceSummary(family: PlaybookFamily | null) {

@@ -181,9 +181,9 @@ export function MonitorActionPage() {
                   <div class="monitor-rank-list" data-testid="monitor-priority-order-table">
                     <div class="monitor-rank-list__head">
                       <div class="monitor-tab-group" aria-label="策略分层">
-                        <button type="button" class={tabClass(lane(), "all")} onClick={() => setLane("all")}>原低吸策略</button>
-                        <button type="button" class={tabClass(lane(), "observe")} onClick={() => setLane("observe")}>前排加权</button>
-                        <button type="button" class={tabClass(lane(), "buy_now")} onClick={() => setLane("buy_now")}>前排极精选</button>
+                        <button type="button" class={tabClass(lane(), "all")} onClick={() => setLane("all")}>全部候选</button>
+                        <button type="button" class={tabClass(lane(), "observe")} onClick={() => setLane("observe")}>观察池</button>
+                        <button type="button" class={tabClass(lane(), "buy_now")} onClick={() => setLane("buy_now")}>可买入</button>
                       </div>
                       <div class="monitor-card__actions">
                         <button type="button" class="monitor-btn monitor-btn--amber" onClick={() => showToast("榜单研判解析载入中...")}>
@@ -206,6 +206,7 @@ export function MonitorActionPage() {
                                 <strong>{item.name || item.symbol}</strong>
                                 <small>#{item.symbol}</small>
                               </span>
+                              <span class="monitor-rank-row__date">推荐日 {item.recommendDate}</span>
                               <span class="monitor-rank-row__strategy">{item.strategy}</span>
                               <span class="monitor-rank-row__score">分:{item.score}</span>
                               <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>

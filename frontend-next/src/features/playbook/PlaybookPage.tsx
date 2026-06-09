@@ -9,6 +9,7 @@ import { PageScaffold } from "../shared/PageScaffold";
 import { numberText, readRecord } from "../shared/dataAccess";
 import {
   attributionLines,
+  candidateDateGroups,
   candidateFamilies,
   DEFAULT_PLAYBOOK_STRATEGY,
   detailRows,
@@ -58,6 +59,7 @@ export function PlaybookPage() {
   const selected = createMemo(() => selectedCandidate(dataset(), selectedSymbol()));
   const performance = createMemo(() => performanceSummary(activeFamily()));
   const laneItems = createMemo(() => laneCandidates(candidates(), activeLane()));
+  const laneGroups = createMemo(() => candidateDateGroups(laneItems(), playbookTradeDate(dataset())));
   const focusCandidate = createMemo(() => selected() ?? candidates()[0] ?? null);
 
   createEffect(() => {
@@ -234,6 +236,16 @@ export function PlaybookPage() {
                 </div>
                 <span>更新时间: {quoteStatus(dataset())}</span>
               </div>
+              <div class="playbook-lane-legend" aria-label="分层说明">
+                <For each={laneLegend}>
+                  {(item) => (
+                    <span class={`playbook-lane-legend__item playbook-lane-legend__item--${item.key}`}>
+                      <strong>{item.label}</strong>
+                      <em>{item.description}</em>
+                    </span>
+                  )}
+                </For>
+              </div>
 
               <Show
                 when={laneItems().length > 0}
@@ -245,65 +257,83 @@ export function PlaybookPage() {
                   </div>
                 }
               >
-                <div class="playbook-table-wrap">
-                  <table class="playbook-stock-table">
-                    <thead>
-                      <tr>
-                        <th>代码 & 简称</th>
-                        <th>最新价</th>
-                        <th>日涨跌幅</th>
-                        <th>推荐日期</th>
-                        <th>承接位</th>
-                        <th>状态触发</th>
-                        <th>操作建议</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={laneItems()}>
-                        {(item) => (
-                          <tr class={selected()?.symbol === item.symbol ? "playbook-stock-row--active" : ""}>
-                            <td>
-                              <button type="button" class="playbook-stock-name" onClick={() => selectCandidate(item.symbol)}>
-                                <strong>{item.name || item.symbol}</strong>
-                                <span>{item.symbol}</span>
-                              </button>
-                            </td>
-                            <td>{item.price}</td>
-                            <td class={item.changeText.startsWith("-") ? "playbook-text--down" : "playbook-text--up"}>{item.changeText || "--"}</td>
-                            <td><span class="playbook-date-pill">{item.recommendDate}</span></td>
-                            <td>{numberText(readRecord(item.raw).entry_zone_low, "--")}</td>
-                            <td><span class="playbook-state-pill">{item.riskText || item.details || "--"}</span></td>
-                            <td>
-                              <div class="playbook-row-actions">
-                                <button type="button" onClick={() => selectCandidate(item.symbol)}>详情</button>
-                                <button type="button" onClick={() => void openAnalysis(item.symbol)}>分析</button>
-                                <button type="button" onClick={() => void blockLifecycle(item.symbol)}>记录状态</button>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                <div class="playbook-candidate-layout">
+                  <div class="playbook-table-wrap">
+                    <table class="playbook-stock-table">
+                      <thead>
+                        <tr>
+                          <th>代码 & 简称</th>
+                          <th>最新价</th>
+                          <th>日涨跌幅</th>
+                          <th>推荐日期</th>
+                          <th>承接位</th>
+                          <th>状态触发</th>
+                          <th>操作建议</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <For each={laneGroups()}>
+                          {(group) => (
+                            <>
+                              <tr class="playbook-date-group-row">
+                                <td colspan="7">
+                                  <strong>{group.title}</strong>
+                                  <span>{group.hint}</span>
+                                  <em>{group.items.length} 只</em>
+                                </td>
+                              </tr>
+                              <For each={group.items}>
+                                {(item) => (
+                                  <tr class={selected()?.symbol === item.symbol ? "playbook-stock-row--active" : ""}>
+                                    <td>
+                                      <button type="button" class="playbook-stock-name" onClick={() => selectCandidate(item.symbol)}>
+                                        <strong>{item.name || item.symbol}</strong>
+                                        <span>{item.symbol}</span>
+                                      </button>
+                                    </td>
+                                    <td>{item.price}</td>
+                                    <td class={item.changeText.startsWith("-") ? "playbook-text--down" : "playbook-text--up"}>{item.changeText || "--"}</td>
+                                    <td><span class="playbook-date-pill">{item.recommendDate}</span></td>
+                                    <td>{numberText(readRecord(item.raw).entry_zone_low, "--")}</td>
+                                    <td><span class="playbook-state-pill">{item.riskText || item.details || "--"}</span></td>
+                                    <td>
+                                      <div class="playbook-row-actions">
+                                        <button type="button" onClick={() => selectCandidate(item.symbol)}>详情</button>
+                                        <button type="button" onClick={() => void openAnalysis(item.symbol)}>分析</button>
+                                        <button type="button" onClick={() => void blockLifecycle(item.symbol)}>记录状态</button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </For>
+                            </>
+                          )}
+                        </For>
+                      </tbody>
+                    </table>
+                  </div>
+                  <aside class="playbook-summary-strip" aria-label="股票详情">
+                    <div class="playbook-summary-strip__head">
+                      <span>当前详情</span>
+                      <strong>{selected()?.name || selected()?.symbol || "--"}</strong>
+                    </div>
+                    <div>
+                      <h3>归因</h3>
+                      <For each={attributionLines(selected())} fallback={<p>暂无归因说明</p>}>
+                        {(line) => <p>{line}</p>}
                       </For>
-                    </tbody>
-                  </table>
+                    </div>
+                    <div>
+                      <h3>候选约束</h3>
+                      <div class="playbook-constraint-grid">
+                        <For each={detailRows(selected())}>
+                          {([label, value]) => <LineMetric label={label} value={value} />}
+                        </For>
+                      </div>
+                    </div>
+                  </aside>
                 </div>
               </Show>
-
-              <div class="playbook-summary-strip">
-                <div>
-                  <h3>归因</h3>
-                  <For each={attributionLines(selected())} fallback={<p>暂无归因说明</p>}>
-                    {(line) => <p>{line}</p>}
-                  </For>
-                </div>
-                <div>
-                  <h3>候选约束</h3>
-                  <div class="playbook-constraint-grid">
-                    <For each={detailRows(selected())}>
-                      {([label, value]) => <LineMetric label={label} value={value} />}
-                    </For>
-                  </div>
-                </div>
-              </div>
             </div>
           </section>
         </div>
@@ -423,10 +453,17 @@ function strategyDescription(label: string): string {
 }
 
 const laneTabs: Array<{ key: StockLane; label: string }> = [
-  { key: "buyable", label: "可买" },
+  { key: "buyable", label: "确认可买" },
   { key: "observing", label: "观察" },
-  { key: "pending", label: "等确认" },
-  { key: "discarded", label: "观察/放弃" },
+  { key: "pending", label: "等待" },
+  { key: "discarded", label: "放弃" },
+];
+
+const laneLegend: Array<{ key: StockLane; label: string; description: string }> = [
+  { key: "buyable", label: "确认可买", description: "已满足核心条件，可小仓执行" },
+  { key: "observing", label: "观察", description: "形态成立但买点未到" },
+  { key: "pending", label: "等待", description: "需补量或确认支撑" },
+  { key: "discarded", label: "放弃", description: "风险或失效条件优先" },
 ];
 
 const fallbackStrategyTabs = [

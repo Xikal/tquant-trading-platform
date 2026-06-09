@@ -41,7 +41,7 @@ test("/next/monitor covers priority board, filters, navigation, and local watch 
   await expect(page.getByTestId("monitor-priority-order-table")).toContainText("000001");
   await expect(page.getByTestId("monitor-priority-order-table")).toContainText("600000");
 
-  await page.getByRole("button", { name: "前排加权" }).click();
+  await page.getByRole("button", { name: "观察池" }).click();
   await expect(page.getByTestId("monitor-priority-order-table")).toContainText("600000");
   await page.getByRole("button", { name: "解读榜单" }).click();
   await expect(page.getByRole("status")).toContainText("榜单研判解析载入中");
@@ -205,11 +205,7 @@ test("/next/data covers admin dashboard, token gate, search, and local maintenan
   await page.getByPlaceholder("快速搜索表名/异常代码...").fill("000001");
   await expect(page.getByText("000001")).toBeVisible();
   await page.getByRole("button", { name: "检测可用池范围" }).click();
-  await expect(page.getByText("令牌验证未通过")).toBeVisible();
-  await page.getByRole("button", { name: "确定" }).click();
-  await page.getByPlaceholder("输入系统管理授权令牌").fill("ADMIN_TOKEN");
-  await page.getByRole("button", { name: "检测可用池范围" }).click();
-  await expect(page.getByText("已记录 [检测可用池范围] 本地维护意图。")).toBeVisible();
+  await expect(page.getByText("已基于当前管理员账号记录 [检测可用池范围] 本地维护意图。")).toBeVisible();
   await expect(page.getByRole("heading", { name: "运行时计算集群状况 (Running Workers)" })).toBeVisible();
   expect(writes()).toEqual([]);
 });
@@ -226,10 +222,9 @@ test("/next/settings covers security, governance, sector filters, and protected 
   await page.getByPlaceholder("搜索不想参与过滤的板块...").fill("银行");
   await expect(page.getByRole("button", { name: "银行", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "记录全部意图" }).click();
-  await expect(page.getByText("[全局配置] 需要先校验管理令牌。")).toBeVisible();
-  await page.getByPlaceholder("管理令牌(测试用: ADMIN_TOKEN)").fill("ADMIN_TOKEN");
-  await page.getByRole("button", { name: "解锁" }).click();
-  await expect(page.getByText("管理员权限校验通过，本页本地编辑已解锁。")).toBeVisible();
+  await expect(page.getByText("[全局配置] 当前只读，请先解锁管理操作；页面不会直接写入生产。")).toBeVisible();
+  await page.getByRole("button", { name: "解锁管理操作" }).click();
+  await expect(page.getByText("已使用当前管理员账号解锁本地编辑。")).toBeVisible();
   await page.getByRole("button", { name: "记录全部意图" }).click();
   await expect(page.getByText("[全局配置] 已记录本地配置意图，正式保存待复验后开启。")).toBeVisible();
   expect(writes()).toEqual([]);

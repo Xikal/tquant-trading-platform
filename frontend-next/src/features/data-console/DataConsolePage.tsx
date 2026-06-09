@@ -1,5 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { getAdminApiToken, setAdminApiToken } from "../../shared/api/auth";
 import { requestOperation } from "../../shared/api/client";
 import { queryKeys } from "../../shared/api/queryKeys";
 import type {
@@ -15,6 +16,7 @@ import { Icon as SharedIcon } from "../../shared/ui/Icon";
 import { Modal } from "../../shared/ui/Modal";
 import { readArray, readRecord, text } from "../shared/dataAccess";
 import { PageScaffold } from "../shared/PageScaffold";
+import { useAuth } from "../auth/authModel";
 import {
   adminTaskRows,
   coverageRows,
@@ -34,6 +36,7 @@ type ModalState = {
 };
 
 export function DataConsolePage() {
+  const auth = useAuth();
   const [lastCheck, setLastCheck] = createSignal(formatDateTime(new Date()));
   const [isRefreshing, setIsRefreshing] = createSignal(false);
   const [logSearch, setLogSearch] = createSignal("");
@@ -85,6 +88,7 @@ export function DataConsolePage() {
     if (!keyword) return errorLogs();
     return errorLogs().filter((item) => `${item.id} ${item.task} ${item.message} ${item.meta} ${item.code}`.toLowerCase().includes(keyword));
   });
+  const layerSummary = createMemo(() => buildLayerSummary(decision(), filteredLogs().length, errorLogs().length, providerCards().length, workers().length));
 
   createEffect(() => {
     if (typeof window === "undefined") return;
@@ -113,19 +117,30 @@ export function DataConsolePage() {
   };
 
   const handleAdminAction = (actionName: string) => {
-    if (!adminToken().trim()) {
+    if (!auth.isAdmin()) {
       setAdminUnlocked(false);
       setModal({
-        title: "令牌验证未通过",
-        message: `您正在请求执行 [${actionName}]。此操作涉及数据维护权限，请先在输入框中填入管理令牌。`,
+        title: "权限不足",
+        message: `您正在请求执行 [${actionName}]。当前账号不是管理员，只允许查看数据状态。`,
         tone: "error",
       });
       return;
     }
+    const token = adminToken().trim() || getAdminApiToken();
+    if (!token) {
+      setAdminUnlocked(false);
+      setModal({
+        title: "管理授权缺失",
+        message: `您正在请求执行 [${actionName}]。当前管理员账号未加载管理授权令牌，仅可查看，不记录维护意图。`,
+        tone: "error",
+      });
+      return;
+    }
+    if (adminToken().trim()) setAdminApiToken(adminToken().trim());
     setAdminUnlocked(true);
     setModal({
       title: "指令已记录",
-      message: `已记录 [${actionName}] 本地维护意图。当前不直接发起生产写入，正式执行待复验后开启。`,
+      message: `已基于当前管理员账号记录 [${actionName}] 本地维护意图。当前不直接发起生产写入，正式执行待复验后开启。`,
       tone: "success",
     });
   };
@@ -156,6 +171,18 @@ export function DataConsolePage() {
         </header>
 
         <main class="data-terminal-body">
+          <section class="data-terminal-layer-strip" aria-label="数据可用性摘要">
+            <For each={layerSummary()}>
+              {(item) => (
+                <div class={`data-terminal-layer-strip__item data-terminal-layer-strip__item--${item.tone}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <em>{item.detail}</em>
+                </div>
+              )}
+            </For>
+          </section>
+
           <section class="data-terminal-grid data-terminal-grid--top">
             <DecisionCard state={decision()} />
             <SlaCard rows={slaItems()} coverage={coverageRoot()} />
@@ -174,6 +201,7 @@ export function DataConsolePage() {
           <AdminControlPanel
             token={adminToken()}
             unlocked={adminUnlocked()}
+            accountStatus={auth.isAdmin() ? "管理员账号" : "普通账号"}
             onTokenChange={setAdminToken}
             onAction={handleAdminAction}
           />
@@ -438,13 +466,14 @@ function TroubleConsole(props: { logs: ErrorLog[]; total: number; search: string
 function AdminControlPanel(props: {
   token: string;
   unlocked: boolean;
+  accountStatus: string;
   onTokenChange: (value: string) => void;
   onAction: (actionName: string) => void;
 }) {
   return (
     <article class="data-terminal-card data-admin-card">
-      <h3>应急数据控制面板</h3>
-      <p>当上游数据故障或缺表时，输入令牌并选择重试，手动记录后台重新拉取或迁移意图。</p>
+      <h3>管理操作解锁</h3>
+      <p>当前不会真实写入生产，只记录本地维护意图；正式执行需二次复验后开启。</p>
       <div class="data-admin-card__row">
         <label>
           <Icon name="key" />
@@ -452,7 +481,7 @@ function AdminControlPanel(props: {
             type="password"
             value={props.token}
             onInput={(event) => props.onTokenChange(event.currentTarget.value)}
-            placeholder="输入系统管理授权令牌 (Token)"
+            placeholder="粘贴管理员授权令牌"
           />
         </label>
         <div>
@@ -463,7 +492,7 @@ function AdminControlPanel(props: {
       </div>
       <div class={props.unlocked ? "data-admin-card__status data-admin-card__status--ok" : "data-admin-card__status"}>
         <i />
-        <span>{props.unlocked ? "超级令牌已匹配 · 当前仅记录维护意图" : "当前环境只读控制：尚未加载管理员令牌，操作锁定"}</span>
+        <span>{props.unlocked ? "管理员账号已确认 · 当前仅记录维护意图" : `当前账号权限状态：${props.accountStatus} · 管理操作锁定`}</span>
       </div>
     </article>
   );
@@ -528,6 +557,37 @@ interface ErrorLog {
   message: string;
   meta: string;
   code: string;
+}
+
+interface LayerSummaryItem {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "ok" | "warn";
+}
+
+function buildLayerSummary(decision: DecisionState, filteredErrors: number, totalErrors: number, providers: number, workers: number): LayerSummaryItem[] {
+  const blocked = decision.tone === "danger";
+  return [
+    {
+      label: "结论",
+      value: decision.accessLabel,
+      detail: decision.title,
+      tone: blocked ? "warn" : "ok",
+    },
+    {
+      label: "异常",
+      value: `${filteredErrors}/${totalErrors}`,
+      detail: totalErrors ? "存在任务或 SLA 异常，先看下方排错" : "未发现关联故障",
+      tone: totalErrors ? "warn" : "ok",
+    },
+    {
+      label: "技术明细",
+      value: `${providers} 源 / ${workers} Worker`,
+      detail: "Provider、SLA、任务明细在下方展开",
+      tone: providers && workers ? "ok" : "warn",
+    },
+  ];
 }
 
 function buildDecisionState(coverage: DataConsoleRecord, sla: DataConsoleRecord[], hasError: boolean): DecisionState {

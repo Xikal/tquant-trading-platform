@@ -1,13 +1,13 @@
 import { createQuery } from "@tanstack/solid-query";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-import { getAdminApiToken } from "../../shared/api/auth";
+import { getAdminApiToken, setAdminApiToken } from "../../shared/api/auth";
 import { requestOperation } from "../../shared/api/client";
 import { queryKeys } from "../../shared/api/queryKeys";
 import type { FactorWeightsResponse, QuantParametersResponse, SectorExclusionsResponse, SettingsResponse, SettingsWorkspaceResponse } from "../../shared/api/types";
 import { useAuth } from "../auth/authModel";
 import { readArray, readRecord, text } from "../shared/dataAccess";
 import { PageScaffold } from "../shared/PageScaffold";
-import { CardFooter, CommandCard, Icon, ModelBox, ScoreBadge, SelectField, SmallBadge, TextField, type SettingsAccent } from "./SettingsPrimitives";
+import { CardFooter, CommandCard, Icon, ModelBox, SelectField, TextField, type SettingsAccent } from "./SettingsPrimitives";
 import { factorRows, sectorRows } from "./settingsModel";
 import "./settings-slice.css";
 
@@ -190,6 +190,9 @@ export function SettingsPage() {
     llm: text(settingsRoot().llm_provider, llmConfig().provider),
     model: text(settingsRoot().llm_model, llmConfig().modelName),
   }));
+  const accountPermission = createMemo(() => (auth.isAdmin() ? "管理员账号" : "普通账号"));
+  const moduleState = createMemo(() => (isTokenValid() ? "本地编辑" : "只读"));
+  const storedAdminToken = () => getAdminApiToken();
 
   const triggerToast = (message: string, type: ToastKind = "success") => {
     const id = Date.now() + toastSerial;
@@ -202,19 +205,25 @@ export function SettingsPage() {
   };
 
   const handleVerifyToken = () => {
-    const token = globalAdminToken().trim();
-    if (token === "ADMIN_TOKEN") {
-      setIsTokenValid(true);
-      triggerToast("管理员权限校验通过，本页本地编辑已解锁。");
+    if (!auth.isAdmin()) {
+      setIsTokenValid(false);
+      triggerToast("当前账号不是管理员，仅可查看配置状态。", "error");
       return;
     }
-    setIsTokenValid(false);
-    triggerToast(token ? "令牌不匹配，请使用测试令牌 ADMIN_TOKEN。" : "请输入管理令牌。", "error");
+    const token = globalAdminToken().trim() || storedAdminToken();
+    if (!token) {
+      setIsTokenValid(false);
+      triggerToast("当前管理员账号未加载管理授权，请粘贴授权令牌后再解锁。", "error");
+      return;
+    }
+    if (globalAdminToken().trim()) setAdminApiToken(globalAdminToken().trim());
+    setIsTokenValid(true);
+    triggerToast("已使用当前管理员账号解锁本地编辑。");
   };
 
   const handleSaveModule = (moduleName: string) => {
     if (!isTokenValid()) {
-      triggerToast(`[${moduleName}] 需要先校验管理令牌。`, "error");
+      triggerToast(`[${moduleName}] 当前只读，请先解锁管理操作；页面不会直接写入生产。`, "error");
       return;
     }
     triggerToast(`[${moduleName}] 已记录本地配置意图，正式保存待复验后开启。`);
@@ -284,16 +293,17 @@ export function SettingsPage() {
 
           <div class="settings-command-token">
             <Icon name="key" />
-            <strong>管理员令牌锁</strong>
+            <strong>当前账号权限</strong>
+            <span class="settings-command-token__state">{accountPermission()} · {moduleState()}</span>
             <input
               type="password"
-              placeholder="管理令牌(测试用: ADMIN_TOKEN)"
+              placeholder="粘贴管理员授权令牌"
               value={globalAdminToken()}
               onInput={(event) => setGlobalAdminToken(event.currentTarget.value)}
             />
             <button type="button" class="settings-command-button settings-command-button--primary" onClick={handleVerifyToken}>
               {isTokenValid() ? <Icon name="unlock" /> : <Icon name="lock" />}
-              解锁
+              解锁管理操作
             </button>
             <Show when={isTokenValid()}>
               <button
@@ -303,7 +313,8 @@ export function SettingsPage() {
                 onClick={() => {
                   setIsTokenValid(false);
                   setGlobalAdminToken("");
-                  triggerToast("特权已注销。", "info");
+                  setAdminApiToken("");
+                  triggerToast("管理操作解锁已清除。", "info");
                 }}
               >
                 <Icon name="x" />
@@ -320,7 +331,7 @@ export function SettingsPage() {
             </button>
             <span class={`settings-command-status${isTokenValid() ? " settings-command-status--ok" : ""}`}>
               <i />
-              {isTokenValid() ? "ADMIN AUTHED" : "READ ONLY"}
+              {isTokenValid() ? "本地编辑" : "只读"}
             </span>
             <button type="button" class="settings-command-button settings-command-button--primary" onClick={() => handleSaveModule("全局配置")}>
               <Icon name="save" />
@@ -331,7 +342,7 @@ export function SettingsPage() {
 
         <main class="settings-command-grid">
           <div class="settings-command-column">
-            <CommandCard title="账户安全与 2FA 动态认证" index="1" icon="shield" accent="indigo" action={<ScoreBadge enabled={mfaEnabled()} />}>
+            <CommandCard title="账户安全与 2FA 动态认证" index="1" icon="shield" accent="indigo" action={<ModuleStateBadge state={moduleState()} detail={mfaEnabled() ? "已生效" : "可保存"} />}>
               <Show
                 when={!mfaEnabled()}
                 fallback={
@@ -387,7 +398,7 @@ export function SettingsPage() {
               </Show>
             </CommandCard>
 
-            <CommandCard title="大模型底层底座" index="2" icon="cpu" accent="indigo" action={<SmallBadge tone="ok">已加密保存</SmallBadge>}>
+            <CommandCard title="大模型底层底座" index="2" icon="cpu" accent="indigo" action={<ModuleStateBadge state={moduleState()} detail="本地意图" />}>
               <div class="settings-command-form-grid settings-command-form-grid--two">
                 <SelectField
                   label="大模型供应商"
@@ -422,10 +433,13 @@ export function SettingsPage() {
               accent="emerald"
               class="settings-command-card--stretch"
               action={
-                <button type="button" class={`settings-command-mini-button${isLoadingFactors() ? " settings-command-mini-button--loading" : ""}`} onClick={reloadFactors}>
-                  <Icon name="refresh" />
-                  重载拉取
-                </button>
+                <div class="settings-command-card-actions">
+                  <ModuleStateBadge state={moduleState()} detail="可保存" />
+                  <button type="button" class={`settings-command-mini-button${isLoadingFactors() ? " settings-command-mini-button--loading" : ""}`} onClick={reloadFactors}>
+                    <Icon name="refresh" />
+                    重载拉取
+                  </button>
+                </div>
               }
             >
               <div class="settings-command-factor-list">
@@ -467,7 +481,7 @@ export function SettingsPage() {
           </div>
 
           <div class="settings-command-column">
-            <CommandCard title="交易风控通道 & ETF T+0 参数" index="4" icon="activity" accent="emerald">
+            <CommandCard title="交易风控通道 & ETF T+0 参数" index="4" icon="activity" accent="emerald" action={<ModuleStateBadge state={moduleState()} detail="本地意图" />}>
               <div class="settings-command-form-grid settings-command-form-grid--four">
                 <TextField label="单笔亏损(%)" value={riskParams().singleMaxLoss} align="center" onInput={(value) => setRiskParams((prev) => ({ ...prev, singleMaxLoss: value }))} />
                 <TextField label="日内亏损(%)" value={riskParams().dailyMaxLoss} align="center" onInput={(value) => setRiskParams((prev) => ({ ...prev, dailyMaxLoss: value }))} />
@@ -494,7 +508,7 @@ export function SettingsPage() {
               <CardFooter text="顶部验证管理令牌后，本页先记录本地配置意图。" onSave={() => handleSaveModule("风控及 ETF 通道参数")} />
             </CommandCard>
 
-            <CommandCard title={`板块行业排除过滤机制 (${sectorNames().length}个)`} index="5" icon="layers" accent="indigo" class="settings-command-card--sector" action={<SmallBadge tone="danger">已屏蔽 {excludedSectors().length}</SmallBadge>}>
+            <CommandCard title={`板块行业排除过滤机制 (${sectorNames().length}个)`} index="5" icon="layers" accent="indigo" class="settings-command-card--sector" action={<ModuleStateBadge state={moduleState()} detail={`已屏蔽 ${excludedSectors().length}`} />}>
               <div class="settings-command-search">
                 <Icon name="search" />
                 <input
@@ -546,7 +560,7 @@ export function SettingsPage() {
           </div>
 
           <div class="settings-command-column">
-            <CommandCard title="模拟盘 24 维动态止盈止损参数" index="6" icon="trend" accent="rose">
+            <CommandCard title="模拟盘 24 维动态止盈止损参数" index="6" icon="trend" accent="rose" action={<ModuleStateBadge state={moduleState()} detail="可保存" />}>
               <div class="settings-command-tabs">
                 <For each={STOP_LOSS_TABS}>
                   {(item) => (
@@ -570,7 +584,7 @@ export function SettingsPage() {
               <CardFooter text="24 维高级算法控制 · 仅本地编辑态" onSave={() => handleSaveModule("24维动态盈损参数")} />
             </CommandCard>
 
-            <CommandCard title="ML 机器学习模型深度参数" index="7" icon="sliders" accent="amber" class="settings-command-card--stretch" action={<SmallBadge tone="warn">新训练生效</SmallBadge>}>
+            <CommandCard title="ML 机器学习模型深度参数" index="7" icon="sliders" accent="amber" class="settings-command-card--stretch" action={<ModuleStateBadge state={moduleState()} detail="训练后生效" />}>
               <div class="settings-command-form-grid settings-command-form-grid--two">
                 <TextField label="K-fold 交叉验证折数" type="number" value={mlParams().kFold} onInput={(value) => setMlParams((prev) => ({ ...prev, kFold: value }))} />
                 <TextField label="最低模型训练样本量" type="number" value={mlParams().minSamples} onInput={(value) => setMlParams((prev) => ({ ...prev, minSamples: value }))} />
@@ -615,7 +629,7 @@ export function SettingsPage() {
 
         <footer class="settings-command-footer">
           <span>Quant Command v4.9.0 · 数据源 {liveSummary().dataSource} · DB {liveSummary().db}</span>
-          <span>新前端设置页：本地交互态，不直接改变生产策略语义。</span>
+          <span>新前端设置页：当前只记录本地配置意图，不直接写入生产或改变策略语义。</span>
         </footer>
 
         <div class="settings-command-toast-stack" aria-live="polite">
@@ -637,6 +651,16 @@ function numericWeight(value: unknown): number {
   const raw = Number(value);
   if (Number.isFinite(raw)) return Math.round(raw > 1 ? raw : raw * 100);
   return 0;
+}
+
+function ModuleStateBadge(props: { state: string; detail: string }) {
+  const tone = () => (props.state === "只读" ? "warn" : "ok");
+  return (
+    <span class={`settings-command-module-state settings-command-module-state--${tone()}`}>
+      <strong>{props.state}</strong>
+      <em>{props.detail}</em>
+    </span>
+  );
 }
 
 function clampPercent(value: number): number {

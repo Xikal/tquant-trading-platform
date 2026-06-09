@@ -383,6 +383,9 @@ function SignalRow(props: { item: TrackingRecord; index: number; selected: boole
   const maxDrawdown = () => pctValue(raw(props.item, ["max_drawdown_pct", "avg_max_drawdown_pct"]));
   const returnTone = () => valueTone(raw(props.item, ["current_return_pct", "return_pct", "avg_current_return_pct"]));
   const priorityTag = () => field(props.item, ["priority_tag", "attention_tag", "review_priority_text"], "");
+  const recommendationDate = () => field(props.item, ["recommendation_date", "confirmed_trade_date", "signal_trade_date", "latest_trade_date", "created_at"], "--").slice(0, 10);
+  const touchText = () => field(props.item, ["entry_touch_text", "touch_status"], "计划区状态未返回");
+  const reviewConclusion = () => field(props.item, ["review_conclusion", "review_text", "plain_language_summary", "reason"], "复盘结论待返回");
   return (
     <article class={`strategy-signal-row${buyLike() ? " strategy-signal-row--buy" : ""}${props.selected ? " strategy-signal-row--selected" : ""}`}>
       <Show when={buyLike()}>
@@ -400,19 +403,34 @@ function SignalRow(props: { item: TrackingRecord; index: number; selected: boole
           <p>
             策略线：<b>{strategyOf(props.item)}</b> · 计划区：<b>{entryText()}</b> · 风险线：<b>{field(props.item, ["stop_loss", "risk_line"], "--")}</b> · 目标：<b>{field(props.item, ["target_price", "take_profit"], "--")}</b>
           </p>
+          <div class="strategy-signal-lifecycle" aria-label="信号生命周期">
+            <LifecycleStep label="推荐日" value={recommendationDate()} tone="blue" />
+            <LifecycleStep label="触达买点" value={touchText()} tone={touchText().includes("未") ? "amber" : "green"} />
+            <LifecycleStep label="当前状态" value={signalText()} tone={buyLike() ? "green" : "blue"} />
+            <LifecycleStep label="复盘结论" value={reviewConclusion()} tone="slate" />
+          </div>
           <small>{field(props.item, ["plain_language_summary", "user_friendly_reason", "review_text", "reason"], "--")}</small>
         </div>
         <div class="strategy-signal-row__metrics">
           <MetricMini label="信号后最高" value={maxGain()} tone="green" />
           <MetricMini label="当前涨跌" value={currentReturn()} tone={returnTone()} />
           <MetricMini label="最多跌幅" value={maxDrawdown()} tone={maxDrawdown().startsWith("-") ? "red" : "slate"} />
-          <Pill tone={buyLike() ? "green" : "blue"}>{field(props.item, ["entry_touch_text", "touch_status"], "计划区状态未返回")}</Pill>
+          <Pill tone={buyLike() ? "green" : "blue"}>{touchText()}</Pill>
           <button type="button" aria-label={`查看 ${symbolOf(props.item)} 详情`} onClick={props.onSelect}>
             详情
           </button>
         </div>
       </div>
     </article>
+  );
+}
+
+function LifecycleStep(props: { label: string; value: string; tone: "green" | "blue" | "amber" | "slate" }) {
+  return (
+    <span class={`strategy-signal-lifecycle__step strategy-signal-lifecycle__step--${props.tone}`}>
+      <em>{props.label}</em>
+      <strong>{props.value}</strong>
+    </span>
   );
 }
 

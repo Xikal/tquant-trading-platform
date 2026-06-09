@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "../../shared/api/client";
-import { candidateFamilies, boardMetrics, loadPlaybookDataset, type PlaybookDataset } from "./playbookModel";
+import { candidateDateGroups, candidateFamilies, boardMetrics, loadPlaybookDataset, type PlaybookDataset } from "./playbookModel";
 
 describe("playbook priority board model", () => {
   afterEach(() => {
@@ -91,6 +91,52 @@ describe("playbook priority board model", () => {
     expect(candidates.map((item) => [item.symbol, item.recommendDate])).toEqual([
       ["603319", "2026-06-05"],
       ["601208", "2026-06-04"],
+    ]);
+  });
+
+  it("groups candidates by recommendation date without changing row order", () => {
+    const data = {
+      screener: {
+        strategy_key: "first_board",
+        latest_trade_date: "2026-06-09",
+        candidates: [
+          { symbol: "000001", name: "平安银行", recommendation_date: "2026-06-09" },
+          { symbol: "000002", name: "万科A", recommendation_date: "2026-06-08" },
+          { symbol: "000003", name: "历史票", recommendation_date: "2026-05-29" },
+        ],
+      },
+    } as PlaybookDataset;
+
+    const candidates = candidateFamilies(data).flatMap((family) => family.items);
+    const groups = candidateDateGroups(candidates, "2026-06-09");
+
+    expect(groups.map((group) => [group.title, group.items.map((item) => item.symbol)])).toEqual([
+      ["今日推荐", ["000001"]],
+      ["昨日延续", ["000002"]],
+      ["历史观察", ["000003"]],
+    ]);
+  });
+
+  it("uses the previous recommendation date rather than natural-day distance for carry-forward grouping", () => {
+    const data = {
+      screener: {
+        strategy_key: "first_board",
+        latest_trade_date: "2026-10-09",
+        candidates: [
+          { symbol: "000001", name: "节后新票", recommendation_date: "2026-10-09" },
+          { symbol: "000002", name: "节前延续", recommendation_date: "2026-09-30" },
+          { symbol: "000003", name: "更早观察", recommendation_date: "2026-09-29" },
+        ],
+      },
+    } as PlaybookDataset;
+
+    const candidates = candidateFamilies(data).flatMap((family) => family.items);
+    const groups = candidateDateGroups(candidates, "2026-10-09");
+
+    expect(groups.map((group) => [group.title, group.items.map((item) => item.symbol)])).toEqual([
+      ["今日推荐", ["000001"]],
+      ["昨日延续", ["000002"]],
+      ["历史观察", ["000003"]],
     ]);
   });
 

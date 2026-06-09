@@ -396,6 +396,32 @@
   font-size: 10px;
 }
 
+.market-sentiment-interpretation .market-sentiment-data-tags {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  border-top: 0;
+  padding-top: 0;
+}
+
+.market-sentiment-data-tags span {
+  border: 1px solid #dbeafe;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 7px;
+}
+
+.market-sentiment-data-tags b {
+  color: #1d4ed8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.market-sentiment-interpretation .market-sentiment-data-tags b {
+  color: #1d4ed8;
+}
+
 .market-sentiment-interpretation b {
   color: #34d399;
   font-weight: 800;
