@@ -662,6 +662,17 @@ has_unit() {
     *) return 1 ;;
   esac
 }
+frontend_web_compose_file() {
+  if test -f "$FRONTEND_COMPOSE_FILE" && sudo docker compose -f "$FRONTEND_COMPOSE_FILE" ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' "$FRONTEND_COMPOSE_FILE"
+    return 0
+  fi
+  if test -f docker-compose.separated.yml && sudo docker compose -f docker-compose.separated.yml ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' docker-compose.separated.yml
+    return 0
+  fi
+  return 1
+}
 run_database_backup() {
   if test -f ./scripts/backup_database.sh; then
     BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
@@ -673,9 +684,9 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
-  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
-    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
-    echo "frontend_next:separated_frontend_web"
+  if frontend_web_compose="$(frontend_web_compose_file)"; then
+    sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
+    echo "frontend_next:separated_frontend_web:$frontend_web_compose"
   elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
     sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
     sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
@@ -930,9 +941,22 @@ rm -rf frontend-next/dist
 mkdir -p frontend-next/dist
 cp -a "$WORK_DIR/dist/." frontend-next/dist/
 chmod -R a+rX frontend-next/dist
-if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker compose -f "$FRONTEND_COMPOSE_FILE" ps frontend-web >/dev/null 2>&1; then
-  sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
-  echo "frontend_next_hot:separated_frontend_web"
+
+frontend_web_compose_file() {
+  if test -f "$FRONTEND_COMPOSE_FILE" && sudo docker compose -f "$FRONTEND_COMPOSE_FILE" ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' "$FRONTEND_COMPOSE_FILE"
+    return 0
+  fi
+  if test -f docker-compose.separated.yml && sudo docker compose -f docker-compose.separated.yml ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' docker-compose.separated.yml
+    return 0
+  fi
+  return 1
+}
+
+if frontend_web_compose="$(frontend_web_compose_file)"; then
+  sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
+  echo "frontend_next_hot:separated_frontend_web:$frontend_web_compose"
 else
   if sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
     sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
@@ -1179,6 +1203,17 @@ has_unit() {
     *) return 1 ;;
   esac
 }
+frontend_web_compose_file() {
+  if test -f "$FRONTEND_COMPOSE_FILE" && sudo docker compose -f "$FRONTEND_COMPOSE_FILE" ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' "$FRONTEND_COMPOSE_FILE"
+    return 0
+  fi
+  if test -f docker-compose.separated.yml && sudo docker compose -f docker-compose.separated.yml ps frontend-web >/dev/null 2>&1; then
+    printf '%s\n' docker-compose.separated.yml
+    return 0
+  fi
+  return 1
+}
 run_database_backup() {
   if test -f ./scripts/backup_database.sh; then
     BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
@@ -1190,9 +1225,9 @@ run_database_backup() {
 }
 publish_frontend_next() {
   test -f frontend-next/dist/index.html
-  if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated"; then
-    sudo docker compose -f "$FRONTEND_COMPOSE_FILE" up -d --no-deps --force-recreate frontend-web
-    echo "frontend_next:separated_frontend_web"
+  if frontend_web_compose="$(frontend_web_compose_file)"; then
+    sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
+    echo "frontend_next:separated_frontend_web:$frontend_web_compose"
   elif sudo docker inspect tquant-app-mysql >/dev/null 2>&1; then
     sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend-next/dist && mkdir -p /app/frontend-next/dist'
     sudo docker cp frontend-next/dist/. tquant-app-mysql:/app/frontend-next/dist/
@@ -1616,7 +1651,7 @@ verify_frontend_next_remote() {
 set -euo pipefail
 cd "$CLOUD_PROJECT_DIR"
 test -f frontend-next/dist/index.html
-if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker inspect tquant-frontend-web >/dev/null 2>&1; then
+if sudo docker inspect tquant-frontend-web >/dev/null 2>&1; then
   STATUS=starting
   for _ in $(seq 1 30); do
     STATUS=$(sudo docker inspect tquant-frontend-web --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
