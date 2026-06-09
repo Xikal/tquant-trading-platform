@@ -413,14 +413,33 @@ function metricValue(items: Array<{ label: string; value: string }>, label: stri
 }
 
 function laneCandidates(items: PlaybookCandidate[], lane: StockLane): PlaybookCandidate[] {
-  if (lane === "buyable") return items.filter((item) => laneText(item).includes("buy") || item.action.includes("买") || item.action.includes("立即"));
-  if (lane === "observing") return items.filter((item) => laneText(item).includes("watch") || laneText(item).includes("wait") || item.action.includes("观察") || item.action.includes("等待"));
-  if (lane === "pending") return items.filter((item) => laneText(item).includes("pending") || laneText(item).includes("confirm") || item.action.includes("确认") || item.details.includes("确认"));
-  return items.filter((item) => laneText(item).includes("avoid") || laneText(item).includes("give_up") || item.riskText.includes("放弃") || item.riskText.includes("风险") || item.details.includes("放弃"));
+  if (lane === "buyable") return items.filter(isBuyableCandidate);
+  if (lane === "observing") return items.filter(isObservingCandidate);
+  if (lane === "pending") return items.filter(isPendingCandidate);
+  return items.filter(isDiscardedCandidate);
 }
 
 function laneText(item: PlaybookCandidate): string {
   return `${item.lane} ${item.laneText}`.toLowerCase();
+}
+
+function isBuyableCandidate(item: PlaybookCandidate): boolean {
+  return item.simpleBucket === "buy_now" || item.signalState === "buy_now" || item.signalState === "soft_buy_now";
+}
+
+function isPendingCandidate(item: PlaybookCandidate): boolean {
+  if (isBuyableCandidate(item) || isDiscardedCandidate(item)) return false;
+  return item.signalState === "near_entry";
+}
+
+function isObservingCandidate(item: PlaybookCandidate): boolean {
+  if (isBuyableCandidate(item) || isPendingCandidate(item) || isDiscardedCandidate(item)) return false;
+  return item.simpleBucket === "wait_price" || item.signalState === "observe_confirmed" || item.signalState === "watch" || laneText(item).includes("watch") || laneText(item).includes("wait");
+}
+
+function isDiscardedCandidate(item: PlaybookCandidate): boolean {
+  const riskText = `${item.riskText} ${item.details}`.toLowerCase();
+  return item.simpleBucket === "give_up" || item.signalState === "avoid" || riskText.includes("风险") || riskText.includes("放弃") || riskText.includes("block");
 }
 
 function laneTitle(lane: StockLane): string {

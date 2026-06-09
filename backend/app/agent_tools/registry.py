@@ -93,37 +93,6 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             timeout_seconds=timeout,
         ),
         ToolDefinition(
-            name="get_paper_portfolio",
-            description="获取模拟盘账户、持仓和绩效摘要",
-            method="GET",
-            path="/api/agent/context/paper-portfolio",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "account_id": {"type": ["integer", "null"]},
-                },
-            },
-            permission="read",
-            capabilities=("paper_portfolio_read",),
-            timeout_seconds=timeout,
-        ),
-        ToolDefinition(
-            name="recommend_orders",
-            description="基于优先级榜生成模拟委托建议，不执行下单",
-            method="POST",
-            path="/api/agent/context/recommend-orders",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "limit": {"type": "integer", "default": 12, "minimum": 1, "maximum": 50},
-                    "account_id": {"type": ["integer", "null"]},
-                },
-            },
-            permission="write",
-            capabilities=("paper_order_recommend",),
-            timeout_seconds=timeout,
-        ),
-        ToolDefinition(
             name="send_test_notification",
             description="测试通知通道是否可用",
             method="POST",
@@ -240,26 +209,6 @@ def _tool_registry() -> dict[str, ToolDefinition]:
             permission="read",
             capabilities=("strategy_compare_read",),
             timeout_seconds=90,
-        ),
-        ToolDefinition(
-            name="create_paper_order",
-            description="创建模拟盘订单（不执行实盘交易）",
-            method="POST",
-            path="/api/agent/paper/order",
-            input_schema={
-                "type": "object",
-                "required": ["symbol", "side", "quantity", "price"],
-                "properties": {
-                    "symbol": {"type": "string"},
-                    "side": {"type": "string", "enum": ["buy", "sell"]},
-                    "quantity": {"type": "integer", "minimum": 100, "maximum": 1000000},
-                    "price": {"type": "number", "minimum": 0.01},
-                    "account_id": {"type": ["integer", "null"]},
-                },
-            },
-            permission="write",
-            capabilities=("paper_order_create",),
-            timeout_seconds=30,
         ),
         ToolDefinition(
             name="get_market_sentiment",

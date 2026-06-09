@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from fastapi import BackgroundTasks
 
-from app.models.schema_defs.bff import BffManifestResponse, BffWorkspaceManifest, PaperWorkspaceBffResponse
+from app.models.schema_defs.bff import BffManifestResponse, BffWorkspaceManifest, StrategyWorkspaceBffResponse
 from app.services.bff import go_gateway_shadow
 
 
@@ -22,9 +22,9 @@ def test_go_bff_shadow_disabled_by_default(monkeypatch) -> None:
     tasks = BackgroundTasks()
     scheduled = go_gateway_shadow.schedule_go_bff_shadow_check(
         tasks,
-        workspace="paper",
-        response_model=PaperWorkspaceBffResponse,
-        local_payload=PaperWorkspaceBffResponse(generated_at="2026-05-23 10:00:00"),
+        workspace="strategy",
+        response_model=StrategyWorkspaceBffResponse,
+        local_payload=StrategyWorkspaceBffResponse(generated_at="2026-05-23 10:00:00"),
     )
 
     assert scheduled is False
@@ -56,7 +56,7 @@ def test_go_bff_manifest_shadow_schedules_and_uses_manifest_path(monkeypatch) ->
             "gateway_prefix": "/api",
             "modules": ["auth", "market"],
             "workspaces": {
-                "paper": {"path": "/api/bff/v1/workspace/paper", "schema_version": "v14", "model": "PaperWorkspaceBffResponse"},
+                "strategy": {"path": "/api/bff/v1/workspace/strategy", "schema_version": "v14", "model": "StrategyWorkspaceBffResponse"},
             },
         }
 
@@ -70,10 +70,10 @@ def test_go_bff_manifest_shadow_schedules_and_uses_manifest_path(monkeypatch) ->
         local_payload=BffManifestResponse(
             modules=["auth", "market"],
             workspaces={
-                "paper": BffWorkspaceManifest(
-                    path="/api/bff/v1/workspace/paper",
+                "strategy": BffWorkspaceManifest(
+                    path="/api/bff/v1/workspace/strategy",
                     schema_version="v14",
-                    model="PaperWorkspaceBffResponse",
+                    model="StrategyWorkspaceBffResponse",
                 )
             },
         ),
@@ -106,19 +106,8 @@ def test_go_bff_workspace_shadow_uses_workspace_path(monkeypatch) -> None:
             "api_version": "v1",
             "schema_version": "v14",
             "generated_at": "2026-05-23 10:00:00",
-            "account": None,
-            "positions": [],
-            "orders": [],
-            "trades": [],
-            "stock_pnl": None,
-            "performance": None,
-            "sector_etf_t0_performance": None,
-            "strategy_performance": [],
-            "market_performance": [],
-            "tag_performance": [],
-            "risk_events": [],
-            "auto_trading_status": {},
-            "auto_trading_runs": [],
+            "items": [],
+            "tracking_notes": [],
             "partial_errors": [],
         }
 
@@ -127,14 +116,14 @@ def test_go_bff_workspace_shadow_uses_workspace_path(monkeypatch) -> None:
     tasks = BackgroundTasks()
     scheduled = go_gateway_shadow.schedule_go_bff_shadow_check(
         tasks,
-        workspace="paper",
-        response_model=PaperWorkspaceBffResponse,
-        local_payload=PaperWorkspaceBffResponse(generated_at="2026-05-23 10:00:00"),
-        params={"order_limit": 5},
+        workspace="strategy",
+        response_model=StrategyWorkspaceBffResponse,
+        local_payload=StrategyWorkspaceBffResponse(generated_at="2026-05-23 10:00:00"),
+        params={"run_limit": 5},
     )
 
     assert scheduled is True
     assert len(tasks.tasks) == 1
     tasks.tasks[0].func(*tasks.tasks[0].args, **tasks.tasks[0].kwargs)
-    assert captured["path"] == "/api/bff/v1/workspace/paper"
-    assert captured["params"] == {"order_limit": 5}
+    assert captured["path"] == "/api/bff/v1/workspace/strategy"
+    assert captured["params"] == {"run_limit": 5}

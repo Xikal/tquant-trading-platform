@@ -12,6 +12,8 @@ export interface MonitorPriorityItem {
   name: string;
   strategy: string;
   lane: MonitorLane;
+  signalState: string;
+  simpleBucket: string;
   price: string;
   change: string;
   score: string;
@@ -237,12 +239,14 @@ export function marketGateTone(value: unknown): "neutral" | "up" | "down" | "war
 }
 
 function priorityItem(item: Record<string, unknown>, index: number): MonitorPriorityItem {
-  const action = text(pickFirst(item, ["buy_signal_text", "next_action_text", "signal_state", "action_text", "action"]), "观察");
+  const signalState = normalizedSignalState(item);
+  const simpleBucket = normalizedSimpleBucket(item);
+  const action = actionTextForSignal(item, signalState, simpleBucket);
   const risk = text(pickFirst(item, ["risk_text", "risk_tier", "data_quality_text", "blocked_reason", "exclusion_reason", "risk_level"]), "");
   const entryRange = entryRangeText(item);
   const signal = text(pickFirst(item, ["buy_signal_text", "next_action_text", "buy_signal_hint", "trigger_condition"]), action);
   const stopLoss = numberText(pickFirst(item, ["stop_loss", "stop_loss_price", "risk_price"]), "--");
-  const lane = classifyLane(action, risk, item);
+  const lane = classifyLane(signalState, simpleBucket, risk, item);
   const position = text(pickFirst(item, ["suggested_position_text", "position_breakdown_text", "position_text"]), "");
   const keyLevel = text(pickFirst(item, ["key_level_text", "support_pressure_text", "entry_level_text"]), "");
   const summary = text(pickFirst(item, ["plain_language_summary", "reason", "action_summary", "strategy_notes"]), "");
@@ -257,6 +261,8 @@ function priorityItem(item: Record<string, unknown>, index: number): MonitorPrio
       "综合",
     ),
     lane,
+    signalState,
+    simpleBucket,
     price: text(pickFirst(item, ["latest_price", "price", "current_price"]), "--"),
     change: text(pickFirst(item, ["change_pct", "pct_chg", "changeText"]), ""),
     score: text(pickFirst(item, ["production_score", "score", "priority_score"]), "--"),
@@ -281,14 +287,55 @@ function priorityItem(item: Record<string, unknown>, index: number): MonitorPrio
   };
 }
 
-function classifyLane(action: string, risk: string, item: Record<string, unknown>): MonitorLane {
-  const rawLane = String(
-    pickFirst(item, ["lane", "bucket", "priority_lane", "simple_bucket", "buy_signal_state", "display_lane", "production_decision"]) ?? "",
-  ).toLowerCase();
-  const raw = `${rawLane} ${action} ${risk}`.toLowerCase();
-  if (raw.includes("risk") || raw.includes("avoid") || raw.includes("block") || raw.includes("give_up") || raw.includes("风险") || raw.includes("放弃")) return "risk";
-  if (raw.includes("buy") || raw.includes("立即") || raw.includes("production")) return "buy_now";
-  if (raw.includes("watch") || raw.includes("observe") || raw.includes("wait") || raw.includes("near_entry") || raw.includes("观察") || raw.includes("等待")) return "observe";
+function normalizedSignalState(item: Record<string, unknown>): string {
+  return text(pickFirst(item, ["buy_signal_state", "signal_state", "signal_status"]), "").toLowerCase();
+}
+
+function normalizedSimpleBucket(item: Record<string, unknown>): string {
+  return text(pickFirst(item, ["simple_bucket", "bucket", "priority_lane"]), "").toLowerCase();
+}
+
+function actionTextForSignal(item: Record<string, unknown>, signalState: string, simpleBucket: string): string {
+  const action = text(pickFirst(item, ["buy_signal_text", "next_action_text", "signal_state", "action_text", "action"]), "");
+  if (conflictsWithStructuredSignal(action, signalState, simpleBucket)) {
+    return structuredSignalText(signalState, simpleBucket);
+  }
+  return action || structuredSignalText(signalState, simpleBucket) || "观察";
+}
+
+function conflictsWithStructuredSignal(action: string, signalState: string, simpleBucket: string): boolean {
+  if (!action) return false;
+  const raw = action.toLowerCase();
+  if ((simpleBucket === "wait_price" || signalState === "near_entry" || signalState === "observe_confirmed" || signalState === "watch") && isBuyLikeText(raw)) {
+    return true;
+  }
+  if ((simpleBucket === "give_up" || signalState === "avoid") && isBuyLikeText(raw)) {
+    return true;
+  }
+  return false;
+}
+
+function structuredSignalText(signalState: string, simpleBucket: string): string {
+  if (simpleBucket === "buy_now" || signalState === "buy_now") return "确定买入";
+  if (signalState === "soft_buy_now") return "小仓试买";
+  if (simpleBucket === "wait_price" || signalState === "near_entry") return "接近买点，等待确认";
+  if (signalState === "observe_confirmed") return "观察确认";
+  if (signalState === "watch") return "继续观察";
+  if (simpleBucket === "give_up" || signalState === "avoid") return "暂时放弃";
+  return "";
+}
+
+function isBuyLikeText(value: string): boolean {
+  return value.includes("buy") || value.includes("立即") || value.includes("确定") || value.includes("可买") || value.includes("买入");
+}
+
+function classifyLane(signalState: string, simpleBucket: string, risk: string, item: Record<string, unknown>): MonitorLane {
+  const riskRaw = `${risk} ${text(pickFirst(item, ["risk_tier", "blocked_reason", "exclusion_reason", "risk_level"]), "")}`.toLowerCase();
+  if (simpleBucket === "give_up" || signalState === "avoid" || riskRaw.includes("risk") || riskRaw.includes("block") || riskRaw.includes("风险") || riskRaw.includes("放弃")) {
+    return "risk";
+  }
+  if (simpleBucket === "buy_now" || signalState === "buy_now" || signalState === "soft_buy_now") return "buy_now";
+  if (simpleBucket === "wait_price" || signalState === "near_entry" || signalState === "observe_confirmed" || signalState === "watch") return "observe";
   return "observe";
 }
 

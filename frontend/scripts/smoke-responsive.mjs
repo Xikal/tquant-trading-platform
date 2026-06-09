@@ -9,13 +9,6 @@ import {
   mockEtfUniverseAdmin,
   mockLowBuy,
   mockLowBuyCandidate,
-  mockPaperAccount,
-  mockPaperAutoTradingStatus,
-  mockPaperDashboard,
-  mockPaperPerformance,
-  mockPaperSectorEtfT0Performance,
-  mockPaperStockPnl,
-  mockPaperWorkspace,
   mockRuntimeTasks,
   mockStrategyMeta,
   mockStrategyTrackingItem,
@@ -36,7 +29,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 960 },
 ];
-const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/backtest", "/paper", "/data", "/settings"];
+const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/data", "/settings"];
 const reportPath = resolve("dist", "responsive-smoke-report.json");
 
 async function installMockAuth(page) {
@@ -255,39 +248,8 @@ async function installMockAuth(page) {
     if (path === "/operation-audit") return response({ items: [], total: 0, limit: 20, offset: 0 });
     if (path === "/quant/parameters/current") return response({ id: 1, version: "smoke", name: "Smoke", scope: "global", status: "active", params: {}, description: "smoke", created_by: "smoke", created_at: now, activated_at: now });
     if (path === "/quant/parameters/schema") return response({});
-    if (path === "/backtests") return response({ items: [], total: 0, limit: 20, offset: 0 });
-    if (path === "/backtests/verdict-thresholds") return response({ thresholds: {} });
-    if (path === "/backtests/compare") return response({ items: [] });
-    if (path.startsWith("/backtests/") && path.endsWith("/equity")) return response({ items: [] });
-    if (path.startsWith("/backtests/") && path.endsWith("/trades")) return response({ items: [], total: 0, limit: 50, offset: 0 });
-    if (path.startsWith("/backtests/") && path.endsWith("/monthly-returns")) return response({ items: [] });
-    if (path.startsWith("/backtests/") && path.endsWith("/attribution")) return response({});
-    if (path.startsWith("/backtests/") && path.endsWith("/strategy-correlation")) return response({ strategies: [], matrix: [] });
-    if (path.startsWith("/backtests/") && path.endsWith("/portfolio-optimization")) return response({ items: [] });
-    if (path.startsWith("/backtests/") && path.endsWith("/position-policy-research")) return response({ items: [] });
-    if (path.startsWith("/backtests/")) return response(emptyList);
-    if (path === "/backtests/optimize" || path === "/backtests/validate") return response({ items: [], total: 0, limit: 20, offset: 0 });
     if (path === "/ml/signals/online-learning/status") return response({ generated_at: now, paper_sample_count: 0, closed_trade_sample_count: 0, positive_sample_count: 0, negative_sample_count: 0, ready_for_training: false, min_samples: 100, feature_names: [], sequence_feature_names: [], production_model_key: "smoke", latest_incremental_task_status: "idle", latest_incremental_task_progress_pct: 0, next_training_rule: "manual", warnings: [] });
     if (path === "/ml/signals/capacity") return response({ generated_at: now, capital_levels: [], items: [], assumptions: {} });
-    if (path === "/bff/v1/workspace/paper") return response(mockPaperWorkspace);
-    if (path === "/paper/account") return response(mockPaperAccount);
-    if (path === "/paper/positions" || path === "/paper/positions/refresh") {
-      return response({ positions: [], total_market_value: 0, total_unrealized_pnl: 0 });
-    }
-    if (path === "/paper/orders") return response([]);
-    if (path === "/paper/trades") return response({ trades: [] });
-    if (path === "/paper/performance") return response(mockPaperPerformance);
-    if (path === "/paper/performance/stock-pnl") return response(mockPaperStockPnl);
-    if (path === "/paper/performance/dashboard") return response(mockPaperDashboard);
-    if (path === "/paper/performance/sector-etf-t0") return response(mockPaperSectorEtfT0Performance);
-    if (path === "/paper/performance/by-strategy") return response([]);
-    if (path === "/paper/performance/by-market-state") return response([]);
-    if (path === "/paper/performance/by-strategy-market-state") return response([]);
-    if (path === "/paper/performance/by-tag") return response([]);
-    if (path === "/paper/risk/events") return response([]);
-    if (path === "/paper/auto-trading/status") return response(mockPaperAutoTradingStatus);
-    if (path === "/paper/auto-trading/runs") return response([]);
-    if (path.startsWith("/paper") || path.startsWith("/app/paper")) return response(emptyList);
     if (path === "/data-quality/sla") return response(mockDataQualitySla);
     if (path === "/data-quality/coverage") return response({ dataset_key: url.searchParams.get("dataset_key") || "daily_bars", scope: url.searchParams.get("scope") || "all", missing_symbols: [], missing_dates: [] });
     if (path === "/data-quality/trade-gate") return response(mockTradeGate);

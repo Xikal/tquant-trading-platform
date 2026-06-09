@@ -9,7 +9,7 @@ describe("ModeSafetyBadges", () => {
     expect(html).toContain("影子对照");
     expect(html).toContain("预览验证");
     expect(html).toContain("研究模式");
-    expect(html).toContain("模拟盘");
+    expect(html).toContain("观察验证");
     expect(html).toContain("观察提醒");
     expect(html).not.toContain("建议买入");
     expect(html).not.toContain("必涨");

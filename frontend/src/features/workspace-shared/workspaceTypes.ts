@@ -4,7 +4,6 @@ export type Page =
   | "analysis"
   | "playbook"
   | "strategy-tracking"
-  | "paper"
   | "data"
   | "settings";
 export type Tone = "up" | "down" | "neutral" | "warn";
@@ -28,6 +27,8 @@ export interface StockCardView {
   riskText: string;
   expectedText?: string;
   actionText: string;
+  signalState?: string;
+  simpleBucket?: string;
   details: string;
   entryText?: string;
   stopText?: string;
@@ -67,19 +68,6 @@ export interface BacktestDraft {
   low_buy_strategy: string;
   low_buy_lookback_days: string;
   low_buy_limit: string;
-}
-
-export interface PaperOrderDraft {
-  symbol: string;
-  name: string;
-  side: "buy" | "sell";
-  order_type: "market" | "limit";
-  quantity: string;
-  price: string;
-  current_price: string;
-  strategy_key: string;
-  reason: string;
-  require_intraday_confirmation: boolean;
 }
 
 export interface AuthDraft {

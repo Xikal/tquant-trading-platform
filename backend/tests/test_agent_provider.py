@@ -83,17 +83,10 @@ class AgentProviderTests(unittest.TestCase):
     def test_write_tool_is_denied_by_default(self) -> None:
         provider = NoneProvider()
         provider.policy.settings.agent_enable_write_tools = False
-        result = provider.invoke_tool("recommend_orders", {"limit": 3})
+        result = provider.invoke_tool("run_platform_autopilot", {"auto_repair": False})
         self.assertFalse(result.ok)
         self.assertIsNotNone(result.error)
         self.assertEqual(result.error.code, "TOOL_PERMISSION_DENIED")
-        paper_result = provider.invoke_tool(
-            "create_paper_order",
-            {"symbol": "510300", "side": "buy", "quantity": 100, "price": 4.0},
-        )
-        self.assertFalse(paper_result.ok)
-        self.assertIsNotNone(paper_result.error)
-        self.assertEqual(paper_result.error.code, "TOOL_PERMISSION_DENIED")
 
     def test_unknown_tool_returns_tool_not_found(self) -> None:
         result = NoneProvider().invoke_tool("missing_tool", {})

@@ -37,7 +37,6 @@ function workspaceProps() {
     DataConsolePage: NullPage as any,
     MonitorPage: NullPage as any,
     MonitorMarketPage: NullPage as any,
-    PaperTradingPage: NullPage as any,
     PlaybookPage: NullPage,
     SettingsPage: NullPage,
     StrategyTrackingPage: NullPage as any,
@@ -58,7 +57,6 @@ function workspaceProps() {
     monitor: { runtime: null } as any,
     monitorPageProps: baseMonitorPageProps(),
     page: "monitor" as const,
-    paperPageProps: {} as any,
     playbookData: {
       strategy: "first_board",
       setStrategy: vi.fn(),
@@ -86,7 +84,6 @@ function workspaceProps() {
     } as any,
     strategyMeta: [],
     onSelectStock: vi.fn(),
-    onPreparePaperOrder: vi.fn(),
     onUserUpdate: vi.fn(),
   };
 }

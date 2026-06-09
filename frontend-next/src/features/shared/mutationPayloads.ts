@@ -1,52 +1,9 @@
 import type {
-  BacktestRunCreate,
   FactorWeightsUpdate,
   FeatureFlagUpdateRequest,
-  PaperOrderCreate,
   SettingsPayload,
   UserSectorExclusionsUpdate,
 } from "../../shared/api/types";
-
-export function paperOrderPayload(draft: Record<string, unknown>): PaperOrderCreate {
-  return {
-    symbol: stringValue(draft.symbol),
-    name: stringValue(draft.name),
-    side: draft.side === "sell" || draft.side === "卖出" ? "sell" : "buy",
-    order_type: draft.order_type === "limit" ? "limit" : "market",
-    quantity: positiveNumber(draft.quantity, 100),
-    price: optionalNumber(draft.price),
-    current_price: optionalNumber(draft.price),
-    up_limit: null,
-    down_limit: null,
-    is_suspended: false,
-    reason: stringValue(draft.reason, "frontend-next shadow parity"),
-    require_intraday_confirmation: false,
-    source: "frontend-next-shadow",
-    strategy_key: stringValue(draft.strategy_key),
-  };
-}
-
-export function backtestPayload(draft: Record<string, unknown>): BacktestRunCreate {
-  const strategies = splitList(draft.strategies ?? draft.strategy)
-    .map((item) => normalizeStrategyKey(item))
-    .filter(Boolean);
-  return {
-    name: stringValue(draft.name, "frontend-next shadow backtest"),
-    strategies,
-    start_date: stringValue(draft.start, "2025-01-01"),
-    end_date: stringValue(draft.end, "2026-06-05"),
-    initial_capital: positiveNumber(draft.capital, 100000),
-    benchmark: stringValue(draft.benchmark, "000300"),
-    data_version: stringValue(draft.data_version),
-    engine_version: "backtest-v2",
-    fee_model_version: stringValue(draft.fee_model_version),
-    max_duration_seconds: 1800,
-    resource_tier: "light",
-    slippage_bps: 8,
-    strategy_version: stringValue(draft.strategy_version),
-    params: { source: "frontend-next-shadow" },
-  };
-}
 
 export function featureFlagPayload(draft: Record<string, unknown>): FeatureFlagUpdateRequest {
   return {
@@ -85,11 +42,6 @@ export function genericMutationPayload(draft: Record<string, unknown>): Record<s
 function positiveNumber(value: unknown, fallback: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function optionalNumber(value: unknown): number | null {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function normalizeFeatureFlagKey(value: unknown): string {

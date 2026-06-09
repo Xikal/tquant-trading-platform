@@ -2,50 +2,18 @@ from __future__ import annotations
 
 from app.models.entities import SystemSetting
 from app.services.shared.feature_flags import clear_feature_flag_cache
-from backend.tests.trading_experience_fixtures import client_for, seed_daily_bars, seed_minutes, seed_paper, session_factory
+from backend.tests.trading_experience_fixtures import client_for, seed_daily_bars, seed_paper, session_factory
 
 
-def test_holding_discipline_route_does_not_expose_other_user_account() -> None:
+def test_paper_account_dependent_trading_experience_routes_are_removed() -> None:
     Session = session_factory()
-    db = Session()
-    _enable_flags(db, "holding_discipline_assistant_enabled")
-    seed_daily_bars(db)
-    other_account = seed_paper(db, user_id=2)
-    other_account_id = other_account.id
-    db.close()
     client = client_for(Session)
 
-    response = client.get(f"/api/trading-experience/holding-discipline?account_id={other_account_id}")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["enabled"] is True
-    assert payload["account_id"] == other_account_id
-    assert payload["items"] == []
-    assert payload["data_quality"] == "insufficient"
+    assert client.get("/api/trading-experience/holding-discipline").status_code == 404
+    assert client.get("/api/trading-experience/t-trade-attribution").status_code == 404
 
 
-def test_t_trade_attribution_route_does_not_expose_other_user_account() -> None:
-    Session = session_factory()
-    db = Session()
-    _enable_flags(db, "t_trade_discipline_enabled")
-    other_account = seed_paper(db, user_id=2)
-    other_account_id = other_account.id
-    seed_minutes(db)
-    db.close()
-    client = client_for(Session)
-
-    response = client.get(f"/api/trading-experience/t-trade-attribution?account_id={other_account_id}")
-
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["enabled"] is True
-    assert payload["account_id"] == other_account_id
-    assert payload["items"] == []
-    assert payload["data_quality"] == "no_data"
-
-
-def test_trade_journal_route_rejects_other_user_account() -> None:
+def test_trade_journal_route_ignores_legacy_account_id_after_paper_removal() -> None:
     Session = session_factory()
     db = Session()
     _enable_flags(db, "trade_review_suite_enabled")
@@ -59,8 +27,17 @@ def test_trade_journal_route_rejects_other_user_account() -> None:
         json={"account_id": other_account_id, "symbol": "600000", "action": "note"},
     )
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "paper_account_not_found"
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["symbol"] == "600000"
+    assert payload["account_id"] is None
+
+    listed = client.get(f"/api/trading-experience/trade-journal?account_id={other_account_id}")
+
+    assert listed.status_code == 200
+    listed_payload = listed.json()
+    assert [item["symbol"] for item in listed_payload["items"]] == ["600000"]
+    assert listed_payload["items"][0]["account_id"] is None
 
 
 def test_review_pool_route_applies_main_board_filter_in_backend() -> None:

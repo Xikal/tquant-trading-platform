@@ -11,7 +11,6 @@ from app.models.entities import (
     DailyBarSnapshot,
     Instrument,
     LowBuyResultSnapshot,
-    PaperPosition,
     StrategyTrackingSnapshot,
     SystemSetting,
     UserWatchlist,
@@ -30,7 +29,6 @@ from app.services.market_data import MarketDataService
 DEFAULT_LIMIT = 1200
 WATCHLIST_CORE_LIMIT = 200
 PRIORITY_CORE_LIMIT = 600
-HOLDING_CORE_LIMIT = 300
 STRATEGY_TRACKING_CORE_LIMIT = 300
 MONITOR_SECTOR_LIMIT = 8
 MONITOR_SECTOR_MEMBER_LIMIT = 30
@@ -179,7 +177,6 @@ class MarketQuoteCacheRefreshService:
         symbols: list[str] = []
         symbols.extend(self._watchlist_symbols(limit=WATCHLIST_CORE_LIMIT))
         symbols.extend(self._priority_board_symbols(limit=PRIORITY_CORE_LIMIT))
-        symbols.extend(self._paper_holding_symbols(limit=HOLDING_CORE_LIMIT))
         symbols.extend(self._strategy_tracking_symbols(limit=STRATEGY_TRACKING_CORE_LIMIT))
         symbols.extend(self._monitor_sector_member_symbols())
         return self._dedupe_symbols(symbols)
@@ -218,15 +215,6 @@ class MarketQuoteCacheRefreshService:
                 desc(LowBuyResultSnapshot.score),
                 LowBuyResultSnapshot.symbol.asc(),
             )
-            .limit(limit)
-        ).scalars().all()
-        return [str(item) for item in rows if item]
-
-    def _paper_holding_symbols(self, *, limit: int) -> list[str]:
-        rows = self.db.execute(
-            select(PaperPosition.symbol)
-            .where(PaperPosition.quantity > 0)
-            .order_by(desc(PaperPosition.updated_at), PaperPosition.symbol.asc())
             .limit(limit)
         ).scalars().all()
         return [str(item) for item in rows if item]
@@ -300,7 +288,6 @@ def build_quote_cache_demand_symbols(db: Session) -> list[str]:
         priority_board_symbols(db),
         monitor_board_symbols(db),
         watchlist_symbols(db),
-        paper_position_symbols(db),
         strategy_tracking_symbols(db),
         sector_hot_member_symbols(db),
         market_pulse_index_etf_symbols(),
@@ -357,19 +344,6 @@ def watchlist_symbols(db: Session) -> list[str]:
     try:
         rows = db.execute(
             select(UserWatchlist.symbol).order_by(UserWatchlist.updated_at.desc()).limit(WATCHLIST_CORE_LIMIT)
-        ).scalars().all()
-    except Exception:
-        return []
-    return [str(item) for item in rows if item]
-
-
-def paper_position_symbols(db: Session) -> list[str]:
-    try:
-        rows = db.execute(
-            select(PaperPosition.symbol)
-            .where(PaperPosition.quantity > 0)
-            .order_by(desc(PaperPosition.updated_at), PaperPosition.symbol.asc())
-            .limit(HOLDING_CORE_LIMIT)
         ).scalars().all()
     except Exception:
         return []

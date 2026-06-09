@@ -11,6 +11,6 @@ describe("workspace monitor refresh cadence", () => {
     expect(isMonitorDataPage("monitor")).toBe(true);
     expect(isMonitorDataPage("monitor-market")).toBe(true);
     expect(isMonitorDataPage("playbook")).toBe(false);
-    expect(isMonitorDataPage("paper")).toBe(false);
+    expect(isMonitorDataPage("data")).toBe(false);
   });
 });

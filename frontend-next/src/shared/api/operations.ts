@@ -6,7 +6,6 @@ export type ApiFeature =
   | "monitor"
   | "analysis"
   | "playbook"
-  | "paper"
   | "strategy-tracking"
   | "backtest"
   | "data-console"
@@ -48,17 +47,8 @@ export const apiOperations = {
   authTotpSetup: http("auth", "POST", "/api/auth/mfa/totp/setup", "setup_totp_mfa_api_auth_mfa_totp_setup_post"),
   authTotpEnable: http("auth", "POST", "/api/auth/mfa/totp/enable", "enable_totp_mfa_api_auth_mfa_totp_enable_post"),
   authTotpDisable: http("auth", "POST", "/api/auth/mfa/totp/disable", "disable_totp_mfa_api_auth_mfa_totp_disable_post"),
-  authPaperAccess: http("auth", "GET", "/api/auth/paper-access", "paper_access_api_auth_paper_access_get", {
-    contractStatus: "ready",
-    defaultStaleTimeMs: 30_000,
-  }),
-
   bffManifest: http("workspace", "GET", "/api/bff/v1/manifest", "bff_manifest_api_bff_v1_manifest_get"),
   monitorWorkspace: http("workspace", "GET", "/api/bff/v1/workspace/monitor", "monitor_workspace_bff_api_bff_v1_workspace_monitor_get", {
-    contractStatus: "ready",
-    defaultStaleTimeMs: 10_000,
-  }),
-  paperWorkspace: http("workspace", "GET", "/api/bff/v1/workspace/paper", "paper_workspace_bff_api_bff_v1_workspace_paper_get", {
     contractStatus: "ready",
     defaultStaleTimeMs: 10_000,
   }),
@@ -154,49 +144,6 @@ export const apiOperations = {
   strategiesMeta: http("playbook", "GET", "/api/strategies/meta", "list_strategy_meta_api_strategies_meta_get", { contractStatus: "ready", defaultStaleTimeMs: 60_000 }),
   strategyPresets: http("playbook", "GET", "/api/strategy/presets", "list_strategy_presets_api_strategy_presets_get", { contractStatus: "ready", defaultStaleTimeMs: 60_000 }),
 
-  paperAccount: http("paper", "GET", "/api/paper/account", "get_paper_account_api_paper_account_get", { contractStatus: "ready", defaultStaleTimeMs: 10_000 }),
-  paperOrderCreate: http("paper", "POST", "/api/paper/orders", "create_paper_order_api_paper_orders_post", {
-    contractStatus: "ready",
-    invalidates: ["paperWorkspace", "paperOrders", "paperPositions", "paperAccount", "paperPerformanceDashboard"],
-  }),
-  paperOrders: http("paper", "GET", "/api/paper/orders", "list_paper_orders_api_paper_orders_get", { contractStatus: "ready", defaultStaleTimeMs: 10_000 }),
-  paperOrderCancel: http("paper", "POST", "/api/paper/orders/{order_id}/cancel", "cancel_paper_order_api_paper_orders__order_id__cancel_post", {
-    contractStatus: "ready",
-    invalidates: ["paperWorkspace", "paperOrders", "paperPositions", "paperAccount"],
-  }),
-  paperAccountPause: http("paper", "POST", "/api/paper/account/pause", "pause_paper_account_api_paper_account_pause_post", {
-    contractStatus: "ready",
-    invalidates: ["paperWorkspace", "paperAccount"],
-  }),
-  paperAccountResume: http("paper", "POST", "/api/paper/account/resume", "resume_paper_account_api_paper_account_resume_post", {
-    contractStatus: "ready",
-    invalidates: ["paperWorkspace", "paperAccount"],
-  }),
-  paperAccountReconcile: http("paper", "POST", "/api/paper/account/reconcile", "reconcile_paper_account_api_paper_account_reconcile_post", {
-    contractStatus: "ready",
-    requiresAdmin: true,
-    invalidates: ["paperWorkspace", "paperAccount", "paperPositions"],
-  }),
-  paperPositions: http("paper", "GET", "/api/paper/positions", "list_paper_positions_api_paper_positions_get", { contractStatus: "ready", defaultStaleTimeMs: 10_000 }),
-  paperPositionsRefresh: http("paper", "POST", "/api/paper/positions/refresh", "refresh_paper_positions_api_paper_positions_refresh_post", {
-    contractStatus: "ready",
-    invalidates: ["paperWorkspace", "paperPositions"],
-  }),
-  paperPerformanceDashboard: http("paper", "GET", "/api/paper/performance/dashboard", "paper_performance_dashboard_api_paper_performance_dashboard_get", {
-    contractStatus: "ready",
-    defaultStaleTimeMs: 30_000,
-  }),
-  paperTrades: http("paper", "GET", "/api/paper/trades", "list_paper_trades_api_paper_trades_get", { contractStatus: "ready", defaultStaleTimeMs: 10_000 }),
-  paperRiskEvents: http("paper", "GET", "/api/paper/risk/events", "list_paper_risk_events_api_paper_risk_events_get", { contractStatus: "ready", defaultStaleTimeMs: 20_000 }),
-  paperAutoTradingStatus: http("paper", "GET", "/api/paper/auto-trading/status", "get_auto_trading_status_api_paper_auto_trading_status_get", {
-    contractStatus: "ready",
-    defaultStaleTimeMs: 15_000,
-  }),
-  paperAutoTradingRuns: http("paper", "GET", "/api/paper/auto-trading/runs", "list_auto_trading_runs_api_paper_auto_trading_runs_get", {
-    contractStatus: "ready",
-    defaultStaleTimeMs: 20_000,
-  }),
-
   strategyTrackingItems: http("strategy-tracking", "GET", "/api/strategy-tracking/items", "strategy_tracking_items_view_api_strategy_tracking_items_get", {
     contractStatus: "ready",
     defaultStaleTimeMs: 12_000,
@@ -244,22 +191,22 @@ export const apiOperations = {
 
   backtestRuns: http("backtest", "GET", "/api/backtests/runs", "list_backtest_runs_api_backtests_runs_get", { contractStatus: "ready", defaultStaleTimeMs: 15_000 }),
   backtestRunCreate: http("backtest", "POST", "/api/backtests", "create_backtest_run_api_backtests_post", {
-    contractStatus: "ready",
+    contractStatus: "blocked_contract_needed",
     invalidates: ["backtestRuns"],
   }),
   backtestRunDetail: http("backtest", "GET", "/api/backtests/{run_id}", "get_backtest_run_api_backtests__run_id__get", { contractStatus: "ready", defaultStaleTimeMs: 15_000 }),
   backtestRunCancel: http("backtest", "POST", "/api/backtests/{run_id}/cancel", "cancel_backtest_run_api_backtests__run_id__cancel_post", {
-    contractStatus: "ready",
+    contractStatus: "blocked_contract_needed",
     invalidates: ["backtestRuns", "backtestRunDetail"],
   }),
   backtestRunEquity: http("backtest", "GET", "/api/backtests/{run_id}/equity", "get_backtest_equity_api_backtests__run_id__equity_get", { contractStatus: "ready", defaultStaleTimeMs: 30_000 }),
   backtestRunTrades: http("backtest", "GET", "/api/backtests/{run_id}/trades", "get_backtest_trades_api_backtests__run_id__trades_get", { contractStatus: "ready", defaultStaleTimeMs: 30_000 }),
   backtestValidationCreate: http("backtest", "POST", "/api/backtests/validate", "create_backtest_validation_api_backtests_validate_post", {
-    contractStatus: "ready",
+    contractStatus: "blocked_contract_needed",
     invalidates: ["backtestRuns"],
   }),
   backtestOptimizationCreate: http("backtest", "POST", "/api/backtests/optimize", "create_backtest_optimization_api_backtests_optimize_post", {
-    contractStatus: "ready",
+    contractStatus: "blocked_contract_needed",
     invalidates: ["backtestRuns"],
   }),
 
@@ -411,7 +358,6 @@ export const featureOperations = Object.freeze(
       monitor: [],
       analysis: [],
       playbook: [],
-      paper: [],
       "strategy-tracking": [],
       backtest: [],
       "data-console": [],

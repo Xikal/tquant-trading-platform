@@ -2,7 +2,6 @@ import type { Page } from "@playwright/test";
 
 export interface E2eAuthOptions {
   isAdmin?: boolean;
-  canPaperTrade?: boolean;
 }
 
 export async function installE2eAuthState(page: Page, options: E2eAuthOptions = {}) {
@@ -10,7 +9,7 @@ export async function installE2eAuthState(page: Page, options: E2eAuthOptions = 
     id: 1,
     username: "frontend_next_e2e",
     display_name: "frontend-next e2e",
-    can_paper_trade: options.canPaperTrade ?? true,
+    can_paper_trade: true,
     roles: options.isAdmin === false ? [] : ["admin"],
     mfa_totp_enabled: false,
     created_at: new Date(0).toISOString(),

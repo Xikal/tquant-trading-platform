@@ -47,14 +47,11 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
     assert "retrying attempt $((attempt + 1))/3" in deploy_script
 
 
-def test_cloud_deploy_preserves_existing_paper_auto_trading_flag() -> None:
+def test_cloud_deploy_does_not_write_removed_paper_auto_trading_flag() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
 
-    assert 'if test -n "${PAPER_AUTO_TRADING_ENABLED+x}"; then' in deploy_script
-    assert 'upsert_env_value PAPER_AUTO_TRADING_ENABLED "$PAPER_AUTO_TRADING_ENABLED"' in deploy_script
-    assert "elif ! grep -Eq '^PAPER_AUTO_TRADING_ENABLED=' .env; then" in deploy_script
-    assert "upsert_env_value PAPER_AUTO_TRADING_ENABLED false" in deploy_script
-    assert 'upsert_env_value PAPER_AUTO_TRADING_ENABLED "${PAPER_AUTO_TRADING_ENABLED:-false}"' not in deploy_script
+    assert "PAPER_AUTO_TRADING_ENABLED" not in deploy_script
+    assert "PAPER_PERF_ARCHIVE_ENABLED" not in deploy_script
 
 
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
@@ -968,9 +965,9 @@ def test_cloud_deploy_starts_runtime_scheduler_container() -> None:
     assert "runtime-scheduler" in deploy_script
     assert "runtime-worker" in deploy_script
     assert "app_runtime_services" in deploy_script
-    assert "DEPLOY_WITH_BACKTEST_WORKER" in deploy_script
-    assert 'DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_WITH_BACKTEST_WORKER="$DEPLOY_WITH_BACKTEST_WORKER" bash -s' in deploy_script
-    assert "backtest_worker:skipped_on_demand" in deploy_script
+    assert "DEPLOY_WITH_BACKTEST_WORKER" not in deploy_script
+    assert "backtest_worker:skipped_on_demand" not in deploy_script
+    assert "tquant-backtest-worker-mysql" in deploy_script
     assert "analytics_worker:skipped_on_demand" in deploy_script
     assert "DEPLOY_WITH_ANALYTICS_WORKER" in deploy_script
     assert "--profile analytics" in deploy_script
@@ -1001,7 +998,7 @@ def test_platform_component_entrypoints_and_worker_runbooks_exist() -> None:
     worker_runbook = read_repo_file("docs/operations/worker-runbook.md")
     production_runbook = read_repo_file("PRODUCTION_RUNBOOK.md")
 
-    for component in ("web", "runtime-worker", "scheduler", "analytics-worker", "backtest-worker"):
+    for component in ("web", "runtime-worker", "scheduler", "analytics-worker"):
         result = subprocess.run(
             ["bash", str(ROOT_DIR / "scripts/run_platform_component.sh"), component, "--print-command"],
             cwd=ROOT_DIR,
@@ -1015,7 +1012,7 @@ def test_platform_component_entrypoints_and_worker_runbooks_exist() -> None:
     assert "app.workers.runtime_worker" in component_script
     assert "app.workers.runtime_scheduler" in component_script
     assert "backend/scripts/analytics_worker.py" in component_script
-    assert "scripts/backtest_worker.py" in component_script
+    assert "scripts/backtest_worker.py" not in component_script
     assert "scripts/run_platform_component.sh web" in startup_script
     assert "scripts/run_platform_component.sh runtime-worker" in startup_script
     assert "Deployment Topology Runbook" in topology_runbook

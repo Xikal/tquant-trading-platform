@@ -24,6 +24,8 @@ export interface PlaybookCandidate {
   name: string;
   lane: string;
   laneText: string;
+  signalState: string;
+  simpleBucket: string;
   action: string;
   price: string;
   score: number;
@@ -203,15 +205,30 @@ function candidateFromRecord(item: Record<string, unknown>, quotes = new Map<str
   const price = pickFirst(quote, ["latest_price", "last_price", "price"]) ?? pickFirst(item, ["latest_price", "price"]);
   const change = pickFirst(quote, ["change_pct", "pct_chg", "change"]) ?? item.change_pct;
   const score = Number(pickFirst(item, ["priority_score", "production_score", "score"]) ?? 0);
+  const signalState = normalizedSignalState(item, quote);
+  const simpleBucket = normalizedSimpleBucket(item, signalState, quote);
   const raw = Object.keys(quote).length
     ? { ...item, latest_price: price, change_pct: change, live_quote: quote }
     : item;
+  if (Object.keys(quote).length) {
+    raw.buy_signal_state = signalState || raw.buy_signal_state;
+    raw.buy_signal_text = pickFirst(quote, ["buy_signal_text", "signal_text"]) ?? raw.buy_signal_text;
+    raw.buy_signal_hint = pickFirst(quote, ["buy_signal_hint", "trigger_condition"]) ?? raw.buy_signal_hint;
+    raw.suggested_position_text = pickFirst(quote, ["suggested_position_text"]) ?? raw.suggested_position_text;
+    raw.position_breakdown_text = pickFirst(quote, ["position_breakdown_text"]) ?? raw.position_breakdown_text;
+    raw.execution_quality_text = pickFirst(quote, ["execution_quality_text"]) ?? raw.execution_quality_text;
+    raw.trigger_condition = pickFirst(quote, ["trigger_condition"]) ?? raw.trigger_condition;
+    raw.invalid_condition = pickFirst(quote, ["invalid_condition"]) ?? raw.invalid_condition;
+    raw.risk_tier = pickFirst(quote, ["risk_tier"]) ?? raw.risk_tier;
+  }
   return {
     symbol,
     name: text(item.name ?? item.stock_name, ""),
-    lane: text(item.simple_bucket ?? item.display_lane ?? item.strategy_family, "baseline"),
-    laneText: text(item.simple_bucket_text ?? item.display_lane_title ?? item.strategy_family_text, "候选"),
-    action: text(item.buy_signal_text ?? item.next_action_text ?? item.action_summary, "观察"),
+    lane: simpleBucket || text(item.display_lane ?? item.strategy_family, "baseline"),
+    laneText: simpleBucketText(simpleBucket, text(item.simple_bucket_text ?? item.display_lane_title ?? item.strategy_family_text, "候选")),
+    signalState,
+    simpleBucket,
+    action: actionTextForSignal(raw, signalState, simpleBucket),
     price: numberText(price, "--"),
     score: Number.isFinite(score) ? score : 0,
     scoreText: numberText(score, "--"),
@@ -224,6 +241,67 @@ function candidateFromRecord(item: Record<string, unknown>, quotes = new Map<str
   };
 }
 
+function normalizedSignalState(item: Record<string, unknown>, quote: Record<string, unknown>): string {
+  return text(pickFirst(quote, ["buy_signal_state", "signal_state"]) ?? pickFirst(item, ["buy_signal_state", "signal_state", "signal_status"]), "").toLowerCase();
+}
+
+function normalizedSimpleBucket(item: Record<string, unknown>, signalState: string, quote: Record<string, unknown>): string {
+  if (pickFirst(quote, ["buy_signal_state", "signal_state"]) !== undefined) {
+    return simpleBucketFromSignal(signalState);
+  }
+  const bucket = text(pickFirst(item, ["simple_bucket", "bucket", "priority_lane"]), "").toLowerCase();
+  if (bucket) return bucket;
+  return simpleBucketFromSignal(signalState);
+}
+
+function simpleBucketFromSignal(signalState: string): string {
+  if (signalState === "buy_now" || signalState === "soft_buy_now") return "buy_now";
+  if (signalState === "near_entry" || signalState === "observe_confirmed" || signalState === "watch") return "wait_price";
+  if (signalState === "avoid") return "give_up";
+  return "";
+}
+
+function simpleBucketText(simpleBucket: string, fallback: string): string {
+  if (simpleBucket === "buy_now") return "确认可买";
+  if (simpleBucket === "wait_price") return "观察等待";
+  if (simpleBucket === "give_up") return "暂时放弃";
+  return fallback;
+}
+
+function actionTextForSignal(item: Record<string, unknown>, signalState: string, simpleBucket: string): string {
+  const action = text(pickFirst(item, ["buy_signal_text", "next_action_text", "signal_state", "action_text", "action_summary"]), "");
+  if (conflictsWithStructuredSignal(action, signalState, simpleBucket)) {
+    return structuredSignalText(signalState, simpleBucket);
+  }
+  return action || structuredSignalText(signalState, simpleBucket) || "观察";
+}
+
+function conflictsWithStructuredSignal(action: string, signalState: string, simpleBucket: string): boolean {
+  if (!action) return false;
+  const raw = action.toLowerCase();
+  if ((simpleBucket === "wait_price" || signalState === "near_entry" || signalState === "observe_confirmed" || signalState === "watch") && isBuyLikeText(raw)) {
+    return true;
+  }
+  if ((simpleBucket === "give_up" || signalState === "avoid") && isBuyLikeText(raw)) {
+    return true;
+  }
+  return false;
+}
+
+function structuredSignalText(signalState: string, simpleBucket: string): string {
+  if (simpleBucket === "buy_now" || signalState === "buy_now") return "确定买入";
+  if (signalState === "soft_buy_now") return "小仓试买";
+  if (simpleBucket === "wait_price" || signalState === "near_entry") return "接近买点，等待确认";
+  if (signalState === "observe_confirmed") return "观察确认";
+  if (signalState === "watch") return "继续观察";
+  if (simpleBucket === "give_up" || signalState === "avoid") return "暂时放弃";
+  return "";
+}
+
+function isBuyLikeText(value: string): boolean {
+  return value.includes("buy") || value.includes("立即") || value.includes("确定") || value.includes("可买") || value.includes("买入");
+}
+
 function quoteBySymbol(data: PlaybookDataset | null): Map<string, Record<string, unknown>> {
   const root = readRecord(data?.quotes);
   const records = readArray<Record<string, unknown>>(root.quotes).concat(readArray<Record<string, unknown>>(root.items));
@@ -232,7 +310,19 @@ function quoteBySymbol(data: PlaybookDataset | null): Map<string, Record<string,
     const symbol = text(item.symbol, "");
     if (symbol) entries.push([symbol, item]);
   });
+  addMappedQuotes(entries, root.quotes);
+  addMappedQuotes(entries, root.items);
   return new Map(entries);
+}
+
+function addMappedQuotes(entries: Array<[string, Record<string, unknown>]>, value: unknown): void {
+  const record = readRecord(value);
+  Object.entries(record).forEach(([key, rawItem]) => {
+    const item = readRecord(rawItem);
+    if (!Object.keys(item).length) return;
+    const symbol = text(item.symbol, key);
+    if (symbol) entries.push([symbol, { symbol, ...item }]);
+  });
 }
 
 function boardRoot(data: PlaybookDataset | null): Record<string, unknown> {

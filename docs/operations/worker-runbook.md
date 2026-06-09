@@ -13,7 +13,6 @@ database contracts as Web.
 | Runtime worker | `python -m app.workers.runtime_worker` | `runtime_tasks` | data backfill, latest-bar refresh, low-buy materialization, repair tasks |
 | Runtime scheduler | `python -m app.workers.runtime_scheduler` | scheduled enqueue logic | close refresh, watchdog, periodic data-quality enqueue |
 | Analytics worker | `backend/scripts/analytics_worker.py` | analytics RuntimeTask registry | On-demand Parquet export, DuckDB strategy report, analytics quality checks |
-| Backtest worker | `scripts/backtest_worker.py` | backtest job tables | On-demand queued backtest execution |
 
 Local wrappers:
 
@@ -21,7 +20,6 @@ Local wrappers:
 scripts/run_platform_component.sh runtime-worker
 scripts/run_platform_component.sh scheduler
 scripts/run_platform_component.sh analytics-worker
-scripts/run_platform_component.sh backtest-worker
 ```
 
 ## Runtime Worker
@@ -117,20 +115,20 @@ docker compose --profile analytics -f docker-compose.mysql.yml stop analytics-wo
 
 Health:
 
-- queued backtest jobs are claimed
-- long-running jobs report progress or a bounded failure reason
+- strategy research artifacts are reviewed through runtime/analytics task status
+- long-running analytics jobs report progress or a bounded failure reason
 - `portfolio_backtest_metrics` remains the final portfolio fact source
 
 Inspect:
 
 ```bash
-docker compose --profile backtest -f docker-compose.mysql.yml logs --tail=200 backtest-worker
+docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=200 analytics-worker
 ```
 
 Recover:
 
 ```bash
-docker compose --profile backtest -f docker-compose.mysql.yml up -d --no-build --force-recreate backtest-worker
+docker compose --profile analytics -f docker-compose.mysql.yml up -d --no-build --force-recreate analytics-worker
 ```
 
 Do not parallelize `portfolio_backtest_metrics` by month or recompute max5/max10
@@ -145,7 +143,6 @@ scripts/run_platform_component.sh web --print-command
 scripts/run_platform_component.sh runtime-worker --print-command
 scripts/run_platform_component.sh scheduler --print-command
 scripts/run_platform_component.sh analytics-worker --print-command
-scripts/run_platform_component.sh backtest-worker --print-command
 ```
 
 For a local Web + runtime-worker pair:
@@ -163,6 +160,5 @@ scripts/run_platform_component.sh analytics-worker --once
 ## Escalation
 
 If Web is healthy but data is stale, inspect runtime-worker and scheduler first.
-If analysis reports are missing, inspect analytics-worker. If backtests do not
-advance, inspect backtest-worker and queued job state. Avoid treating a stale
+If analysis reports are missing, inspect analytics-worker. Avoid treating a stale
 analysis artifact as a production trading signal.

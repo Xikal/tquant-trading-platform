@@ -13,8 +13,6 @@ HEAVY_RESEARCH_TASK_TYPES = (
     "ml_signal_train",
     "factor_mining_iterate",
     "analysis_batch",
-    "paper_smart_t_backtest",
-    "paper_backtest_comparison",
 )
 ML_HEAVY_TASK_TYPES = {"ml_signal_build_samples", "ml_signal_train"}
 FACTOR_HEAVY_TASK_TYPES = {"factor_mining_iterate"}
@@ -138,33 +136,6 @@ def execute_heavy_research_task(task_type: str, payload: dict[str, Any], db) -> 
             return {"ok": False, "status": "blocked", "reason": "analysis_batch requires items"}
         responses = AnalysisService().analyze_batch(db, requests)
         return {"ok": True, "items": [item.model_dump(mode="json") for item in responses], "count": len(responses)}
-
-    if task_type == "paper_smart_t_backtest":
-        from app.services.paper.smart_t_backtest import SmartTBacktestService
-
-        report = SmartTBacktestService(db).run(
-            start_date=payload.get("start_date") or None,
-            end_date=payload.get("end_date") or None,
-            strategies=[str(item) for item in payload.get("strategies") or []] or None,
-            max_signals_per_day=max(1, min(int(payload.get("max_signals_per_day") or 20), 100)),
-            forward_days=max(1, min(int(payload.get("forward_days") or 3), 10)),
-            sample_limit=max(0, min(int(payload.get("sample_limit") or 50), 200)),
-        )
-        return {
-            **report.__dict__,
-            "threshold_stats": [item.__dict__ for item in report.threshold_stats],
-            "samples": [item.__dict__ for item in report.samples],
-        }
-
-    if task_type == "paper_backtest_comparison":
-        from app.services.paper.backtest_compare import PaperBacktestComparisonService
-
-        response = PaperBacktestComparisonService(db).compare(
-            account_id=int(payload["account_id"]),
-            backtest_run_id=int(payload["backtest_run_id"]),
-            deviation_threshold_pct=float(payload.get("deviation_threshold_pct") or 20.0),
-        )
-        return response.model_dump(mode="json")
 
     raise ValueError(f"unknown heavy research task: {task_type}")
 

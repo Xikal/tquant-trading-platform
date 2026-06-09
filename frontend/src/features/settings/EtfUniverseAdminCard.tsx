@@ -288,7 +288,7 @@ export function EtfUniverseAdminCard({
         <TextField label="回滚版本" value={rollbackVersion} onChange={(event) => setField("rollbackVersion", event.target.value)} />
         <Button danger htmlType="button" onClick={() => void rollback()} disabled={!rollbackVersion || writeDisabled}>回滚</Button>
       </Space>
-      <p className="hint">回滚与保存都会写入参数审计和操作审计；自动交易仍受模拟盘权限、风控和确认机制约束。</p>
+      <p className="hint">回滚与保存都会写入参数审计和操作审计；交易相关动作仍受权限、风控和确认机制约束。</p>
     </SettingCard>
   );
 }

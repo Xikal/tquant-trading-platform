@@ -308,7 +308,7 @@ class MLSignalOnlineLearningStatusResponse(BaseModel):
     latest_incremental_task_status: str = ""
     latest_incremental_task_progress_pct: float = 0.0
     latest_incremental_task_finished_at: datetime | None = None
-    next_training_rule: str = "每周五 16:00 后由 runtime worker 自动触发一次 paper 增量训练。"
+    next_training_rule: str = "模拟盘功能已下线，增量训练自动周任务已停用；仅保留历史样本只读状态与管理员手动研究入口。"
     warnings: list[str] = Field(default_factory=list)
     drift_ready: bool = False
     drift_alerts: list[str] = Field(default_factory=list)

@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
 import time
-from datetime import datetime
-from decimal import Decimal
+import json
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.entities import AgentAuditLog
@@ -16,8 +13,6 @@ from app.models.schema_defs.agent import (
     AgentBacktestResponse,
     AgentCompareStrategiesResponse,
     AgentMarketSentimentResponse,
-    AgentPaperOrderRequest,
-    AgentPaperOrderResponse,
     AgentPositionTSignalRequest,
     AgentPositionTSignalResponse,
     AgentSectorFundFlowResponse,
@@ -27,8 +22,6 @@ from app.models.schema_defs.agent import (
 from app.services.agent_context_service import AgentContextService
 from app.services.market_data import MarketDataService
 from app.services.market.regime_quality import market_regime_quality_text
-from app.services.paper import PaperAccountService, PaperOrderService
-from app.services.paper.risk_circuit import PaperRiskCircuitBreaker
 
 _SECTOR_HEATMAP_CACHE: dict[tuple[int], tuple[float, AgentSectorHeatmapResponse]] = {}
 _SECTOR_HEATMAP_TTL_SECONDS = 180.0
@@ -119,52 +112,6 @@ def agent_compare_strategies(
         items=items,
         best_strategy_key=best,
         summary=f"已对比 {len(unique_keys)} 个策略，当前排序第一：{best or '无'}。",
-    )
-
-
-def agent_create_paper_order(
-    service: AgentContextService,
-    db: Session,
-    payload: AgentPaperOrderRequest,
-    *,
-    user_id: int | None,
-) -> AgentPaperOrderResponse:
-    custom = getattr(service, "create_paper_order", None)
-    if callable(custom):
-        return custom(db, payload, user_id=user_id)
-    account = _resolve_agent_paper_account(db, payload.account_id, user_id=user_id)
-    if account is None:
-        raise HTTPException(status_code=404, detail="无可用模拟账户。")
-    try:
-        order = PaperOrderService(db).create_order(
-            account_id=account.id,
-            symbol=payload.symbol.strip(),
-            name=payload.name or payload.symbol.strip(),
-            side=payload.side,
-            order_type="limit",
-            quantity=payload.quantity,
-            price=Decimal(str(payload.price)),
-            source="agent",
-            strategy_key=payload.strategy_key,
-            reason=payload.reason,
-            signal_snapshot={"agent_tool": "create_paper_order"},
-            current_price=Decimal(str(payload.price)),
-            quote_time=datetime.now(),
-            is_suspended=False,
-        )
-        PaperRiskCircuitBreaker(db).evaluate_account(account.id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return AgentPaperOrderResponse(
-        ok=True,
-        account_id=account.id,
-        order_id=order.id,
-        symbol=order.symbol,
-        side=order.side,
-        quantity=order.quantity,
-        price=float(order.price or payload.price),
-        status=order.status,
-        summary="模拟盘订单已创建并按模拟撮合规则处理。",
     )
 
 
@@ -433,16 +380,6 @@ def audit_log_out(row: AgentAuditLog) -> AgentAuditLogOut:
         result_summary=str(result.get("summary") or row.result_summary or "")[:200],
         created_at=row.created_at,
     )
-
-
-def _resolve_agent_paper_account(db: Session, account_id: int | None, *, user_id: int | None):
-    service = PaperAccountService(db)
-    if account_id is not None:
-        account = service.get_account(account_id)
-        if user_id is not None and account.user_id != user_id:
-            return None
-        return account
-    return service.get_or_create_default(user_id)
 
 
 def _json_dict(raw_value: str) -> dict:

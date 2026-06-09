@@ -83,10 +83,6 @@ export async function installPlaybookFixture(page: Page) {
   await page.route("**/api/strategies/meta", (route) => route.fulfill({ status: 200, json: { strategies: [{ key: "n_pattern_long_wash", display_name: "N形洗盘低吸", tier: "core" }] } }));
 }
 
-export async function installPaperFixture(page: Page) {
-  await page.route("**/api/bff/v1/workspace/paper", (route) => route.fulfill({ status: 200, json: paperWorkspaceFixture }));
-}
-
 export async function installStrategyFixture(page: Page) {
   await page.route("**/api/bff/v1/workspace/strategy", (route) => route.fulfill({ status: 200, json: { items: strategyItems, summary: { total: 2, needs_review_count: 1 } } }));
   await page.route("**/api/strategy-tracking/items*", (route) => route.fulfill({ status: 200, json: { items: strategyItems, total: 2, limit: 50, offset: 0 } }));
@@ -183,23 +179,6 @@ const priorityBoardFixture = {
 const keyLevelFixture = {
   data_quality: "ok",
   key_level_candidates: [{ direction: "support", level_type: "ma20", price: 8.5, strength_score: 82, zone_low: 8.45, zone_high: 8.55 }],
-};
-
-const paperWorkspaceFixture = {
-  api_version: "v1",
-  account: { id: 1, name: "默认模拟账户", cash_available: 88000, initial_cash: 100000, market_value: 12000, status: "active", total_assets: 100220, total_return_pct: 0.22 },
-  positions: [{ id: 1, symbol: "600000", name: "浦发银行", quantity: 1000, available_quantity: 900, cost_basis: 8.6, latest_price: 8.72, market_value: 8720, unrealized_pnl: 120, unrealized_pnl_pct: 1.4 }],
-  orders: [{ id: 10, symbol: "600000", name: "浦发银行", side: "buy", order_type: "limit", quantity: 100, status: "filled", reason: "策略买入" }],
-  trades: [],
-  stock_pnl: { summary: {}, items: [] },
-  performance: { total_return_pct: 0.22, win_rate_pct: 55, max_drawdown_pct: 3.2 },
-  strategy_performance: [],
-  market_performance: [],
-  tag_performance: [],
-  risk_events: [],
-  auto_trading_status: { running: false, engine_running: false, trading_time: true },
-  auto_trading_runs: [],
-  partial_errors: [],
 };
 
 const strategyItems = [

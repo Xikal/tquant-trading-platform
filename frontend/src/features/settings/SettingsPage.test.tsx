@@ -91,7 +91,7 @@ describe("SettingsPage", () => {
 
   it("keeps ETF universe management as a data center entry instead of duplicating the full card", () => {
     const html = renderToStaticMarkup(
-      <SettingsSection title="交易偏好" description="风控、行业过滤、模拟盘退出和 ETF 自动交易参数。">
+      <SettingsSection title="交易偏好" description="风控、行业过滤和 ETF 参数。">
         <DataCenterEntryCard title="交易标的范围" description="ETF / 股票池在数据中心统一维护。" />
       </SettingsSection>
     );

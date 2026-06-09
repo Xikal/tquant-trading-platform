@@ -136,7 +136,7 @@ worker：
 
 ```bash
 sudo docker compose -f docker-compose.mysql.yml ps runtime-worker runtime-scheduler
-sudo docker compose --profile analytics --profile backtest -f docker-compose.mysql.yml ps analytics-worker backtest-worker
+sudo docker compose --profile analytics -f docker-compose.mysql.yml ps analytics-worker
 ```
 
 db：
@@ -181,7 +181,6 @@ worker 回滚：
 docker compose -f docker-compose.mysql.yml up -d runtime-worker runtime-scheduler
 # 按需研究 worker：
 # docker compose --profile analytics -f docker-compose.mysql.yml up -d analytics-worker
-# docker compose --profile backtest -f docker-compose.mysql.yml up -d backtest-worker
 ```
 
 db migration 回滚：

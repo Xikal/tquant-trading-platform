@@ -1,6 +1,6 @@
 name: tquant-mysql
 
-x-low-priority-task-types: &low_priority_task_types ${RUNTIME_LOW_PRIORITY_TASK_TYPES:-analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,analytics_export_paper_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly}
+x-low-priority-task-types: &low_priority_task_types ${RUNTIME_LOW_PRIORITY_TASK_TYPES:-analytics_export_daily_bars,analytics_export_strategy_tracking_snapshots,analytics_export_key_level_snapshots,analytics_export_low_buy_result_snapshots,analytics_export_backtest_runs,analytics_export_backtest_trades,analytics_export_backtest_daily_snapshots,analytics_export_analysis_logs,analytics_export_market_review_reports,strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,trading_experience_limit_up_backtest,ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly}
 
 x-default-logging: &default_logging
   driver: json-file
@@ -129,11 +129,6 @@ services:
       AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-10}
       HERMES_API_URL: ${HERMES_API_URL:-}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
-      PAPER_AUTO_TRADING_ENABLED: ${PAPER_AUTO_TRADING_ENABLED:-false}
-      PAPER_AUTO_TRADING_INTERVAL: ${PAPER_AUTO_TRADING_INTERVAL:-120}
-      PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
-      PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
-      PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${WEB_RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       RUNTIME_BACKGROUND_ROLE: web
@@ -167,7 +162,6 @@ services:
       RUST_FINANCE_MATH_ENABLED: ${RUST_FINANCE_MATH_ENABLED:-true}
       BFF_WORKSPACE_CACHE_ENABLED: ${BFF_WORKSPACE_CACHE_ENABLED:-true}
       BFF_MONITOR_CACHE_TTL_SECONDS: ${BFF_MONITOR_CACHE_TTL_SECONDS:-5}
-      BFF_PAPER_CACHE_TTL_SECONDS: ${BFF_PAPER_CACHE_TTL_SECONDS:-3}
       BFF_STRATEGY_CACHE_TTL_SECONDS: ${BFF_STRATEGY_CACHE_TTL_SECONDS:-30}
       BFF_SETTINGS_CACHE_TTL_SECONDS: ${BFF_SETTINGS_CACHE_TTL_SECONDS:-30}
       PRIORITY_BOARD_WEB_SYNC_REFRESH_ENABLED: ${PRIORITY_BOARD_WEB_SYNC_REFRESH_ENABLED:-false}
@@ -230,11 +224,6 @@ services:
       AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-10}
       HERMES_API_URL: ${HERMES_API_URL:-}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
-      PAPER_AUTO_TRADING_ENABLED: ${PAPER_AUTO_TRADING_ENABLED:-false}
-      PAPER_AUTO_TRADING_INTERVAL: ${PAPER_AUTO_TRADING_INTERVAL:-120}
-      PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
-      PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
-      PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_BACKGROUND_JOBS_ENABLED:-false}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       RUNTIME_BACKGROUND_ROLE: worker
@@ -331,11 +320,6 @@ services:
       AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-10}
       HERMES_API_URL: ${HERMES_API_URL:-}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
-      PAPER_AUTO_TRADING_ENABLED: ${PAPER_AUTO_TRADING_ENABLED:-false}
-      PAPER_AUTO_TRADING_INTERVAL: ${PAPER_AUTO_TRADING_INTERVAL:-120}
-      PAPER_AUTO_TRADING_MAX_ORDERS: ${PAPER_AUTO_TRADING_MAX_ORDERS:-5}
-      PAPER_AUTO_TRADING_DRY_RUN: ${PAPER_AUTO_TRADING_DRY_RUN:-false}
-      PAPER_AUTO_TRADING_MIN_SCORE: ${PAPER_AUTO_TRADING_MIN_SCORE:-75}
       RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED:-true}
       RUNTIME_BACKGROUND_JOBS_ON_SQLITE: ${RUNTIME_BACKGROUND_JOBS_ON_SQLITE:-false}
       RUNTIME_BACKGROUND_ROLE: scheduler
@@ -353,7 +337,7 @@ services:
       RUNTIME_DAILY_BAR_REFRESH_INTERVAL_SECONDS: ${RUNTIME_DAILY_BAR_REFRESH_INTERVAL_SECONDS:-300}
       RUNTIME_LATEST_DATA_WATCHDOG_INTERVAL_SECONDS: ${RUNTIME_LATEST_DATA_WATCHDOG_INTERVAL_SECONDS:-300}
       RUNTIME_MARKET_REVIEW_INTERVAL_SECONDS: ${RUNTIME_MARKET_REVIEW_INTERVAL_SECONDS:-300}
-      RUNTIME_PAPER_PERF_ARCHIVE_INTERVAL_SECONDS: ${RUNTIME_PAPER_PERF_ARCHIVE_INTERVAL_SECONDS:-300}
+      MARKET_CLOSE_REVIEW_TIME: ${MARKET_CLOSE_REVIEW_TIME:-15:05}
       RUNTIME_AGENT_DAILY_REPORT_INTERVAL_SECONDS: ${RUNTIME_AGENT_DAILY_REPORT_INTERVAL_SECONDS:-300}
       RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}
       RUNTIME_LOW_PRIORITY_TASK_TYPES: *low_priority_task_types
@@ -368,8 +352,6 @@ services:
       GLOBAL_RATE_LIMIT_WINDOW_SECONDS: ${GLOBAL_RATE_LIMIT_WINDOW_SECONDS:-1}
       STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
       MARKET_REVIEW_ENABLED: ${MARKET_REVIEW_ENABLED:-true}
-      PAPER_PERF_ARCHIVE_ENABLED: ${PAPER_PERF_ARCHIVE_ENABLED:-true}
-      PAPER_PERF_AI_REPORT_ENABLED: ${PAPER_PERF_AI_REPORT_ENABLED:-false}
       TQUANT_RESEARCH_JOBS_ENABLED: ${TQUANT_RESEARCH_JOBS_ENABLED:-false}
       TQUANT_ML_JOBS_ENABLED: ${TQUANT_ML_JOBS_ENABLED:-false}
       TQUANT_FACTOR_JOBS_ENABLED: ${TQUANT_FACTOR_JOBS_ENABLED:-false}
@@ -388,7 +370,6 @@ services:
       RUST_FINANCE_MATH_ENABLED: ${RUST_FINANCE_MATH_ENABLED:-true}
       BFF_WORKSPACE_CACHE_ENABLED: ${BFF_WORKSPACE_CACHE_ENABLED:-true}
       BFF_MONITOR_CACHE_TTL_SECONDS: ${BFF_MONITOR_CACHE_TTL_SECONDS:-5}
-      BFF_PAPER_CACHE_TTL_SECONDS: ${BFF_PAPER_CACHE_TTL_SECONDS:-3}
       BFF_STRATEGY_CACHE_TTL_SECONDS: ${BFF_STRATEGY_CACHE_TTL_SECONDS:-30}
       BFF_SETTINGS_CACHE_TTL_SECONDS: ${BFF_SETTINGS_CACHE_TTL_SECONDS:-30}
     volumes:
@@ -399,67 +380,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  backtest-worker:
-    profiles: ["backtest"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        INSTALL_ANALYTICS: "${BACKTEST_WORKER_INSTALL_ANALYTICS:-1}"
-        DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
-        DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
-    image: tquant-web:mysql
-    container_name: tquant-backtest-worker-mysql
-    restart: unless-stopped
-    mem_limit: ${BACKTEST_WORKER_MEM_LIMIT:-512m}
-    memswap_limit: ${BACKTEST_WORKER_MEMSWAP_LIMIT:-768m}
-    cpus: ${BACKTEST_WORKER_CPUS:-1.00}
-    logging: *default_logging
-    depends_on:
-      mysql:
-        condition: service_healthy
-      migration:
-        condition: service_completed_successfully
-      app:
-        condition: service_healthy
-    command: ["python", "-m", "app.workers.backtest_queue_worker"]
-    environment:
-      APP_NAME: ${APP_NAME:-维斯量化交易平台}
-      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
-      API_PREFIX: ${API_PREFIX:-/api}
-      DATABASE_URL: mysql+mysqldb://${MYSQL_USER:-tquant_app}:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@mysql:3306/${MYSQL_DATABASE:-t_quant}?charset=utf8mb4
-      DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-2}
-      DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-2}
-      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
-      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-1800}
-      RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}
-      RUNTIME_LOW_PRIORITY_TASK_TYPES: *low_priority_task_types
-      DEFAULT_DATA_SOURCE: ${DEFAULT_DATA_SOURCE:-akshare_eastmoney}
-      HTTP_TIMEOUT: ${HTTP_TIMEOUT:-12}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?AUTH_SECRET_KEY is required}
-      TQUANT_SETTINGS_ENCRYPTION_KEY: ${TQUANT_SETTINGS_ENCRYPTION_KEY:?TQUANT_SETTINGS_ENCRYPTION_KEY is required}
-      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
-      AUTH_ALLOW_INSECURE_HTTP_COOKIE: ${AUTH_ALLOW_INSECURE_HTTP_COOKIE:-false}
-      SCHEMA_COMPAT_REPAIR_ENABLED: ${SCHEMA_COMPAT_REPAIR_ENABLED:-false}
-      TQUANT_INTERNAL_SERVICE_TOKEN: ${TQUANT_INTERNAL_SERVICE_TOKEN:-}
-      STRUCTURED_LOGS: ${STRUCTURED_LOGS:-true}
-      TQUANT_MARKET_SERVICE_URL: ${TQUANT_MARKET_SERVICE_URL:-}
-      TQUANT_MARKET_READ_SERVICE_URL: ${TQUANT_MARKET_READ_SERVICE_URL:-http://go-market-read-service:8092}
-      RUST_FINANCE_MATH_ENABLED: ${RUST_FINANCE_MATH_ENABLED:-true}
-      TQUANT_ANALYTICS_ENABLED: ${BACKTEST_WORKER_TQUANT_ANALYTICS_ENABLED:-true}
-      TQUANT_ANALYTICS_ROOT: ${TQUANT_ANALYTICS_ROOT:-/app/backend/data/analytics}
-      TQUANT_DUCKDB_THREADS: ${BACKTEST_WORKER_TQUANT_DUCKDB_THREADS:-2}
-      BACKTEST_PARQUET_DAILY_BARS_ENABLED: ${BACKTEST_PARQUET_DAILY_BARS_ENABLED:-false}
-      BACKTEST_PARQUET_DAILY_BARS_FALLBACK_TO_MYSQL: ${BACKTEST_PARQUET_DAILY_BARS_FALLBACK_TO_MYSQL:-true}
-      BACKTEST_PARQUET_DAILY_BARS_MANIFEST: ${BACKTEST_PARQUET_DAILY_BARS_MANIFEST:-latest}
-      TQUANT_STRATEGY_SERVICE_URL: ${TQUANT_STRATEGY_SERVICE_URL:-}
-      TQUANT_TRADE_SERVICE_URL: ${TQUANT_TRADE_SERVICE_URL:-}
-      TQUANT_ADMIN_SERVICE_URL: ${TQUANT_ADMIN_SERVICE_URL:-}
-      TQUANT_FACTOR_SERVICE_URL: ${TQUANT_FACTOR_SERVICE_URL:-}
-      TQUANT_BACKTEST_SERVICE_URL: ${TQUANT_BACKTEST_SERVICE_URL:-}
-    volumes:
-      - app_runtime_data:/app/backend/data
 
   analytics-worker:
     build:

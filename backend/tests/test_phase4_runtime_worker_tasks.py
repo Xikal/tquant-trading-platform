@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 import warnings
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -257,31 +258,14 @@ def test_runtime_worker_routes_market_review_report_to_market_service(monkeypatc
     assert calls == [("init", db), ("generate", "close", "2026-06-03")]
 
 
-def test_runtime_worker_routes_paper_review_report_to_paper_archive(monkeypatch):
+def test_runtime_worker_disables_paper_review_report():
     db = _db()
-    calls = []
-
-    class _PaperArchiveService:
-        def __init__(self, db_arg):  # noqa: ANN001
-            calls.append(("init", db_arg))
-
-        def generate_review_reports_for_active(self, *, report_slot, target_date):  # noqa: ANN001
-            calls.append(("generate", report_slot, target_date.isoformat() if target_date else ""))
-            return [{"account_id": 1, "report_id": 21, "report_slot": report_slot}]
-
-    monkeypatch.setattr("app.services.paper.archive.PaperArchiveService", _PaperArchiveService)
-
-    result = runtime_worker._execute_task(
-        "paper_review_report",
-        {"report_slot": "midday", "target_date": "2026-06-03"},
-        db,
-    )
-
-    assert result["ok"] is True
-    assert result["scope"] == "paper"
-    assert result["report_count"] == 1
-    assert result["report_date"] == "2026-06-03"
-    assert calls == [("init", db), ("generate", "midday", "2026-06-03")]
+    with pytest.raises(RuntimeError, match="paper trading feature has been removed"):
+        runtime_worker._execute_task(
+            "paper_review_report",
+            {"report_slot": "midday", "target_date": "2026-06-03"},
+            db,
+        )
 
 
 def test_runtime_worker_builds_low_buy_close_review_when_requested(monkeypatch):
@@ -443,22 +427,13 @@ def test_runtime_worker_executes_batch_b_decision_context_tasks(monkeypatch):
             assert per_sector_limit == 4
             return SectorRelativeStrengthResponse(updated_at="2026-05-30T09:30:00+08:00", items=[])
 
-    class _PaperPerformanceService:
-        def __init__(self, db_arg):  # noqa: ANN001
-            assert db_arg is db
-
-        def compute_portfolio_execution_preview(self, account_id: int):
-            return {"account_id": account_id, "max_5": {"portfolio_return_pct": 1.23}, "max_10": {"portfolio_return_pct": 2.34}}
-
     monkeypatch.setattr("app.services.market_data.MarketDataService", lambda: _MarketData())
-    monkeypatch.setattr("app.services.paper.performance.PaperPerformanceService", _PaperPerformanceService)
 
     sector_result = runtime_worker._execute_task(
         "sector_leader_snapshot_refresh",
         {"limit": 6, "per_sector_limit": 4},
         db,
     )
-    portfolio_result = runtime_worker._execute_task("paper_portfolio_execution_preview", {"account_id": 7}, db)
     promotion_result = runtime_worker._execute_task(
         "strategy_promotion_review",
         {
@@ -481,8 +456,8 @@ def test_runtime_worker_executes_batch_b_decision_context_tasks(monkeypatch):
     assert sector_result["worker_scope"] == "runtime-worker"
     assert sector_result["task_type"] == "sector_leader_snapshot_refresh"
     assert sector_result["item_count"] == 0
-    assert portfolio_result["ok"] is True
-    assert portfolio_result["preview"]["max_5"]["portfolio_return_pct"] == 1.23
+    with pytest.raises(RuntimeError, match="paper trading feature has been removed"):
+        runtime_worker._execute_task("paper_portfolio_execution_preview", {"account_id": 7}, db)
     assert promotion_result["ok"] is True
     assert promotion_result["review"]["can_apply_override"] is False
     assert promotion_result["review"]["recommendation"] == "stay_research"

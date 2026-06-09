@@ -69,7 +69,7 @@ def test_frontend_next_cutover_paths_parse_allowlist(monkeypatch):
     frontend_next_cutover.clear_frontend_next_cutover_cache()
 
     assert frontend_next_cutover.frontend_next_cutover_paths() == frozenset(
-        {"", "monitor", "monitor/market", "paper", "settings"}
+        {"", "monitor", "monitor/market", "settings"}
     )
 
 

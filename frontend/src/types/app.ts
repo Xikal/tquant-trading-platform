@@ -1,18 +1,6 @@
 import type { StrategySuggestion } from "./analysis"
-import type { Instrument, TradingRule, QuoteSnapshot, SectorEtfT0Opportunity } from "./market"
-import type {
-  PaperAccount,
-  PaperAgentRun,
-  PaperAutoTradingStatus,
-  PaperGroupedPerformance,
-  PaperOrder,
-  PaperPerformance,
-  PaperPosition,
-  PaperStockPnlResponse,
-  PaperTrade
-} from "./paper"
+import type { Instrument, TradingRule, QuoteSnapshot } from "./market"
 import type { LowBuyCandidate, LowBuyPriorityBoardResult } from "./playbook"
-import type { RiskEventItem } from "./research"
 import type { UserSectorExclusionsResponse } from "./settings"
 import type { WatchlistItem } from "./watchlist"
 
@@ -165,21 +153,6 @@ export interface AppInstrumentSearchResponse {
   page: number
   page_size: number
   total: number
-}
-
-export interface AppPaperSummaryResponse extends AppResponseMeta {
-  account: PaperAccount
-  positions: PaperPosition[]
-  orders: PaperOrder[]
-  trades: PaperTrade[]
-  performance: PaperPerformance
-  strategy_performance: PaperGroupedPerformance[]
-  market_performance: PaperGroupedPerformance[]
-  stock_pnl: PaperStockPnlResponse
-  auto_trading_status: PaperAutoTradingStatus
-  recent_runs: PaperAgentRun[]
-  risk_events: RiskEventItem[]
-  sector_etf_t0: SectorEtfT0Opportunity[]
 }
 
 export type AppSectorExclusionsResponse = UserSectorExclusionsResponse

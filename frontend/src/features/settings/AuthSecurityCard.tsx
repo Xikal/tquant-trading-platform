@@ -134,7 +134,7 @@ export function AuthSecurityCard({ currentUser, onUserUpdate }: AuthSecurityCard
       <div style={SECURITY_CARD_GRID_STYLE}>
         <div>
           <strong>{enabled ? "二次验证已启用 · 安全评分 95/100" : "二次验证未启用 · 安全评分 70/100"}</strong>
-          <p className="hint">建议有模拟盘、参数配置或管理权限的账号启用。验证码只用于登录校验，不会参与交易决策。</p>
+          <p className="hint">建议有参数配置、研究或管理权限的账号启用。验证码只用于登录校验，不会参与交易决策。</p>
         </div>
         <div style={SECURITY_STEP_GUIDE_STYLE} aria-label="二次验证开启步骤">
           <span style={SECURITY_STEP_STYLE}>1 下载认证器</span>

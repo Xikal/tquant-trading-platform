@@ -27,8 +27,6 @@ export function Topbar({
   onLogout,
   onNavigate,
   onOpenNav,
-  onPaperRefresh,
-  paperRefreshLoading = false,
 }: {
   page: Page;
   currentUser: AuthUser;
@@ -37,8 +35,6 @@ export function Topbar({
   onLogout: () => void;
   onNavigate: (page: Page) => void;
   onOpenNav: () => void;
-  onPaperRefresh?: () => void;
-  paperRefreshLoading?: boolean;
 }) {
   useSignals();
   const pulse = topbarPulseSignal.value;
@@ -83,11 +79,6 @@ export function Topbar({
         ) : null}
       </div>
       <Space style={TOPBAR_RIGHT_STYLE} size={8}>
-        {page === "paper" && onPaperRefresh ? (
-          <Button type="primary" size="small" onClick={onPaperRefresh} loading={paperRefreshLoading}>
-            {paperRefreshLoading ? "刷新中" : "刷新"}
-          </Button>
-        ) : null}
         <Badge count={opportunityCount} showZero color="var(--mkt-up)">
           <span style={TOPBAR_CHIP_STYLE}>机会</span>
         </Badge>

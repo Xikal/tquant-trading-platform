@@ -15,10 +15,9 @@ ROLE_CONTAINERS = {
     "web": "tquant-app-mysql",
     "runtime_worker": "tquant-runtime-worker-mysql",
     "runtime_scheduler": "tquant-runtime-scheduler-mysql",
-    "backtest_worker": "tquant-backtest-worker-mysql",
     "analytics_worker": "tquant-analytics-worker-mysql",
 }
-OPTIONAL_CONTAINER_ROLES = {"analytics_worker", "backtest_worker"}
+OPTIONAL_CONTAINER_ROLES = {"analytics_worker"}
 
 POOL_ENV_KEYS = (
     "DB_POOL_SIZE",
@@ -39,7 +38,6 @@ POOL_ENV_KEYS = (
     "RUNTIME_DAILY_BAR_REFRESH_INTERVAL_SECONDS",
     "RUNTIME_LATEST_DATA_WATCHDOG_INTERVAL_SECONDS",
     "RUNTIME_MARKET_REVIEW_INTERVAL_SECONDS",
-    "RUNTIME_PAPER_PERF_ARCHIVE_INTERVAL_SECONDS",
     "RUNTIME_AGENT_DAILY_REPORT_INTERVAL_SECONDS",
     "APP_WORKERS",
     "TQUANT_ANALYTICS_ENABLED",

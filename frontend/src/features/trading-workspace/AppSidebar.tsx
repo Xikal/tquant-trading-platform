@@ -28,13 +28,10 @@ export function AppSidebar({
   onToggleCollapse,
   onItemClick,
 }: AppSidebarProps) {
-  const paperDisabled = !currentUser.can_paper_trade;
   const items = [...visiblePrimaryNav(currentUser), SETTINGS_NAV].map((item) => ({
     key: item.key,
     icon: item.icon,
     label: item.label,
-    disabled: item.key === "paper" && paperDisabled,
-    title: item.key === "paper" && paperDisabled ? "模拟盘需申请白名单权限" : undefined,
   }));
 
   return (

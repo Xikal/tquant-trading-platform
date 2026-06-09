@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now
-from app.models.entities import DataQualitySnapshot, MarketReviewReport, PaperReviewReport, RuntimeTask
+from app.models.entities import DataQualitySnapshot, MarketReviewReport, RuntimeTask
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.latest_data_status import (
     MIN_STOCK_DAILY_BARS,
@@ -31,7 +31,6 @@ DAILY_BAR_REFRESH_TASK = "daily_bar_refresh"
 STRATEGY_TRACKING_SNAPSHOT_TASK = "strategy_tracking_snapshot_refresh"
 A_KEY_LEVEL_MATERIALIZATION_TASK = "a_key_level_materialization_refresh"
 MARKET_REVIEW_TASK = "market_review_report"
-PAPER_REVIEW_TASK = "paper_review_report"
 DATA_QUALITY_SLA_TASK = "data_quality_sla_refresh"
 
 
@@ -216,13 +215,6 @@ def enqueue_after_close_followups(
             reason=reason,
             queue=queue,
         ),
-        "paper_review": enqueue_paper_review_reports_if_missing(
-            db,
-            trade_date=trade_date,
-            slots=slots,
-            reason=reason,
-            queue=queue,
-        ),
         "data_quality_sla": _enqueue_daily_bar_sla_if_missing(
             db,
             trade_date=trade_date,
@@ -263,39 +255,6 @@ def enqueue_market_review_reports_if_missing(
                 task_type=MARKET_REVIEW_TASK,
                 payload={"report_slot": slot, "target_date": trade_date, "reason": reason},
                 priority=25 if slot == "close" else 30,
-                idempotency_key=idempotency_key,
-                max_attempts=3,
-            )
-        )
-        results.append({"slot": slot, "action": "queued", "task_id": task.id, "task_status": task.status})
-    return results
-
-
-def enqueue_paper_review_reports_if_missing(
-    db: Session,
-    *,
-    trade_date: str,
-    slots: list[str],
-    reason: str,
-    queue: RuntimeTaskQueue | None = None,
-) -> list[dict[str, Any]]:
-    review_date = _parse_trade_date(trade_date)
-    active_queue = queue or RuntimeTaskQueue(db)
-    results: list[dict[str, Any]] = []
-    for slot in _normalized_slots(slots):
-        existing_count = _paper_review_count(db, review_date, slot)
-        if existing_count > 0:
-            results.append({"slot": slot, "action": "exists", "trade_date": trade_date, "existing_count": existing_count})
-            continue
-        idempotency_key = f"{PAPER_REVIEW_TASK}:{trade_date}:{slot}"
-        if _succeeded_task_exists(db, idempotency_key):
-            results.append({"slot": slot, "action": "succeeded_task_exists", "trade_date": trade_date})
-            continue
-        task = active_queue.enqueue(
-            RuntimeTaskCreate(
-                task_type=PAPER_REVIEW_TASK,
-                payload={"report_slot": slot, "target_date": trade_date, "reason": reason},
-                priority=28 if slot == "close" else 32,
                 idempotency_key=idempotency_key,
                 max_attempts=3,
             )
@@ -393,7 +352,7 @@ def _configured_close_review_time() -> dt_time:
 
     settings = get_settings()
     try:
-        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
+        hour, minute = [int(part) for part in settings.market_close_review_time.split(":", 1)]
         return dt_time(hour=hour, minute=minute)
     except (TypeError, ValueError):
         return DEFAULT_CLOSE_REVIEW_AFTER
@@ -407,18 +366,6 @@ def _market_review_exists(db: Session, review_date: date, slot: str) -> bool:
             .limit(1)
         ).scalar_one_or_none()
         is not None
-    )
-
-
-def _paper_review_count(db: Session, review_date: date, slot: str) -> int:
-    return int(
-        db.execute(
-            select(func.count(PaperReviewReport.id)).where(
-                PaperReviewReport.report_date == review_date,
-                PaperReviewReport.report_slot == slot,
-            )
-        ).scalar()
-        or 0
     )
 
 

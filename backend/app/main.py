@@ -296,16 +296,16 @@ def _provider_metrics_snapshot() -> dict[str, int]:
     }
 
 
-def _paper_archive_due() -> bool:
+def _market_close_review_due() -> bool:
     """Compatibility wrapper for tests and scripts that import main directly."""
 
     try:
-        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
-        archive_time = dt_time(hour=hour, minute=minute)
+        hour, minute = [int(part) for part in settings.market_close_review_time.split(":", 1)]
+        review_time = dt_time(hour=hour, minute=minute)
     except (TypeError, ValueError):
-        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
-        archive_time = dt_time(hour=15, minute=5)
-    return beijing_now().time() >= archive_time
+        logger.warning("MARKET_CLOSE_REVIEW_TIME 配置无效: %s", settings.market_close_review_time)
+        review_time = dt_time(hour=15, minute=5)
+    return beijing_now().time() >= review_time
 
 
 def _agent_daily_report_push_due() -> bool:
@@ -317,7 +317,7 @@ def _agent_daily_report_push_due() -> bool:
     return now.time() >= dt_time(hour=15, minute=10)
 
 
-def _paper_midday_review_due() -> bool:
+def _market_midday_review_due() -> bool:
     """Compatibility wrapper for tests and scripts that import main directly."""
 
     from app.runtime.market_review_jobs import market_midday_review_due

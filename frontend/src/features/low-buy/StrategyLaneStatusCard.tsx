@@ -29,8 +29,8 @@ function resolveLaneStatus(board: LowBuyPriorityBoardResult | null, activeLane: 
       type: "warning" as const,
       title: plain?.conclusion || "只做验证，暂不影响真实排序",
       reason: plain?.reason || "样本外验证不足、滚动验证不稳定、成交数据不足",
-      nextStep: plain?.next_step || "继续影子验证和模拟盘观察",
-      tag: "影子跟踪 / 模拟盘",
+      nextStep: plain?.next_step || "继续影子验证和观察验证",
+      tag: "影子跟踪 / 观察验证",
     };
   }
   if (activeLane === "front_row_only") {

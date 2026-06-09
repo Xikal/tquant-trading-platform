@@ -108,7 +108,6 @@ sudo docker compose -f docker-compose.mysql.yml up -d mysql
 sudo docker compose -f docker-compose.mysql.yml up -d app runtime-scheduler runtime-worker
 # 仅在研究/分析窗口需要时：
 # sudo docker compose --profile analytics -f docker-compose.mysql.yml up -d analytics-worker
-# sudo docker compose --profile backtest -f docker-compose.mysql.yml up -d backtest-worker
 ```
 
 验证：

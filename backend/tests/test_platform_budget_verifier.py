@@ -74,17 +74,6 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
             },
             "pool_budget": 4,
         },
-        "backtest_worker": {
-            "container": "tquant-backtest-worker-mysql",
-            "container_present": True,
-            "env": {
-                "DB_POOL_SIZE": "2",
-                "DB_MAX_OVERFLOW": "2",
-                "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
-                "BACKTEST_PARQUET_DAILY_BARS_ENABLED": "false",
-            },
-            "pool_budget": 4,
-        },
         "analytics_worker": {
             "container": "tquant-analytics-worker-mysql",
             "container_present": True,
@@ -101,7 +90,7 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
     report: dict[str, object] = {
         "generated_at": "2026-06-08T00:00:00+00:00",
         "mysql": {"max_connections": 120, "threads_connected": 8, "threads_running": 1},
-        "pool_budget": {"total": 28, "target": 40},
+        "pool_budget": {"total": 24, "target": 40},
         "roles": roles,
         "commands": {
             "compose_config": {"returncode": 0},
@@ -121,7 +110,7 @@ def test_platform_budget_report_passes_bounded_fixture(tmp_path: Path) -> None:
     assert payload["evaluation"]["blocking"] == []
     assert payload["roles"]["runtime_scheduler"]["env"]["RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED"] == "true"
     markdown = (tmp_path / "budget.md").read_text(encoding="utf-8")
-    assert "| 应用连接池预算总和 | 28 |" in markdown
+    assert "| 应用连接池预算总和 | 24 |" in markdown
     assert "| web | tquant-app-mysql | 8 | n/a | false | false |" in markdown
 
 
@@ -142,9 +131,6 @@ def test_platform_budget_report_blocks_web_heavy_tasks(tmp_path: Path) -> None:
 def test_platform_budget_report_allows_optional_workers_to_be_stopped(tmp_path: Path) -> None:
     fixture = sample_budget_report()
     roles = fixture["roles"]  # type: ignore[index]
-    roles["backtest_worker"]["container_present"] = False  # type: ignore[index]
-    roles["backtest_worker"]["env"] = {}  # type: ignore[index]
-    roles["backtest_worker"]["pool_budget"] = 0  # type: ignore[index]
     roles["analytics_worker"]["container_present"] = False  # type: ignore[index]
     roles["analytics_worker"]["env"] = {}  # type: ignore[index]
     roles["analytics_worker"]["pool_budget"] = 0  # type: ignore[index]
@@ -155,9 +141,7 @@ def test_platform_budget_report_allows_optional_workers_to_be_stopped(tmp_path: 
     assert result.returncode == 0, result.stderr
     payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
     assert payload["evaluation"]["status"] == "ok"
-    assert "container_missing=backtest_worker" not in payload["evaluation"]["warnings"]
     assert "container_missing=analytics_worker" not in payload["evaluation"]["warnings"]
-    assert "low_priority_pause_env_missing=backtest_worker" not in payload["evaluation"]["warnings"]
     assert "low_priority_pause_env_missing=analytics_worker" not in payload["evaluation"]["warnings"]
 
 

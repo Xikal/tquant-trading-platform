@@ -26,11 +26,8 @@ export type SafeWriteContractId =
   | "FNX-SW-AUTH-MFA"
   | "FNX-SW-WATCHLIST"
   | "FNX-SW-PLAYBOOK-LIFECYCLE"
-  | "FNX-SW-PAPER-ORDER"
-  | "FNX-SW-PAPER-ACCOUNT"
   | "FNX-SW-STRATEGY-REVIEW"
   | "FNX-SW-TRADE-JOURNAL"
-  | "FNX-SW-BACKTEST-TASK"
   | "FNX-SW-DATA-TASK"
   | "FNX-SW-DATA-REPAIR"
   | "FNX-SW-SETTINGS-SECTION"
@@ -95,34 +92,6 @@ export const safeWriteContracts = {
     auditContract: ["operator", "strategy_key", "target_state", "blocked_reason when rejected"],
     evidenceRequired: ["research-only boundary trace", "rollback trace", "strategy meta refetch echo"],
   },
-  "FNX-SW-PAPER-ORDER": {
-    id: "FNX-SW-PAPER-ORDER",
-    title: "Paper order create and cancel",
-    state: "defined_production_ready",
-    operations: ["paperOrderCreate", "paperOrderCancel"],
-    requiredRole: "can_paper_trade + live_smoke_operator",
-    requiredMode: "live",
-    requiredGuards: ["PaperGuard", "duplicate submit guard", "isolated account", "ConfirmAction"],
-    requestContract: ["client_request_id", "symbol", "side", "quantity", "order_type", "source=frontend-next", "idempotency_key"],
-    responseContract: ["order_id", "order_status", "account_id", "audit_id", "rollback_action"],
-    rollbackContract: ["cancel order or reset isolated paper account"],
-    auditContract: ["operator", "account_id", "order_id", "before_cash", "after_cash"],
-    evidenceRequired: ["isolated paper account", "create/cancel or reset trace", "paper workspace refetch echo"],
-  },
-  "FNX-SW-PAPER-ACCOUNT": {
-    id: "FNX-SW-PAPER-ACCOUNT",
-    title: "Paper account pause, resume, refresh and reconcile",
-    state: "defined_production_ready",
-    operations: ["paperAccountPause", "paperAccountResume", "paperAccountReconcile", "paperPositionsRefresh"],
-    requiredRole: "can_paper_trade; admin for reconcile/apply",
-    requiredMode: "live",
-    requiredGuards: ["PaperGuard", "admin guard for reconcile", "dry-run before apply", "ConfirmAction"],
-    requestContract: ["client_request_id", "account_id", "reason", "dry_run", "apply_token when applying"],
-    responseContract: ["account_status", "diff_summary", "audit_id", "rollback_token"],
-    rollbackContract: ["restore previous account status or reset isolated account snapshot"],
-    auditContract: ["operator", "account_id", "dry_run_id", "applied_changes"],
-    evidenceRequired: ["dry-run diff", "apply/rollback trace", "admin 403 fixture"],
-  },
   "FNX-SW-STRATEGY-REVIEW": {
     id: "FNX-SW-STRATEGY-REVIEW",
     title: "Strategy review record and refresh",
@@ -144,26 +113,12 @@ export const safeWriteContracts = {
     operations: ["tradeJournalCreate"],
     requiredRole: "authenticated_observer",
     requiredMode: "live",
-    requiredGuards: ["ConfirmAction", "symbol validation", "no paper/prod side effect"],
+    requiredGuards: ["ConfirmAction", "symbol validation", "no order/prod side effect"],
     requestContract: ["client_request_id", "symbol", "action", "notes", "tags", "idempotency_key"],
     responseContract: ["entry_id", "journal_entry", "audit_id"],
     rollbackContract: ["delete created journal entry or restore previous entry snapshot"],
     auditContract: ["operator", "entry_id", "symbol", "action"],
-    evidenceRequired: ["create/update/delete rollback trace", "journal refetch echo", "no paper order request"],
-  },
-  "FNX-SW-BACKTEST-TASK": {
-    id: "FNX-SW-BACKTEST-TASK",
-    title: "Backtest run create, cancel, validation and optimization",
-    state: "defined_production_ready",
-    operations: ["backtestRunCreate", "backtestRunCancel", "backtestValidationCreate", "backtestOptimizationCreate"],
-    requiredRole: "authenticated_observer + live_smoke_operator",
-    requiredMode: "live",
-    requiredGuards: ["test run marker", "resource tier limit", "ConfirmAction", "task status truth table"],
-    requestContract: ["client_request_id", "run_name", "strategy_keys", "date_range", "test_run=true", "idempotency_key"],
-    responseContract: ["run_id or task_id", "status", "queued_at", "audit_id", "cancel_endpoint"],
-    rollbackContract: ["cancel running task or delete/soft-delete created test run"],
-    auditContract: ["operator", "run_id", "task_type", "before_status", "after_status"],
-    evidenceRequired: ["test run marker", "cancel/delete rollback", "task status refetch echo"],
+    evidenceRequired: ["create/update/delete rollback trace", "journal refetch echo", "no order request"],
   },
   "FNX-SW-DATA-TASK": {
     id: "FNX-SW-DATA-TASK",

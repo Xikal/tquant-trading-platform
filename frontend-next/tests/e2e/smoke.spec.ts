@@ -5,7 +5,6 @@ const routes = [
   "/monitor",
   "/next/monitor",
   "/next/monitor/market",
-  "/next/paper",
   "/next/strategy-tracking",
   "/next/analysis",
   "/next/playbook",

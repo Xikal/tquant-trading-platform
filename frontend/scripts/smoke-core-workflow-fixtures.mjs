@@ -4,13 +4,6 @@ import {
   mockDataQualitySla,
   mockDataSources,
   mockEtfUniverseAdmin,
-  mockPaperAccount,
-  mockPaperAutoTradingStatus,
-  mockPaperDashboard,
-  mockPaperPerformance,
-  mockPaperSectorEtfT0Performance,
-  mockPaperStockPnl,
-  mockPaperWorkspace,
   mockRuntimeTasks,
   mockStrategyMeta,
   mockTradeGate,
@@ -84,27 +77,6 @@ export function createCoreWorkflowApiMock({ staleScenario = false } = {}) {
     if (path.startsWith("/backtests/")) return response(emptyList);
     if (path === "/quant/parameters/current") return response(quantParametersPayload());
     if (path === "/quant/parameters/schema") return response({});
-
-    if (path === "/bff/v1/workspace/paper") return response(mockPaperWorkspace);
-    if (path === "/paper/account") return response(mockPaperAccount);
-    if (path === "/paper/positions" || path === "/paper/positions/refresh") {
-      return response({ positions: [], total_market_value: 0, total_unrealized_pnl: 0 });
-    }
-    if (path === "/paper/orders") return response([]);
-    if (path === "/paper/trades") return response({ trades: [] });
-    if (path === "/paper/trades/tags") return response({ items: {} });
-    if (path === "/paper/performance") return response(mockPaperPerformance);
-    if (path === "/paper/performance/stock-pnl") return response(mockPaperStockPnl);
-    if (path === "/paper/performance/dashboard") return response(mockPaperDashboard);
-    if (path === "/paper/performance/sector-etf-t0") return response(mockPaperSectorEtfT0Performance);
-    if (path === "/paper/performance/by-strategy") return response([]);
-    if (path === "/paper/performance/by-market-state") return response([]);
-    if (path === "/paper/performance/by-strategy-market-state") return response([]);
-    if (path === "/paper/performance/by-tag") return response([]);
-    if (path === "/paper/risk/events") return response([]);
-    if (path === "/paper/auto-trading/status") return response(mockPaperAutoTradingStatus);
-    if (path === "/paper/auto-trading/runs") return response([]);
-    if (path === "/paper/account/reconcile") return response({ account_id: 1, issue_count: 0, fixed_count: 0, issues: [], apply: false });
 
     if (path === "/bff/v1/workspace/settings") return response(settingsWorkspacePayload());
     if (path === "/settings/runtime") return response(runtimePayload());

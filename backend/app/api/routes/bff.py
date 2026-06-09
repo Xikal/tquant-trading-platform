@@ -12,7 +12,6 @@ from app.api.routes.market import _enqueue_market_pulse_refresh_async, market_br
 from app.core.auth import get_current_user
 from app.core.config import get_settings
 from app.core.database import SessionLocal, get_db
-from app.core.paper_auth import require_paper_trading
 from app.core.admin_auth import require_admin_auth
 from app.core.role_permissions import is_admin_user
 from app.core.timezone import beijing_now_string, beijing_today
@@ -24,14 +23,11 @@ from app.models.schema_defs.bff import (
     BffPartialError,
     BffSourceTiming,
     MonitorWorkspaceBffResponse,
-    PaperWorkspaceBffResponse,
     SettingsWorkspaceBffResponse,
     StrategyWorkspaceBffResponse,
 )
-from app.services.bff.paper_workspace import build_paper_workspace
 from app.services.bff.remote_adapters import (
     load_remote_monitor_workspace,
-    load_remote_paper_workspace,
     load_remote_settings_workspace,
     load_remote_strategy_workspace,
 )
@@ -92,11 +88,6 @@ def bff_manifest(request: Request, background_tasks: BackgroundTasks) -> BffMani
                 path="/api/bff/v1/workspace/monitor",
                 schema_version=BFF_SCHEMA_VERSION,
                 model="MonitorWorkspaceBffResponse",
-            ),
-            "paper": BffWorkspaceManifest(
-                path="/api/bff/v1/workspace/paper",
-                schema_version=BFF_SCHEMA_VERSION,
-                model="PaperWorkspaceBffResponse",
             ),
             "strategy": BffWorkspaceManifest(
                 path="/api/bff/v1/workspace/strategy",
@@ -246,74 +237,6 @@ def _monitor_market_snapshot_alias(snapshot):
         alias["watchlist_signals"] = []
         return alias
     return snapshot
-
-
-@router.get("/workspace/paper", response_model=PaperWorkspaceBffResponse)
-def paper_workspace_bff(
-    request: Request,
-    background_tasks: BackgroundTasks,
-    order_limit: int = Query(default=80, ge=1, le=200),
-    trade_limit: int = Query(default=300, ge=1, le=300),
-    run_limit: int = Query(default=20, ge=1, le=100),
-    current_user: User = Depends(require_paper_trading),
-    db: Session = Depends(get_db),
-) -> PaperWorkspaceBffResponse:
-    """Aggregate the paper trading first-screen payload for Web/App clients."""
-
-    remote_used = False
-    if _remote_adapter_allowed(request):
-        remote = load_remote_paper_workspace(
-            order_limit=order_limit,
-            trade_limit=trade_limit,
-            run_limit=run_limit,
-            forward_headers=forwarded_request_headers(request.headers),
-        )
-        if remote is not None:
-            remote_used = True
-            response = remote
-            _record_partial_errors(response)
-            schedule_go_bff_shadow_check(
-                background_tasks,
-                workspace="paper",
-                response_model=PaperWorkspaceBffResponse,
-                local_payload=response,
-                request_headers=forwarded_request_headers(request.headers),
-                params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
-            )
-            return response
-
-    response = load_cached_workspace(
-        workspace="paper",
-        model=PaperWorkspaceBffResponse,
-        user_id=current_user.id,
-        params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
-        loader=lambda: run_workspace_with_timeout(
-            source="paper_workspace",
-            timeout_seconds=_bff_timeout_seconds(),
-            loader=lambda: build_paper_workspace(
-                db,
-                current_user=current_user,
-                order_limit=order_limit,
-                trade_limit=trade_limit,
-                run_limit=run_limit,
-            ),
-            fallback=lambda error: PaperWorkspaceBffResponse(
-                generated_at=beijing_now_string(),
-                partial_errors=[error],
-            ),
-        ),
-    )
-    _record_partial_errors(response)
-    if not remote_used:
-        schedule_go_bff_shadow_check(
-            background_tasks,
-            workspace="paper",
-            response_model=PaperWorkspaceBffResponse,
-            local_payload=response,
-            request_headers=forwarded_request_headers(request.headers),
-            params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
-        )
-    return response
 
 
 @router.get("/workspace/strategy", response_model=StrategyWorkspaceBffResponse)

@@ -18,6 +18,7 @@ import {
   firstRecord,
   buildDriftRows,
   idOf,
+  isBuySignalRecord,
   nameOf,
   pctValue,
   raw,
@@ -133,7 +134,7 @@ export function StrategyTrackingPage() {
   const states = [workspace, items, summary, performance, holding, review, journal, relativeStrength];
   const pendingCount = createMemo(() => states.filter((state) => state.pending()).length);
   const errorCount = createMemo(() => states.filter((state) => state.error()).length);
-  const buyLikeCount = createMemo(() => filteredItems().filter(isBuyLike).length);
+  const buyLikeCount = createMemo(() => filteredItems().filter(isBuySignalRecord).length);
   const watchLikeCount = createMemo(() => Math.max(0, filteredItems().length - buyLikeCount()));
   const staleSource = createMemo(() => (errorCount() ? "降级源: strategy_tracking_snapshot_stale" : "数据源: strategy_tracking_snapshot"));
   const showAudit = createMemo(() => filters().mode === "production" || !hideAudit());
@@ -375,7 +376,7 @@ export function StrategyTrackingPage() {
 }
 
 function SignalRow(props: { item: TrackingRecord; index: number; selected: boolean; onSelect: () => void }) {
-  const buyLike = () => isBuyLike(props.item);
+  const buyLike = () => isBuySignalRecord(props.item);
   const signalText = () => field(props.item, ["signal_text", "signal_state", "status"], buyLike() ? "确定买入类" : "观察类");
   const entryText = () => `${field(props.item, ["entry_zone_low", "entry_price"], "--")} ~ ${field(props.item, ["entry_zone_high", "target_price"], "--")}`;
   const currentReturn = () => pctValue(raw(props.item, ["current_return_pct", "return_pct", "avg_current_return_pct"]));
@@ -737,11 +738,6 @@ function hasRecord(value: unknown): boolean {
 
 function hasOwn(record: TrackingRecord, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, key);
-}
-
-function isBuyLike(item: TrackingRecord): boolean {
-  const signal = `${field(item, ["signal_state", "signal_text", "status"], "")} ${field(item, ["production_decision", "action"], "")}`.toLowerCase();
-  return signal.includes("buy") || signal.includes("买") || signal.includes("可买") || signal.includes("ready");
 }
 
 function valueTone(value: unknown): "green" | "red" | "slate" {

@@ -174,23 +174,22 @@ def test_manual_ml_model_promotion_revalidates_current_thresholds_before_archivi
     assert db.query(MLSignalModel).filter_by(model_key="stale-candidate").one().status == "research"
 
 
-def test_strategy_self_evolution_runtime_task(monkeypatch) -> None:
+def test_strategy_self_evolution_runtime_task_is_disabled(monkeypatch) -> None:
     db = _db()
     monkeypatch.setenv("TQUANT_RESEARCH_JOBS_ENABLED", "true")
     monkeypatch.setenv("TQUANT_ML_JOBS_ENABLED", "true")
     from app.core.config import get_settings
 
     get_settings.cache_clear()
-
-    def _run_stub(self, payload):  # noqa: ANN001
-        return {"ok": True, "payload": payload}
-
-    monkeypatch.setattr(StrategySelfEvolutionOrchestrator, "run", _run_stub)
-
-    result = _execute_task("strategy_self_evolution", {"min_samples": 100}, db)
-
-    assert result == {"ok": True, "payload": {"min_samples": 100}}
-    get_settings.cache_clear()
+    try:
+        try:
+            _execute_task("strategy_self_evolution", {"min_samples": 100}, db)
+        except ValueError as exc:
+            assert "未知任务类型" in str(exc)
+        else:  # pragma: no cover
+            raise AssertionError("expected strategy_self_evolution to be disabled")
+    finally:
+        get_settings.cache_clear()
 
 
 def test_strategy_self_evolution_orchestrator_marks_human_approval(monkeypatch) -> None:

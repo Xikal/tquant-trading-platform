@@ -9,7 +9,6 @@ import type {
   AppHomeResponse,
   AppLowBuyDetailResponse,
   AppMutationResponse,
-  AppPaperSummaryResponse,
   AppSectorExclusionsResponse,
   AppWatchlistDetailResponse,
   AppWatchlistResponse,
@@ -123,7 +122,6 @@ export const appApi = {
       `/app/low-buy/${encodeURIComponent(symbol)}?strategy=${encodeURIComponent(strategy)}&scan_limit=${scanLimit}`,
       10000
     ),
-  getPaperSummary: () => requestCachedOffline<AppPaperSummaryResponse>("/app/paper/summary", 8000),
   searchInstruments: (keyword: string, kind: "all" | "stock" | "etf" = "all") =>
     requestCached<AppInstrumentSearchResponse>(
       `/app/instruments/search?keyword=${encodeURIComponent(keyword)}&kind=${kind}&page=1&page_size=20`,

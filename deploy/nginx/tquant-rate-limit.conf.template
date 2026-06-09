@@ -6,7 +6,6 @@ limit_req_zone $binary_remote_addr zone=tquant_global:20m rate=20r/s;
 limit_req_zone $binary_remote_addr zone=tquant_login:10m rate=5r/m;
 limit_req_zone $binary_remote_addr zone=tquant_agent:20m rate=30r/m;
 limit_req_zone $binary_remote_addr zone=tquant_ai:20m rate=10r/m;
-limit_req_zone $binary_remote_addr zone=tquant_order:20m rate=12r/m;
 limit_req_zone $binary_remote_addr zone=tquant_notify:20m rate=6r/m;
 limit_conn_zone $binary_remote_addr zone=tquant_conn:20m;
 
@@ -16,6 +15,5 @@ map $request_uri $tquant_limit_bucket {
     ~^/api/auth/register "login";
     ~^/api/agent/ "agent";
     ~^/api/ai/ "ai";
-    ~^/api/paper/orders "order";
     ~^/api/agent/notify "notify";
 }

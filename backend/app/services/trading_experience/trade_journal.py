@@ -12,13 +12,10 @@ from app.services.trading_experience.schemas import TradeJournalEntryCreate, Tra
 
 def create_entry(db: Session, payload: TradeJournalEntryCreate, *, user_id: int | None) -> TradeJournalEntryOut:
     assert_no_forbidden_trading_copy(payload.model_dump())
-    account_id = payload.account_id
-    if account_id is not None and repository.paper_account_for_user(db, account_id, user_id=user_id) is None:
-        raise ValueError("paper_account_not_found")
     row = repository.create_journal_entry(
         db,
         user_id=user_id,
-        account_id=account_id,
+        account_id=None,
         symbol=payload.symbol,
         action=payload.action,
         reason_text=payload.reason_text,
@@ -38,11 +35,9 @@ def list_entries(
     symbol: str | None = None,
     limit: int = 50,
 ) -> list[TradeJournalEntryOut]:
-    if account_id is not None and repository.paper_account_for_user(db, account_id, user_id=user_id) is None:
-        return []
     return [
         _to_out(row)
-        for row in repository.journal_entries(db, user_id=user_id, account_id=account_id, symbol=symbol, limit=limit)
+        for row in repository.journal_entries(db, user_id=user_id, account_id=None, symbol=symbol, limit=limit)
     ]
 
 

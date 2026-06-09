@@ -68,8 +68,8 @@ def _configured_close_review_time() -> dt_time:
 
     settings = get_settings()
     try:
-        hour, minute = [int(part) for part in settings.paper_perf_archive_time.split(":", 1)]
+        hour, minute = [int(part) for part in settings.market_close_review_time.split(":", 1)]
         return dt_time(hour=hour, minute=minute)
     except (TypeError, ValueError):
-        logger.warning("PAPER_PERF_ARCHIVE_TIME 配置无效: %s", settings.paper_perf_archive_time)
+        logger.warning("MARKET_CLOSE_REVIEW_TIME 配置无效: %s", settings.market_close_review_time)
         return dt_time(hour=15, minute=5)

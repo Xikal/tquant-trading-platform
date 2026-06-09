@@ -10,7 +10,6 @@ const TOTAL_GZIP_LIMIT_KB = 820;
 const MIN_FIRST_SCREEN_REDUCTION_PCT = 20;
 const FORBIDDEN_FIRST_SCREEN_PREFIXES = [
   "BacktestPage-",
-  "PaperTradingPage-",
   "SettingsPage-",
   "DataConsolePage-",
   "StrategyTrackingPage-",

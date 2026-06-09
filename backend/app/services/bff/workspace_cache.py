@@ -80,8 +80,6 @@ def _cacheable(result: BaseModel) -> bool:
 def _workspace_ttl(settings, workspace: str) -> int:
     if workspace == "monitor":
         return int(settings.bff_monitor_cache_ttl_seconds or 0)
-    if workspace == "paper":
-        return int(settings.bff_paper_cache_ttl_seconds or 0)
     if workspace == "strategy":
         return int(settings.bff_strategy_cache_ttl_seconds or 0)
     if workspace == "settings":

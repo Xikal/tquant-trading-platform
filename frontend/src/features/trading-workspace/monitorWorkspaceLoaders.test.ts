@@ -164,7 +164,7 @@ describe("monitorWorkspaceViewForPage", () => {
   it("maps monitor data routes to BFF view variants", () => {
     expect(monitorWorkspaceViewForPage("monitor")).toBe("action");
     expect(monitorWorkspaceViewForPage("monitor-market")).toBe("market");
-    expect(monitorWorkspaceViewForPage("paper")).toBe("full");
+    expect(monitorWorkspaceViewForPage("playbook")).toBe("full");
   });
 });
 

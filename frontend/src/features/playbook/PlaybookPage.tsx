@@ -160,7 +160,7 @@ export function PlaybookPage({
               />
             ) : null}
             <p>{buyNow.length > 0 ? "主看" : "观察"}：{focus.name} {focus.symbol}，{focus.actionText}，{focus.details}</p>
-            <RitualSignalSeal signalState={ritualStateFromAction(focus.actionText)} riskLevel={focus.riskText} />
+            <RitualSignalSeal signalState={ritualStateFromStock(focus)} riskLevel={focus.riskText} />
             <InfoPill label="主线轮动" value={playbook?.hot_industries?.slice(0, 4).join(" / ") || "--"} />
           </>
         ) : avoid.length ? (
@@ -343,7 +343,7 @@ function DenseCandidateList({
             {stock.actionText} · {stock.details}
           </span>
           <span className="tq-playbook-page__dense-meta tq-playbook-dense-row__meta">{stock.scoreText ? `质量 ${stock.scoreText}` : stock.riskText}</span>
-          <RitualSignalSeal signalState={ritualStateFromAction(stock.actionText)} riskLevel={stock.riskText} compact />
+          <RitualSignalSeal signalState={ritualStateFromStock(stock)} riskLevel={stock.riskText} compact />
           <Flex gap={4} justify="flex-end">
             <Button size="small" onClick={() => onSelect(stock)}>详情</Button>
             <Button size="small" type="primary" onClick={() => onAnalyze(stock)}>分析</Button>
@@ -352,6 +352,10 @@ function DenseCandidateList({
       )}
     />
   );
+}
+
+function ritualStateFromStock(stock: StockCardView): string {
+  return stock.signalState || ritualStateFromAction(stock.actionText);
 }
 
 function ritualStateFromAction(actionText: string): string {

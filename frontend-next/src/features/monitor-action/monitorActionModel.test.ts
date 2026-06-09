@@ -150,6 +150,64 @@ describe("monitor action priority board model", () => {
     });
   });
 
+  it("does not promote production candidates to buy-now without a buy signal state", () => {
+    createRoot((dispose) => {
+      const model = createMonitorActionModel(
+        {
+          monitor_snapshot: {
+            priority_board: {
+              items: [
+                {
+                  symbol: "600237",
+                  name: "铜峰电子",
+                  production_decision: "portfolio_candidate",
+                  display_lane: "baseline",
+                  simple_bucket: "wait_price",
+                  buy_signal_state: "near_entry",
+                  buy_signal_text: "接近买点，等待承接确认",
+                },
+              ],
+            },
+          },
+        },
+        () => undefined,
+      );
+
+      expect(model.laneItems("buy_now")).toHaveLength(0);
+      expect(model.laneItems("observe").map((item) => item.symbol)).toEqual(["600237"]);
+      expect(model.priorityItems[0].action).toContain("接近买点");
+      dispose();
+    });
+  });
+
+  it("normalizes conflicting buy text when structured fields say observe", () => {
+    createRoot((dispose) => {
+      const model = createMonitorActionModel(
+        {
+          monitor_snapshot: {
+            priority_board: {
+              items: [
+                {
+                  symbol: "002072",
+                  name: "凯瑞德",
+                  production_decision: "portfolio_candidate",
+                  simple_bucket: "wait_price",
+                  buy_signal_state: "near_entry",
+                  buy_signal_text: "确定买入",
+                },
+              ],
+            },
+          },
+        },
+        () => undefined,
+      );
+
+      expect(model.priorityItems[0].lane).toBe("observe");
+      expect(model.priorityItems[0].action).toBe("接近买点，等待确认");
+      dispose();
+    });
+  });
+
   it("explains empty buy lane without hiding existing candidates", () => {
     expect(priorityEmptyText("buy_now", 10)).toContain("当前无确认买入信号");
     expect(priorityEmptyText("buy_now", 10)).toContain("全部候选仍有 10 只");

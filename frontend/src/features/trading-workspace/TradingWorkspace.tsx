@@ -13,8 +13,6 @@ import { isLoading } from "./loadingState";
 import type { Page, StockCardView } from "../workspace-shared/workspaceTypes";
 import { useAnalysisData } from "./useAnalysisData";
 import { nextMonitorDataPageRef, useMonitorData } from "./useMonitorData";
-import { usePaperIntraday } from "./usePaperIntraday";
-import { usePaperTrading } from "./usePaperTrading";
 import { usePlaybookData } from "./usePlaybookData";
 import { useSettingsData } from "./useSettingsData";
 import { useWorkspaceLoading } from "./useWorkspaceLoading";
@@ -63,7 +61,6 @@ export function TradingWorkspace() {
     loading,
     loadingState,
     setLoadingKey,
-    setPaperLoading,
     withLoading,
   } = useWorkspaceLoading({
     onError: setError,
@@ -88,26 +85,10 @@ export function TradingWorkspace() {
     setNotice,
     navigatePage,
   });
-  const paper = usePaperTrading({
-    canManageReconcile: Boolean(currentUser?.roles.some((role) => {
-      const normalized = role.trim().toLowerCase();
-      return normalized === "admin" || normalized === "administrator";
-    })),
-    setError,
-    setLoading: setPaperLoading,
-    setNotice,
-    onAuthRequired: handleAuthRequired,
-  });
-  const paperLiveRefreshRef = useRef(paper.refreshLiveSnapshot);
-  useEffect(() => {
-    paperLiveRefreshRef.current = paper.refreshLiveSnapshot;
-  }, [paper.refreshLiveSnapshot]);
   useWorkspaceAutoRefresh({
     currentUser,
     page,
     fetchMonitorData: monitor.fetchMonitorData,
-    paperTradingTime: paper.autoTradingStatus?.trading_time,
-    refreshPaperLiveSnapshotRef: paperLiveRefreshRef,
   });
   const settingsData = useSettingsData({
     withLoading,
@@ -115,21 +96,13 @@ export function TradingWorkspace() {
     setNotice,
     setRuntime: monitor.setRuntime,
   });
-  usePaperIntraday({
-    currentUser,
-    page,
-    positions: paper.positions,
-    refreshAutoTradingStatus: paper.refreshAutoTradingStatus,
-  });
-  const { monitorPageProps, paperPageProps } = useWorkspacePageProps({
+  const { monitorPageProps } = useWorkspacePageProps({
     analysis,
     loading,
     monitor,
-    paper,
     watchDraft,
     setWatchDraft,
     editingWatchSymbol,
-    currentUser,
     onAddWatchlist: () => void addWatchlist(),
     onEditWatchlist: editWatchlistFromCard,
     onNavigatePage: navigatePage,
@@ -212,9 +185,6 @@ export function TradingWorkspace() {
     }
     if (page === "settings") {
       void settingsData.loadSettings();
-    }
-    if (page === "paper") {
-      void paper.load();
     }
   }, [currentUser, page]);
 
@@ -313,22 +283,6 @@ export function TradingWorkspace() {
   function openStrategyFromCommand(strategyKey: string) {
     playbookData.setStrategy(strategyKey);
     navigatePage("playbook");
-  }
-
-  function preparePaperOrder(payload: { symbol: string; name?: string; price?: number | null }) {
-    const symbol = payload.symbol.trim();
-    const priceText = payload.price == null ? "" : String(payload.price);
-    paper.setDraft({
-      ...paper.draft,
-      symbol,
-      name: payload.name || paper.draft.name,
-      side: "buy",
-      price: priceText,
-      current_price: priceText,
-      require_intraday_confirmation: false,
-    });
-    setNotice(`${symbol} 已填入模拟委托，打开录入委托即可提交`);
-    navigatePage("paper");
   }
 
   async function addWatchlist() {
@@ -469,8 +423,6 @@ export function TradingWorkspace() {
       monitorPageProps={monitorPageProps}
       notice={notice}
       page={page}
-      paperPageProps={paperPageProps}
-      paperRefreshLoading={isLoading(loadingState, "paper") || isLoading(loadingState, "paper-refresh") || isLoading(loadingState, "paper-quotes")}
       playbookData={playbookData}
       selectedStock={selectedStock}
       settingsData={settingsData}
@@ -483,8 +435,6 @@ export function TradingWorkspace() {
       onLogout={() => void logout()}
       onNavigate={navigatePage}
       onOpenStrategy={openStrategyFromCommand}
-      onPaperRefresh={page === "paper" ? () => void paper.refreshAll() : undefined}
-      onPreparePaperOrder={preparePaperOrder}
       onSelectStock={setSelectedStock}
       onUserUpdate={setCurrentUser}
     />
@@ -496,8 +446,7 @@ function shortcutPage(key: string): Page | null {
   if (key === "2") return "analysis";
   if (key === "3") return "playbook";
   if (key === "4") return "strategy-tracking";
-  if (key === "5") return "paper";
-  if (key === "6") return "data";
-  if (key === "7") return "settings";
+  if (key === "5") return "data";
+  if (key === "6") return "settings";
   return null;
 }

@@ -32,7 +32,7 @@ describe("monitor workspace view projection", () => {
   it("maps monitor routes to explicit BFF views", () => {
     expect(monitorWorkspaceView("monitor")).toBe("action");
     expect(monitorWorkspaceView("monitor-market")).toBe("market");
-    expect(monitorWorkspaceView("paper")).toBe("full");
+    expect(monitorWorkspaceView("playbook")).toBe("full");
   });
 });
 
@@ -46,7 +46,7 @@ describe("monitor page switch refresh gate", () => {
   });
 
   it("clears the remembered monitor page outside monitor surfaces", () => {
-    expect(nextMonitorDataPageRef("monitor", "paper", "started")).toBeNull();
+    expect(nextMonitorDataPageRef("monitor", "playbook", "started")).toBeNull();
   });
 });
 

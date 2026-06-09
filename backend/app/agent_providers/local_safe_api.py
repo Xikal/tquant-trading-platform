@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.api.routes.agent_helpers import (
     agent_backtest_strategy,
     agent_compare_strategies,
-    agent_create_paper_order,
     agent_market_sentiment,
     agent_position_t_signal,
     agent_sector_heatmap,
@@ -20,8 +19,6 @@ from app.models.schema_defs.agent import (
     AgentComprehensiveAnalysisRequest,
     AgentCrossValidationRequest,
     AgentNotificationTestRequest,
-    AgentOrderRecommendationRequest,
-    AgentPaperOrderRequest,
     AgentPositionTSignalRequest,
     AgentRiskCheckRequest,
     AgentSignalNotificationRequest,
@@ -56,15 +53,6 @@ class LocalSafeApiInvoker:
             return self.context.analysis(self.db, AgentAnalysisRequest.model_validate(arguments)).model_dump()
         if tool.name == "get_daily_report":
             return self.reports.daily_report(self.db).model_dump()
-        if tool.name == "get_paper_portfolio":
-            account_id = arguments.get("account_id")
-            return self.context.paper_portfolio(self.db, int(account_id) if account_id else None, user_id=None).model_dump()
-        if tool.name == "recommend_orders":
-            return self.context.recommend_orders(
-                self.db,
-                AgentOrderRecommendationRequest.model_validate(arguments or {}),
-                user_id=None,
-            ).model_dump()
         if tool.name == "send_test_notification":
             payload = AgentNotificationTestRequest.model_validate(arguments or {})
             return self.notifications.send_test(payload).model_dump()
@@ -103,9 +91,6 @@ class LocalSafeApiInvoker:
                 strategy_keys=payload.strategy_keys,
                 lookback_days=payload.lookback_days,
             ).model_dump()
-        if tool.name == "create_paper_order":
-            payload = AgentPaperOrderRequest.model_validate(arguments or {})
-            return agent_create_paper_order(self.context, self.db, payload, user_id=None).model_dump()
         if tool.name == "get_market_sentiment":
             return agent_market_sentiment(self.context, self.market_data).model_dump()
         if tool.name == "get_sector_heatmap":

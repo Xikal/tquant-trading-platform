@@ -3,7 +3,7 @@ import { getAdminApiToken } from "../api/base";
 import type { SettingsTabKey } from "../features/settings/SettingsPageTabs";
 import type { SettingsDraft } from "../features/workspace-shared/workspaceTypes";
 
-export type SettingsQuantCardKey = "ml" | "paperExit" | "sectorEtf";
+export type SettingsQuantCardKey = "ml";
 
 interface SettingsQuantCardState {
   draft: Record<string, string>;
@@ -86,8 +86,6 @@ export const useSettingsUiStore = create<SettingsUiStore>((set) => ({
   dataQualityRepairLoading: false,
   quantCards: {
     ml: { ...EMPTY_QUANT_CARD },
-    paperExit: { ...EMPTY_QUANT_CARD },
-    sectorEtf: { ...EMPTY_QUANT_CARD },
   },
   mfa: {
     code: "",

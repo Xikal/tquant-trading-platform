@@ -7,12 +7,11 @@ import {
 } from "./pageResponsibilities";
 
 describe("workspace page responsibilities", () => {
-  it("documents the Phase 6 page split for the five decision surfaces", () => {
+  it("documents the Phase 6 page split for the active decision surfaces", () => {
     expect(WORKSPACE_DENOISED_PAGES).toEqual([
       "monitor",
       "monitor-market",
       "strategy-tracking",
-      "paper",
       "data",
     ]);
 
@@ -41,14 +40,12 @@ describe("workspace page responsibilities", () => {
     expect(pageResponsibilityHint("monitor", "fallback")).toContain("优先榜");
     expect(pageResponsibilityHint("monitor-market", "fallback")).toContain("宽度");
     expect(pageResponsibilityHint("strategy-tracking", "fallback")).toContain("复盘");
-    expect(pageResponsibilityHint("paper", "fallback")).toContain("持仓");
     expect(pageResponsibilityHint("data", "fallback")).toContain("覆盖率");
   });
 
   it("keeps Shadow and Preview labels explicitly scoped to non-production modes", () => {
     expect(WORKSPACE_PAGE_RESPONSIBILITIES.monitor.modeBadges).toContain("shadow");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["monitor-market"].modeBadges).toContain("research");
-    expect(WORKSPACE_PAGE_RESPONSIBILITIES.paper.modeBadges).toContain("paper");
     expect(WORKSPACE_PAGE_RESPONSIBILITIES["strategy-tracking"].modeBadges).toContain("watch");
   });
 

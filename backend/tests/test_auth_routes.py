@@ -106,13 +106,6 @@ class AuthRouteTests(unittest.TestCase):
         self.assertEqual(me.json()["user"]["display_name"], "交易员A")
         self.assertTrue(me.json()["user"]["can_paper_trade"])
 
-        access = self.client.get(
-            "/api/auth/paper-access",
-            headers={"Authorization": f"Bearer {registered['access_token']}"},
-        )
-        self.assertEqual(access.status_code, 200)
-        self.assertTrue(access.json()["can_paper_trade"])
-
         login = self.client.post(
             "/api/auth/login",
             json={"username": "tradera", "password": "secret123"},

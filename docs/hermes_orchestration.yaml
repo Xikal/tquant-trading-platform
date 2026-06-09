@@ -11,7 +11,7 @@ research_workflow:
     read_only_contexts: true
     model_usage_for_push: false
     llm_may_not_modify_strategy_params: true
-    paper_orders_require_explicit_user_confirmation: true
+    order_creation_tools_enabled: false
     allowed_base_path: "/api/agent"
     notification_push_owner: "TQuant AgentDailyWorkflowService"
   inputs:
@@ -66,10 +66,6 @@ research_workflow:
         tools:
           - tool_name: "get_comprehensive_analysis"
             endpoint: "POST /api/agent/context/comprehensive-analysis"
-          - tool_name: "recommend_orders"
-            endpoint: "POST /api/agent/context/recommend-orders"
-          - tool_name: "get_paper_portfolio"
-            endpoint: "GET /api/agent/context/paper-portfolio"
       depends_on:
         - "cross_validation"
   output:

@@ -4,7 +4,6 @@ export * from "./app";
 export * from "./auth";
 export * from "./market";
 export * from "./monitor";
-export * from "./paper";
 export * from "./playbook";
 export * from "./research";
 export * from "./settings";

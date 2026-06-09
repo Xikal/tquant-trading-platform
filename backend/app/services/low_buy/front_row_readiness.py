@@ -59,7 +59,7 @@ def front_row_readiness_summary(strategy_variant: str | None) -> dict[str, Any]:
         "plain_status": {
             "conclusion": "暂不建议小流量观察",
             "reason": _plain_reason_from_blockers(blockers),
-            "next_step": "继续影子验证和模拟盘观察",
+            "next_step": "继续影子验证和观察验证",
         },
         "blockers": blockers,
         "blocker_texts": [plain_blocker_text(item) for item in blockers],

@@ -58,7 +58,6 @@ DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
-DEPLOY_WITH_BACKTEST_WORKER="${DEPLOY_WITH_BACKTEST_WORKER:-0}"
 VERIFY_WEB_IMAGE_SYNC=1
 RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
 RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
@@ -150,8 +149,6 @@ Options:
                  Image ref to tag as tquant-analytics:mysql when --prebuilt-images is enabled.
   --with-analytics-worker
                  Start and verify the optional analytics-worker profile.
-  --with-backtest-worker
-                 Start and verify the optional backtest-worker profile.
   --prebuilt-go-bff-image <ref>
                  Image ref to tag as tquant-go-bff:mysql when --prebuilt-images is enabled.
   --prebuilt-go-market-read-image <ref>
@@ -281,10 +278,6 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_WITH_ANALYTICS_WORKER=1
       shift
       ;;
-    --with-backtest-worker)
-      DEPLOY_WITH_BACKTEST_WORKER=1
-      shift
-      ;;
     --prebuilt-go-bff-image)
       DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${2:?missing prebuilt go bff image ref}"
       shift 2
@@ -396,7 +389,7 @@ export DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF
 export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF
 export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
 export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
-export DEPLOY_WITH_ANALYTICS_WORKER DEPLOY_WITH_BACKTEST_WORKER
+export DEPLOY_WITH_ANALYTICS_WORKER
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
 export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_PREFLIGHT_READ_ONLY REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
@@ -700,7 +693,7 @@ verify_remote() {
   if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" || "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
     VERIFY_WEB_IMAGE_SYNC=0
   fi
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_WITH_BACKTEST_WORKER="$DEPLOY_WITH_BACKTEST_WORKER" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
 set -euo pipefail
 dump_container_diagnostics() {
   local name="$1"
@@ -731,12 +724,6 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
-with_backtest_worker() {
-  case "$(printf '%s' "${DEPLOY_WITH_BACKTEST_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
-    1|true|yes|on) return 0 ;;
-    *) return 1 ;;
-  esac
-}
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -755,11 +742,7 @@ curl_retry() {
 for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
-if with_backtest_worker; then
-  wait_for_container tquant-backtest-worker-mysql
-else
-  echo "backtest_worker:skipped_on_demand"
-fi
+sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
 if with_analytics_worker; then
   wait_for_container tquant-analytics-worker-mysql
 else
@@ -928,7 +911,6 @@ CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" \
 FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
 FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
 DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
-DEPLOY_WITH_BACKTEST_WORKER="$DEPLOY_WITH_BACKTEST_WORKER" \
 VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \

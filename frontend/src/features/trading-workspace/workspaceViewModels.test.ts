@@ -124,7 +124,8 @@ describe("workspaceViewModels", () => {
       risk_tier: "note",
     } as never);
 
-    expect(nearEntry.identityNote).toBe("前排加权 · 模拟验证中");
+    expect(nearEntry.identityNote).toBe("前排加权 · 影子验证中");
+    expect(nearEntry.signalState).toBe("near_entry");
     expect(nearEntry.scoreText).toBe("影子分 82（仅验证）");
     expect(nearEntry.expectedText).toBeUndefined();
     expect(nearEntry.details).toBe("等承接确认");
@@ -158,8 +159,41 @@ describe("workspaceViewModels", () => {
     } as never);
 
     expect(watchOnly.identityNote).toBe("前排极精选 · 只观察，不参与买入排序");
+    expect(watchOnly.signalState).toBe("observe_confirmed");
     expect(watchOnly.scoreText).toBe("观察分 75（只观察）");
     expect(`${watchOnly.actionText} ${watchOnly.executionHint} ${watchOnly.failureText}`).toContain("不是买入");
+  });
+
+  it("passes structured signal state through even when action copy is conflicting", () => {
+    const card = priorityToCard({
+      name: "冲突文案股份",
+      symbol: "600237",
+      strategy_key: "first_board",
+      strategy_title: "首板回调",
+      strategy_titles: ["首板回调"],
+      strategy_count: 1,
+      latest_price: 11.7,
+      change_pct: 0.2,
+      buy_signal_state: "near_entry",
+      buy_signal_text: "确定买入",
+      action_summary: "接近买点",
+      next_action_text: "等承接确认",
+      priority_score: 75,
+      strategy_weight_score: 70,
+      industry_rotation_bonus: 0,
+      industry_rotation_text: "",
+      entry_zone_low: 11.5,
+      entry_zone_high: 11.9,
+      stop_loss: 11.1,
+      suggested_position_text: "只观察",
+      display_lane: "baseline",
+      simple_bucket: "wait_price",
+      risk_tier: "note",
+    } as never);
+
+    expect(card.actionText).toBe("确定买入");
+    expect(card.signalState).toBe("near_entry");
+    expect(card.simpleBucket).toBe("wait_price");
   });
 
   it("renders watchlist signal with plain-language action", () => {

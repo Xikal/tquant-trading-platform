@@ -180,6 +180,13 @@ export function filterItems(items: TrackingRecord[], filters: FiltersState): Tra
   });
 }
 
+export function isBuySignalRecord(item: TrackingRecord): boolean {
+  const structured = field(item, ["signal_state", "signal_status"], "").toLowerCase();
+  if (structured) return structured === "buy_now" || structured === "soft_buy_now";
+  const fallback = field(item, ["signal_text", "status"], "").toLowerCase();
+  return fallback.includes("buy") || fallback.includes("买") || fallback.includes("可买") || fallback.includes("ready");
+}
+
 export function uniqueOptions(items: TrackingRecord[], keys: string[]): string[] {
   const values = new Set<string>();
   items.forEach((item) => {

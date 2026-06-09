@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.api.routes.agent_helpers import (
     agent_backtest_strategy as run_agent_backtest_strategy,
     agent_compare_strategies as run_agent_compare_strategies,
-    agent_create_paper_order as run_agent_create_paper_order,
     agent_market_sentiment as run_agent_market_sentiment,
     agent_position_t_signal as run_agent_position_t_signal,
     agent_sector_fund_flow as run_agent_sector_fund_flow,
@@ -22,9 +21,8 @@ from app.agent_tools.policy import AgentPolicy
 from app.agent_tools.registry import list_tool_definitions
 from app.core.admin_auth import require_admin_auth
 from app.core.agent_auth import require_agent_tool_permission, require_current_user_or_agent_token
-from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.role_permissions import ensure_permission
+from app.core.config import get_settings
 from app.models.entities import AgentAuditLog, User
 from app.models.schema_defs.agent import (
     AgentAnalysisRequest,
@@ -44,15 +42,10 @@ from app.models.schema_defs.agent import (
     AgentMarketSentimentResponse,
     AgentNotificationTestRequest,
     AgentNotificationTestResponse,
-    AgentPaperOrderRequest,
-    AgentPaperOrderResponse,
     AgentSignalNotificationRequest,
     AgentSignalNotificationResponse,
     AgentSignalNotificationScanRequest,
     AgentSignalNotificationScanResponse,
-    AgentOrderRecommendationRequest,
-    AgentOrderRecommendationResponse,
-    AgentPaperPortfolioResponse,
     AgentPositionTSignalRequest,
     AgentPositionTSignalResponse,
     AgentPriorityBoardResponse,
@@ -117,24 +110,6 @@ def agent_analysis(
     db: Session = Depends(get_db),
 ) -> AgentAnalysisResponse:
     return context_service.analysis(db, payload)
-
-
-@router.get("/context/paper-portfolio", response_model=AgentPaperPortfolioResponse)
-def agent_paper_portfolio(
-    account_id: Optional[int] = Query(default=None),
-    current_user: Optional[User] = Depends(require_agent_tool_permission("get_paper_portfolio", "read")),
-    db: Session = Depends(get_db),
-) -> AgentPaperPortfolioResponse:
-    return context_service.paper_portfolio(db, account_id=account_id, user_id=getattr(current_user, "id", None))
-
-
-@router.post("/context/recommend-orders", response_model=AgentOrderRecommendationResponse)
-def agent_recommend_orders(
-    payload: AgentOrderRecommendationRequest,
-    current_user: Optional[User] = Depends(require_agent_tool_permission("recommend_orders", "write")),
-    db: Session = Depends(get_db),
-) -> AgentOrderRecommendationResponse:
-    return context_service.recommend_orders(db, payload, user_id=getattr(current_user, "id", None))
 
 
 @router.get("/reports/daily", response_model=AgentDailyReportResponse)
@@ -257,21 +232,6 @@ def agent_compare_strategies(
         strategy_keys=payload.strategy_keys,
         lookback_days=payload.lookback_days,
     )
-
-
-@router.post("/paper/order", response_model=AgentPaperOrderResponse)
-def agent_create_paper_order(
-    payload: AgentPaperOrderRequest,
-    current_user: Optional[User] = Depends(require_agent_tool_permission("create_paper_order", "write")),
-    db: Session = Depends(get_db),
-) -> AgentPaperOrderResponse:
-    if current_user is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Agent 令牌不能直接创建模拟盘委托，请使用已登录且具备模拟盘权限的用户会话。",
-        )
-    ensure_permission(current_user, "paper_trade")
-    return run_agent_create_paper_order(context_service, db, payload, user_id=getattr(current_user, "id", None))
 
 
 @router.get("/context/market-sentiment", response_model=AgentMarketSentimentResponse)

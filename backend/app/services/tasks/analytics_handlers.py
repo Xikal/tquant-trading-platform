@@ -18,7 +18,6 @@ from app.services.analytics import (
     export_key_level_snapshots_parquet,
     export_low_buy_result_snapshots_parquet,
     export_market_review_reports_parquet,
-    export_paper_review_reports_parquet,
     export_strategy_tracking_snapshots_parquet,
     load_manifest,
 )
@@ -50,7 +49,6 @@ def register_analytics_handlers(registry: TaskHandlerRegistry) -> None:
     registry.register("analytics_export_backtest_daily_snapshots", handle_analytics_export_backtest_daily_snapshots)
     registry.register("analytics_export_analysis_logs", handle_analytics_export_analysis_logs)
     registry.register("analytics_export_market_review_reports", handle_analytics_export_market_review_reports)
-    registry.register("analytics_export_paper_review_reports", handle_analytics_export_paper_review_reports)
     registry.register("analytics_quality_check", handle_analytics_quality_check)
     registry.register("strategy_24m_duckdb_report", handle_strategy_24m_duckdb_report)
     registry.register("decision_context_24m_report", handle_strategy_24m_duckdb_report)
@@ -275,18 +273,6 @@ def handle_analytics_export_analysis_logs(context: TaskContext) -> dict[str, Any
 
 def handle_analytics_export_market_review_reports(context: TaskContext) -> dict[str, Any]:
     manifest = export_market_review_reports_parquet(
-        context.db,
-        days=int(context.payload.get("days") or 90),
-        end_date=_payload_end_date(context.payload),
-        output_root=context.payload.get("output_root"),
-    )
-    context.add_artifact(str(manifest.get("manifest_path") or ""))
-    status = str(manifest.get("quality_status") or manifest.get("status") or "partial")
-    return {"ok": status == "ok", "status": status, "manifest": manifest, "artifacts": [manifest.get("manifest_path")]}
-
-
-def handle_analytics_export_paper_review_reports(context: TaskContext) -> dict[str, Any]:
-    manifest = export_paper_review_reports_parquet(
         context.db,
         days=int(context.payload.get("days") or 90),
         end_date=_payload_end_date(context.payload),

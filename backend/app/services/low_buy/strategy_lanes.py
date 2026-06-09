@@ -189,7 +189,7 @@ def plain_status_for_lane(strategy_variant: str | None) -> dict[str, str]:
         return {
             "conclusion": "只做验证，暂不影响真实排序",
             "reason": "样本外验证不足、滚动验证不稳定、成交数据不足",
-            "next_step": "继续影子验证和模拟盘观察",
+            "next_step": "继续影子验证和观察验证",
         }
     if variant == FRONT_ROW_ONLY_VARIANT:
         return {

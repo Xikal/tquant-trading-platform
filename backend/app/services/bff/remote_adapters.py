@@ -9,7 +9,6 @@ from pydantic import ValidationError
 from app.core.config import get_settings
 from app.models.schema_defs.bff import (
     MonitorWorkspaceBffResponse,
-    PaperWorkspaceBffResponse,
     SettingsWorkspaceBffResponse,
     StrategyWorkspaceBffResponse,
 )
@@ -89,23 +88,6 @@ def _monitor_response_usable(response: MonitorWorkspaceBffResponse, *, view: str
         open_remote_bff_circuit(base_url)
         return False
     return True
-
-
-def load_remote_paper_workspace(
-    *,
-    order_limit: int,
-    trade_limit: int,
-    run_limit: int,
-    forward_headers: Mapping[str, str] | None = None,
-) -> PaperWorkspaceBffResponse | None:
-    settings = get_settings()
-    payload = _load_remote(
-        settings.tquant_trade_service_url,
-        "paper",
-        params={"order_limit": order_limit, "trade_limit": trade_limit, "run_limit": run_limit},
-        forward_headers=forward_headers,
-    )
-    return _validate_remote_payload(PaperWorkspaceBffResponse, payload, "paper", settings.tquant_trade_service_url)
 
 
 def load_remote_strategy_workspace(

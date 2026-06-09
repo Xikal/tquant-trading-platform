@@ -1,7 +1,7 @@
 import type { Page } from "../workspace-shared/workspaceTypes";
 import type { ModeSafetyKind } from "../../ui/feedback/ModeSafetyBadges";
 
-export type DenoisedWorkspacePage = Extract<Page, "monitor" | "monitor-market" | "strategy-tracking" | "paper" | "data">;
+export type DenoisedWorkspacePage = Extract<Page, "monitor" | "monitor-market" | "strategy-tracking" | "data">;
 
 export interface PageResponsibility {
   page: DenoisedWorkspacePage;
@@ -67,23 +67,7 @@ export const WORKSPACE_PAGE_RESPONSIBILITIES: Record<DenoisedWorkspacePage, Page
     emptyFallback: "无快照或研究 flag 关闭时显示明确空态，不留空白面板。",
     featureFlagFallback: "关闭交易经验 suite 后只隐藏研究面板，策略跟踪主表和复盘仍可用。",
     heavyListSurface: ["DataTable", "VirtualCardList"],
-    modeBadges: ["shadow", "research", "paper", "watch"],
-  },
-  paper: {
-    page: "paper",
-    label: "模拟盘",
-    coreQuestion: "执行结果如何",
-    firstScreenConclusion: "持仓、成交、真实收益、风险和复盘分层展示，机甲与实时日志合并为执行状态区。",
-    commandHint: "持仓、成交、收益和风险",
-    primaryQuestion: "模拟执行是否按计划工作",
-    detailQuestion: "哪些成交、风险或纪律问题需要处理",
-    drilldownPattern: "账户结论 + 执行状态 + 详情页签",
-    primarySections: ["持仓", "成交", "真实收益", "风险"],
-    detailSections: ["自动化日志", "策略绩效", "对账诊断", "复盘历史"],
-    emptyFallback: "无持仓、无成交或纪律 flag 关闭时保留模拟盘结论区和明确空态。",
-    featureFlagFallback: "关闭持仓纪律或 T 归因 flag 后只隐藏扩展面板，不影响模拟盘账户视图。",
-    heavyListSurface: ["VirtualCardList"],
-    modeBadges: ["paper", "preview", "watch"],
+    modeBadges: ["shadow", "research", "watch"],
   },
   data: {
     page: "data",

@@ -9,7 +9,6 @@ import {
   chartPoints,
   defaultAnalysisForm,
   intradayChartPoints,
-  paperOrderDraftSearch,
   runAnalysisWorkflow,
   runBatchAnalysis,
   type AnalysisSnapshot,
@@ -113,35 +112,6 @@ describe("analysis model chart data", () => {
 
     expect(chartPoints(snapshot)).toEqual([]);
     expect(chartPoints(null)).toEqual([]);
-  });
-
-  it("builds a paper order draft from the analyzed result without inventing strategy fields", () => {
-    const snapshot = {
-      response: {
-        symbol: "600000",
-        instrument: { name: "浦发银行" },
-        quote: { last_price: 8.72 },
-        suggestion: {
-          side: "buy",
-          order_type: "limit",
-          strategy_key: "n_pattern_long_wash",
-          plain_action_reason: "接近支撑位",
-        },
-      } as unknown as AnalysisSnapshot["response"],
-      supplement: { errors: [] },
-    };
-
-    expect(paperOrderDraftSearch(snapshot, { ...defaultAnalysisForm, symbol: "600000", availablePosition: 950 })).toEqual({
-      source: "analysis",
-      symbol: "600000",
-      name: "浦发银行",
-      side: "buy",
-      order_type: "limit",
-      quantity: "900",
-      price: "8.72",
-      strategy_key: "n_pattern_long_wash",
-      reason: "接近支撑位",
-    });
   });
 
   it("loads daily analysis kline and a 5m intraday confirmation window", async () => {

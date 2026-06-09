@@ -560,7 +560,7 @@ export function SettingsPage() {
           </div>
 
           <div class="settings-command-column">
-            <CommandCard title="模拟盘 24 维动态止盈止损参数" index="6" icon="trend" accent="rose" action={<ModuleStateBadge state={moduleState()} detail="可保存" />}>
+            <CommandCard title="24 维动态止盈止损参数" index="6" icon="trend" accent="rose" action={<ModuleStateBadge state={moduleState()} detail="可保存" />}>
               <div class="settings-command-tabs">
                 <For each={STOP_LOSS_TABS}>
                   {(item) => (

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { shouldShowPagePriorityStrip } from "./TradingWorkspaceChrome";
 
 describe("TradingWorkspaceChrome", () => {
-  it.each(["monitor", "monitor-market", "paper", "strategy-tracking", "data"] as const)(
+  it.each(["monitor", "monitor-market", "strategy-tracking", "data"] as const)(
     "hides workspace responsibility copy on %s",
     (page) => {
       expect(shouldShowPagePriorityStrip(page)).toBe(false);

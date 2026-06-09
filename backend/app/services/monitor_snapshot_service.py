@@ -43,13 +43,20 @@ def build_monitor_snapshot(
     )
     if cached is not None:
         record_read_model_cache_hit("monitor_workspace")
+        payload = filter_monitor_snapshot_payload(cached.payload, excluded)
         if cached.needs_refresh:
             enqueue_monitor_snapshot_refresh(
                 db,
                 user_id=current_user.id,
                 priority_limit=priority_limit,
             )
-        return MonitorSnapshotResponse(**filter_monitor_snapshot_payload(cached.payload, excluded))
+            payload = _with_fresher_priority_board(
+                payload,
+                db,
+                priority_limit=priority_limit,
+                excluded_sectors=excluded,
+            )
+        return MonitorSnapshotResponse(**payload)
 
     record_read_model_cache_miss("monitor_workspace")
     enqueue_monitor_snapshot_refresh(
@@ -98,6 +105,75 @@ def _fallback_priority_board_from_read_model(db: Session, *, priority_limit: int
     return None
 
 
+def _with_fresher_priority_board(
+    payload: dict[str, Any],
+    db: Session,
+    *,
+    priority_limit: int,
+    excluded_sectors: set[str],
+) -> dict[str, Any]:
+    fallback = _fallback_priority_board_from_read_model(db, priority_limit=priority_limit)
+    if not fallback:
+        return payload
+    fallback = filter_monitor_snapshot_payload({"priority_board": fallback}, excluded_sectors).get("priority_board", fallback)
+    current = payload.get("priority_board")
+    if not isinstance(current, dict) or _should_replace_priority_board(current, fallback):
+        return {**payload, "priority_board": fallback}
+    return payload
+
+
+def _should_replace_priority_board(current: dict[str, Any], fallback: dict[str, Any]) -> bool:
+    if not fallback.get("items"):
+        return False
+    current_trade_date = _date_text(current.get("latest_trade_date") or current.get("latest_available_trade_date"))
+    fallback_trade_date = _date_text(fallback.get("latest_trade_date") or fallback.get("latest_available_trade_date"))
+    if fallback_trade_date and fallback_trade_date > current_trade_date:
+        return True
+    if fallback_trade_date and fallback_trade_date < current_trade_date:
+        return False
+
+    current_updated = _date_time_text(current.get("updated_at") or current.get("as_of_date"))
+    fallback_updated = _date_time_text(fallback.get("updated_at") or fallback.get("as_of_date"))
+    if fallback_updated and fallback_updated > current_updated:
+        return True
+
+    if _is_stale_board(current) and not _is_stale_board(fallback):
+        return True
+
+    if current_updated == fallback_updated and _board_signature(current) != _board_signature(fallback):
+        return True
+    return False
+
+
+def _date_text(value: Any) -> str:
+    return str(value or "")[:10]
+
+
+def _date_time_text(value: Any) -> str:
+    return str(value or "")
+
+
+def _is_stale_board(board: dict[str, Any]) -> bool:
+    quality = str(board.get("data_quality") or "").lower()
+    warning = str(board.get("snapshot_warning") or board.get("stale_reason") or "")
+    return bool(board.get("stale")) or quality == "stale" or "刷新" in warning
+
+
+def _board_signature(board: dict[str, Any]) -> tuple[Any, ...]:
+    items = board.get("items")
+    symbols: tuple[str, ...] = ()
+    states: tuple[str, ...] = ()
+    if isinstance(items, list):
+        symbols = tuple(str(item.get("symbol") or "") for item in items if isinstance(item, dict))
+        states = tuple(str(item.get("buy_signal_state") or item.get("simple_bucket") or "") for item in items if isinstance(item, dict))
+    return (
+        board.get("total_candidates"),
+        board.get("immediate_count"),
+        board.get("focus_count"),
+        board.get("track_count"),
+        symbols,
+        states,
+    )
 def _empty_priority_board(*, warning: str) -> dict[str, Any]:
     return {
         "as_of_date": beijing_now_string(),

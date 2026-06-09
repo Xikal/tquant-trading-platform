@@ -13,22 +13,16 @@ from app.core.task_manager import task_manager
 from app.core.timezone import beijing_now
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.runtime.strategy_evolution_scheduler import (
-    enqueue_daily_ledger_reconcile_preview_once,
     enqueue_monthly_drift_monitor_once,
-    enqueue_strategy_self_evolution_once,
     start_strategy_evolution_scheduler,
     shutdown_strategy_evolution_scheduler,
 )
 from app.runtime.background_low_buy_cleanup import cleanup_stale_low_buy_snapshots
-from app.runtime.paper_review_jobs import (
-    archive_paper_performance_once,
-)
 from app.runtime.market_review_jobs import generate_close_market_review_once, generate_midday_market_review_once
 from app.repositories.low_buy.results import LowBuyResultRepository
 from app.services.agent_daily_workflow_service import AgentDailyWorkflowService
 from app.services.agent_notification_service import AgentNotificationService
 from app.services.agent_signal_scan_service import AgentSignalScanService
-from app.services.backtest_research_worker import BacktestResearchWorker
 from app.services.latest_data_close_refresh import enqueue_latest_data_close_refresh
 from app.services.latest_data_status import expected_low_buy_trade_date, publish_latest_trade_date_if_ready
 from app.services.latest_data_watchdog import LatestDataWatchdogLedger
@@ -43,7 +37,6 @@ from app.services.market.hourly_snapshot import (
 )
 from app.services.market_quote_cache_refresh import quote_cache_refresh_bucket, quote_cache_refresh_due
 from app.services.factor_mining.scheduler import enqueue_monthly_factor_mining_once
-from app.services.paper.scheduler import build_auto_trader_config, start_auto_trader, stop_auto_trader
 from app.services.paper.validation_scheduler import MonthlyStrategyValidationJob
 from app.services.runtime_worker_health import record_platform_component_heartbeat
 from app.services.tasks import RuntimeTaskQueue
@@ -59,8 +52,6 @@ SQLITE_BACKGROUND_SCAN_LIMIT = 120
 DEFAULT_BACKGROUND_SCAN_LIMIT = 480
 COMPACT_FULL_SCAN_BACKGROUND_LIMIT = 16
 COMPACT_BACKGROUND_SCAN_LIMIT = 180
-ML_INCREMENTAL_TRAIN_WEEKDAY = 4  # Friday
-ML_INCREMENTAL_TRAIN_AFTER = dt_time(hour=16, minute=0)
 LATEST_DATA_WATCHDOG_AFTER = dt_time(hour=15, minute=25)
 _background_leader_lock_handle = None
 _background_leader_active = False
@@ -279,20 +270,6 @@ def _run_monthly_strategy_validation_once() -> None:
             logger.info("月度策略样本外验证完成: run_id=%s", report.run_id)
 
 
-def _run_backtest_research_worker_once() -> None:
-    if not _research_jobs_enabled():
-        return
-    result = BacktestResearchWorker().run_once()
-    if result is not None:
-        logger.info(
-            "回测研究任务处理完成: kind=%s id=%s status=%s message=%s",
-            result.task_kind,
-            result.task_id,
-            result.status,
-            result.message,
-        )
-
-
 def _refresh_low_buy_strategy_governance_once() -> None:
     if not _research_jobs_enabled():
         return
@@ -335,18 +312,6 @@ def _push_agent_daily_report_once() -> None:
             result.duplicate,
             result.message,
         )
-
-
-def _enqueue_ml_incremental_train_once() -> None:
-    if not _ml_jobs_enabled():
-        return
-    enqueue_strategy_self_evolution_once(beijing_now())
-
-
-def _ml_incremental_train_due(now: datetime) -> bool:
-    """Online learning runs after Friday close so the week's paper outcomes are settled."""
-
-    return now.weekday() == ML_INCREMENTAL_TRAIN_WEEKDAY and now.time() >= ML_INCREMENTAL_TRAIN_AFTER
 
 
 def _enqueue_market_quote_cache_refresh_once() -> None:
@@ -538,15 +503,6 @@ def start_runtime_background_jobs() -> None:
                 interval_seconds=_interval_seconds("runtime_market_review_interval_seconds", 300, minimum=300),
                 initial_delay_seconds=90,
             )
-        if settings.paper_perf_archive_enabled:
-            task_manager.register_loop(
-                name="paper_perf_archive",
-                target=lambda: archive_paper_performance_once(
-                    include_report=settings.paper_perf_ai_report_enabled
-                ),
-                interval_seconds=_interval_seconds("runtime_paper_perf_archive_interval_seconds", 300, minimum=300),
-                initial_delay_seconds=105,
-            )
         if settings.strategy_validation_monthly_enabled and _research_jobs_enabled():
             task_manager.register_loop(
                 name="strategy_validation_monthly",
@@ -555,12 +511,6 @@ def start_runtime_background_jobs() -> None:
                 initial_delay_seconds=180,
             )
         if _research_jobs_enabled():
-            task_manager.register_loop(
-                name="backtest_research_worker",
-                target=_run_backtest_research_worker_once,
-                interval_seconds=15,
-                initial_delay_seconds=45,
-            )
             task_manager.register_loop(
                 name="low_buy_strategy_governance",
                 target=_refresh_low_buy_strategy_governance_once,
@@ -598,23 +548,11 @@ def start_runtime_background_jobs() -> None:
         )
         if _ml_jobs_enabled():
             task_manager.register_loop(
-                name="ml_signal_incremental_train_weekly",
-                target=_enqueue_ml_incremental_train_once,
-                interval_seconds=60 * 60,
-                initial_delay_seconds=240,
-            )
-            task_manager.register_loop(
                 name="ml_feature_drift_monitor_monthly",
                 target=enqueue_monthly_drift_monitor_once,
                 interval_seconds=60 * 60,
                 initial_delay_seconds=300,
             )
-        task_manager.register_loop(
-            name="paper_ledger_reconcile_preview_daily",
-            target=enqueue_daily_ledger_reconcile_preview_once,
-            interval_seconds=60 * 60,
-            initial_delay_seconds=330,
-        )
         if _factor_jobs_enabled():
             task_manager.register_loop(
                 name="factor_mining_monthly",
@@ -622,9 +560,6 @@ def start_runtime_background_jobs() -> None:
                 interval_seconds=60 * 60,
                 initial_delay_seconds=360,
             )
-        if settings.paper_auto_trading_enabled:
-            logger.info("启动模拟盘自动交易")
-            start_auto_trader(build_auto_trader_config(settings))
     elif _background_jobs_enabled():
         logger.info("runtime background jobs skipped in this worker; another worker holds the leader lock")
 
@@ -633,7 +568,6 @@ def shutdown_runtime_background_jobs(timeout: int = 30) -> None:
     global _background_leader_active, _background_leader_lock_handle
     if _background_leader_active:
         _record_scheduler_heartbeat_once(status="stopping")
-    stop_auto_trader()
     shutdown_strategy_evolution_scheduler()
     task_manager.shutdown(timeout=timeout)
     _background_leader_active = False

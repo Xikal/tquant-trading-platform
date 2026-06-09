@@ -304,8 +304,8 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 
 - MySQL 8.4 独立持久化
 - 应用容器自动连接 `mysql` 服务
-- Web 容器默认只处理 HTTP 请求，低吸扫描、预热、归档和模拟盘自动交易由 `runtime-worker` 单独执行，避免多 Gunicorn worker 重复跑后台任务
-- 回测任务由 `backtest-worker` 独立消费，避免长任务阻塞 Web 请求
+- Web 容器默认只处理 HTTP 请求，低吸扫描、预热和收盘复盘由 `runtime-worker` 单独执行，避免多 Gunicorn worker 重复跑后台任务
+- 回测页面和独立 `backtest-worker` 已下线；保留的研究/分析重任务按需由 `runtime-worker` 或 `analytics-worker` 管控，避免长任务阻塞 Web 请求
 - Compose 项目名固定为 `tquant-mysql`，可与 SQLite 方案并行运行
 - 更适合云端长期运行
 

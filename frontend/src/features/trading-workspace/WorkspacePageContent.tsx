@@ -5,7 +5,6 @@ import { QueryErrorBoundary } from "../../ui/feedback/QueryErrorBoundary";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import type { MonitorPageProps } from "../monitor/MonitorPage";
 import type { MonitorMarketPageProps } from "../monitor/MonitorMarketPage";
-import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
 import type { usePlaybookData } from "./usePlaybookData";
@@ -18,7 +17,6 @@ interface WorkspacePageContentProps {
   DataConsolePage: ComponentType<{ currentUser: AuthUser }>;
   MonitorPage: ComponentType<MonitorPageProps>;
   MonitorMarketPage: ComponentType<MonitorMarketPageProps>;
-  PaperTradingPage: ComponentType<PaperTradingPageProps>;
   PlaybookPage: ComponentType<ComponentProps<any>>;
   SettingsPage: ComponentType<ComponentProps<any>>;
   StrategyTrackingPage: ComponentType<{ strategyMeta: StrategyMeta[] }>;
@@ -28,12 +26,10 @@ interface WorkspacePageContentProps {
   monitor: ReturnType<typeof useMonitorData>;
   monitorPageProps: MonitorPageProps;
   page: Page;
-  paperPageProps: PaperTradingPageProps;
   playbookData: ReturnType<typeof usePlaybookData>;
   settingsData: ReturnType<typeof useSettingsData>;
   strategyMeta: StrategyMeta[];
   onSelectStock: (stock: StockCardView | null) => void;
-  onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
   onUserUpdate: (user: AuthUser) => void;
 }
 
@@ -42,7 +38,6 @@ export function WorkspacePageContent({
   DataConsolePage,
   MonitorPage,
   MonitorMarketPage,
-  PaperTradingPage,
   PlaybookPage,
   SettingsPage,
   StrategyTrackingPage,
@@ -52,12 +47,10 @@ export function WorkspacePageContent({
   monitor,
   monitorPageProps,
   page,
-  paperPageProps,
   playbookData,
   settingsData,
   strategyMeta,
   onSelectStock,
-  onPreparePaperOrder,
   onUserUpdate,
 }: WorkspacePageContentProps) {
   const sortedStrategyMeta = strategyMeta
@@ -84,7 +77,6 @@ export function WorkspacePageContent({
               loading={loading}
               onRun={() => void analysis.runAnalysis()}
               onBatchRun={() => void analysis.runBatchAnalysis()}
-              onOpenPaperOrder={onPreparePaperOrder}
             />
           )}
           {page === "playbook" && (
@@ -101,16 +93,6 @@ export function WorkspacePageContent({
           )}
           {page === "strategy-tracking" && <StrategyTrackingPage strategyMeta={strategyMeta} />}
           {page === "data" && <DataConsolePage currentUser={currentUser} />}
-          {page === "paper" && (
-            currentUser.can_paper_trade ? (
-              <PaperTradingPage {...paperPageProps} />
-            ) : (
-              <section className="panel auth-guard-panel">
-                <h2>模拟盘需申请白名单权限</h2>
-                <p>当前账号可以查看行情和策略，但暂未开通模拟交易。请联系管理员加入模拟盘白名单。</p>
-              </section>
-            )
-          )}
           {page === "settings" && (
             <SettingsPage
               settings={settingsData.settings}

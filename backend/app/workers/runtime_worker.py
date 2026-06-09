@@ -42,7 +42,6 @@ RUNTIME_WORKER_TASK_TYPES = (
 RESEARCH_TASK_TYPES = {
     *HEAVY_RESEARCH_TASK_TYPES,
     "ml_signal_incremental_train",
-    "strategy_self_evolution",
     "ml_feature_drift_monitor",
     "factor_mining_evaluate",
     "factor_mining_monthly",
@@ -50,10 +49,14 @@ RESEARCH_TASK_TYPES = {
     "trading_experience_tag_materialization",
     "trading_experience_relative_strength_refresh",
     "trading_experience_limit_up_backtest",
-    "trading_experience_t_attribution_refresh",
 }
-ML_TASK_TYPES = {"ml_signal_incremental_train", "strategy_self_evolution", "ml_feature_drift_monitor", *ML_HEAVY_TASK_TYPES}
+ML_TASK_TYPES = {"ml_signal_incremental_train", "ml_feature_drift_monitor", *ML_HEAVY_TASK_TYPES}
 FACTOR_TASK_TYPES = {"factor_mining_evaluate", "factor_mining_monthly", *FACTOR_HEAVY_TASK_TYPES}
+PAPER_TASK_TYPES = {
+    "paper_review_report",
+    "paper_portfolio_execution_preview",
+    "paper_ledger_reconcile_preview",
+}
 LONG_TASK_HEARTBEAT_SECONDS = 30.0
 
 
@@ -258,23 +261,6 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             "report_slot": report.report_slot,
             "report_date": report.report_date.isoformat() if report.report_date else "",
         }
-    if task_type == "paper_review_report":
-        from app.services.paper.archive import PaperArchiveService
-
-        target_date = _payload_date(payload, "target_date")
-        slot = str(payload.get("report_slot") or "midday")
-        reports = PaperArchiveService(db).generate_review_reports_for_active(
-            report_slot=slot,
-            target_date=target_date,
-        )
-        return {
-            "ok": True,
-            "scope": "paper",
-            "report_slot": slot,
-            "report_date": target_date.isoformat() if target_date else "",
-            "reports": reports,
-            "report_count": len(reports),
-        }
     if task_type == "low_buy_materialization_refresh":
         from app.services.low_buy_materialization import (
             refresh_latest_low_buy_materialization,
@@ -384,23 +370,6 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             "auto_apply_enabled": False,
             "review": result.as_payload(),
         }
-    if task_type == "paper_portfolio_execution_preview":
-        from app.services.paper.performance import PaperPerformanceService
-
-        account_id = int(payload.get("account_id") or 0)
-        if account_id <= 0:
-            return {
-                "ok": False,
-                "status": "blocked_by_data",
-                "worker_scope": "runtime-worker",
-                "reason": "paper_portfolio_execution_preview requires account_id",
-            }
-        return {
-            "ok": True,
-            "worker_scope": "runtime-worker",
-            "task_type": task_type,
-            "preview": PaperPerformanceService(db).compute_portfolio_execution_preview(account_id),
-        }
     if task_type == "signal_attribution_refresh":
         from app.services.decision_context.signal_attribution import refresh_signal_attributions
 
@@ -460,21 +429,10 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
             )
         )
         return response.model_dump() if hasattr(response, "model_dump") else dict(response)
-    if task_type == "strategy_self_evolution":
-        from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
-
-        return StrategySelfEvolutionOrchestrator(db).run(payload)
     if task_type == "ml_feature_drift_monitor":
         from app.services.strategy_self_evolution import StrategySelfEvolutionOrchestrator
 
         return StrategySelfEvolutionOrchestrator(db).run_drift_monitor(payload)
-    if task_type == "paper_ledger_reconcile_preview":
-        from app.services.paper.ledger_reconcile_monitor import PaperLedgerReconcileMonitorService
-
-        return PaperLedgerReconcileMonitorService(db).run_daily_preview(
-            threshold=float(payload.get("threshold") or 1.0),
-            channel=str(payload.get("channel") or "feishu"),
-        )
     if task_type == "signal_ledger_capture":
         from app.services.track_record.signal_ledger import capture_latest_priority_board
 
@@ -525,7 +483,6 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
         "trading_experience_tag_materialization",
         "trading_experience_relative_strength_refresh",
         "trading_experience_limit_up_backtest",
-        "trading_experience_t_attribution_refresh",
     }:
         return _execute_trading_experience_task(task_type, payload, db)
     raise ValueError(f"未知任务类型: {task_type}")
@@ -533,6 +490,8 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
 
 def _ensure_task_enabled(task_type: str) -> None:
     settings = get_settings()
+    if task_type in PAPER_TASK_TYPES or str(task_type).startswith("paper_"):
+        raise RuntimeError(f"{task_type} is disabled: paper trading feature has been removed")
     if task_type in RESEARCH_TASK_TYPES and not settings.tquant_research_jobs_enabled:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_RESEARCH_JOBS_ENABLED=true")
     if task_type in ML_TASK_TYPES and not settings.tquant_ml_jobs_enabled:
@@ -619,16 +578,6 @@ def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db
         report = limit_up_followthrough.build_backtest_report(db, end_date=trade_date)
         limit_up_followthrough.persist_backtest_report(db, report)
         return report
-    if task_type == "trading_experience_t_attribution_refresh":
-        user_id = payload.get("user_id")
-        if user_id is None:
-            return {"ok": True, "status": "blocked", "reason": "user_id_required", "data_quality": "blocked"}
-        response = service.t_trade_attribution(
-            account_id=payload.get("account_id"),
-            days=int(payload.get("days") or 30),
-            user_id=int(user_id),
-        )
-        return response.model_dump(mode="json")
     raise ValueError(f"未知任务类型: {task_type}")
 
 

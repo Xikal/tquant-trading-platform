@@ -26,7 +26,7 @@ ADMIN_TOKEN = "test-admin-token"
 def test_runtime_task_create_cancel_has_audit_permission_and_readback(monkeypatch) -> None:
     client, Session = _client(monkeypatch, runtime_only=True)
     payload = {
-        "task_type": "frontend_next_smoke_noop",
+        "task_type": "noop",
         "payload": {"source": "frontend-next-test"},
         "priority": 999,
         "idempotency_key": "frontend-next-safe-write-runtime",

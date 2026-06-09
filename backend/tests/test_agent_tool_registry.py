@@ -16,7 +16,7 @@ from app.models.entities import AgentAuditLog
 class AgentToolRegistryTests(unittest.TestCase):
     def test_registry_lists_expected_tools(self) -> None:
         names = {tool.name for tool in list_tool_definitions()}
-        self.assertGreaterEqual(len(names), 21)
+        self.assertGreaterEqual(len(names), 18)
         self.assertTrue(
             {
                 "get_agent_health",
@@ -24,14 +24,11 @@ class AgentToolRegistryTests(unittest.TestCase):
                 "get_priority_board",
                 "analyze_stock",
                 "get_daily_report",
-                "get_paper_portfolio",
-                "recommend_orders",
                 "send_test_notification",
                 "send_signal_notification",
                 "scan_priority_board_notifications",
                 "backtest_strategy",
                 "compare_strategies",
-                "create_paper_order",
                 "get_market_sentiment",
                 "get_sector_heatmap",
                 "get_position_t_signal",
@@ -42,6 +39,7 @@ class AgentToolRegistryTests(unittest.TestCase):
                 "get_comprehensive_analysis",
             }.issubset(names)
         )
+        self.assertFalse({"get_paper_portfolio", "recommend_orders", "create_paper_order"} & names)
 
     def test_priority_board_definition_exists(self) -> None:
         tool = get_tool_definition("get_priority_board")
@@ -61,13 +59,10 @@ class AgentToolRegistryTests(unittest.TestCase):
         self.assertIsNotNone(scan_tool)
         self.assertEqual(scan_tool.permission, "notify")
 
-    def test_order_recommendation_tool_requires_write_permission(self) -> None:
-        tool = get_tool_definition("recommend_orders")
-        self.assertIsNotNone(tool)
-        self.assertEqual(tool.permission, "write")
-        paper_order_tool = get_tool_definition("create_paper_order")
-        self.assertIsNotNone(paper_order_tool)
-        self.assertEqual(paper_order_tool.permission, "write")
+    def test_paper_trading_tools_are_removed_from_registry(self) -> None:
+        self.assertIsNone(get_tool_definition("get_paper_portfolio"))
+        self.assertIsNone(get_tool_definition("recommend_orders"))
+        self.assertIsNone(get_tool_definition("create_paper_order"))
 
     def test_capability_restriction_denies_unlisted_capability(self) -> None:
         tool = get_tool_definition("get_priority_board")

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "../../shared/api/client";
-import { candidateDateGroups, candidateFamilies, boardMetrics, loadPlaybookDataset, type PlaybookDataset } from "./playbookModel";
+import { candidateDateGroups, candidateFamilies, boardMetrics, loadPlaybookDataset, mergePlaybookQuotes, type PlaybookDataset } from "./playbookModel";
 
 describe("playbook priority board model", () => {
   afterEach(() => {
@@ -144,6 +144,72 @@ describe("playbook priority board model", () => {
     const data = { priorityBoard: groupedPriorityBoard } as PlaybookDataset;
 
     expect(boardMetrics(data).find((item) => item.label === "总候选")?.value).toBe("2");
+  });
+
+  it("uses quote refresh signal fields instead of stale candidate text", () => {
+    const data = mergePlaybookQuotes(
+      {
+        screener: {
+          strategy_key: "first_board",
+          candidates: [
+            {
+              symbol: "600237",
+              name: "铜峰电子",
+              simple_bucket: "buy_now",
+              buy_signal_state: "buy_now",
+              buy_signal_text: "确定买入",
+              latest_price: 11.7,
+            },
+          ],
+        },
+      } as PlaybookDataset,
+      {
+        items: {
+          "600237": {
+            latest_price: 11.82,
+            change_pct: 0.01,
+            buy_signal_state: "near_entry",
+            buy_signal_text: "接近买点，等待承接确认",
+            suggested_position_text: "只观察",
+            trigger_condition: "放量站回买点",
+          },
+        },
+      },
+    );
+
+    const candidate = candidateFamilies(data).flatMap((family) => family.items)[0];
+
+    expect(candidate.signalState).toBe("near_entry");
+    expect(candidate.simpleBucket).toBe("wait_price");
+    expect(candidate.action).toBe("接近买点，等待承接确认");
+    expect(candidate.raw.buy_signal_state).toBe("near_entry");
+    expect(candidate.raw.suggested_position_text).toBe("只观察");
+  });
+
+  it("does not treat production decision text as a buyable lane", () => {
+    const data = {
+      screener: {
+        strategy_key: "first_board",
+        candidates: [
+          {
+            symbol: "002072",
+            name: "凯瑞德",
+            production_decision: "portfolio_candidate",
+            display_lane: "baseline",
+            simple_bucket: "wait_price",
+            buy_signal_state: "near_entry",
+            buy_signal_text: "确定买入",
+          },
+        ],
+      },
+    } as PlaybookDataset;
+
+    const candidate = candidateFamilies(data).flatMap((family) => family.items)[0];
+
+    expect(candidate.signalState).toBe("near_entry");
+    expect(candidate.simpleBucket).toBe("wait_price");
+    expect(candidate.lane).toBe("wait_price");
+    expect(candidate.action).toBe("接近买点，等待确认");
   });
 });
 

@@ -14,19 +14,6 @@ from app.models.schema_defs.market import (
     SectorRelativeStrengthResponse,
 )
 from app.models.schema_defs.monitor import MonitorSnapshotResponse
-from app.models.schema_defs.paper import (
-    PaperAccountOut,
-    PaperAgentRunOut,
-    PaperGroupedPerformanceOut,
-    PaperOrderOut,
-    PaperPerformanceOut,
-    PaperPositionOut,
-    PaperSectorEtfT0PerformanceOut,
-    PaperStockPnlResponse,
-    PaperTagPerformanceOut,
-    PaperTradeOut,
-)
-from app.models.schema_defs.research import RiskEventOut
 from app.models.schema_defs.backtest import BacktestRunListResponse, BacktestVerdictThresholdsResponse
 from app.models.schema_defs.screener import LowBuyStrategyGovernanceResponse
 from app.models.schema_defs.settings import (
@@ -101,26 +88,6 @@ class MonitorWorkspaceBffResponse(BaseModel):
     runtime: RuntimeStatusResponse | None = None
     partial_errors: list[BffPartialError] = Field(default_factory=list)
     source_timings: list[BffSourceTiming] = Field(default_factory=list)
-
-
-class PaperWorkspaceBffResponse(BaseModel):
-    api_version: str = "v1"
-    schema_version: str = BFF_SCHEMA_VERSION
-    generated_at: str
-    account: PaperAccountOut | None = None
-    positions: list[PaperPositionOut] = Field(default_factory=list)
-    orders: list[PaperOrderOut] = Field(default_factory=list)
-    trades: list[PaperTradeOut] = Field(default_factory=list)
-    stock_pnl: PaperStockPnlResponse | None = None
-    performance: PaperPerformanceOut | None = None
-    sector_etf_t0_performance: PaperSectorEtfT0PerformanceOut | None = None
-    strategy_performance: list[PaperGroupedPerformanceOut] = Field(default_factory=list)
-    market_performance: list[PaperGroupedPerformanceOut] = Field(default_factory=list)
-    tag_performance: list[PaperTagPerformanceOut] = Field(default_factory=list)
-    risk_events: list[RiskEventOut] = Field(default_factory=list)
-    auto_trading_status: dict[str, Any] = Field(default_factory=dict)
-    auto_trading_runs: list[PaperAgentRunOut] = Field(default_factory=list)
-    partial_errors: list[BffPartialError] = Field(default_factory=list)
 
 
 class StrategyWorkspaceBffResponse(BaseModel):

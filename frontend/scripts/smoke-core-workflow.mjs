@@ -6,7 +6,7 @@ import { createCoreWorkflowApiMock } from "./smoke-core-workflow-fixtures.mjs";
 const baseUrl = (process.env.FRONTEND_SMOKE_URL || "http://127.0.0.1:4173").replace(/\/$/, "");
 const scenario = process.env.CORE_WORKFLOW_SMOKE_SCENARIO || "ok";
 const staleScenario = scenario === "stale";
-const corePaths = ["/monitor", "/playbook", "/backtest", "/paper", "/settings"];
+const corePaths = ["/monitor", "/playbook", "/settings"];
 const reportPath = resolve("dist", `core-workflow-smoke-report${staleScenario ? "-stale" : ""}.json`);
 
 const browser = await chromium.launch({ headless: true });
@@ -136,8 +136,6 @@ async function waitForCorePage(path) {
     const text = document.body?.innerText || "";
     if (currentPath === "/monitor") return text.includes("实时监控") || text.includes("实时行动台");
     if (currentPath === "/playbook") return text.includes("选股宝典");
-    if (currentPath === "/backtest") return text.includes("回测页");
-    if (currentPath === "/paper") return text.includes("模拟盘");
     if (currentPath === "/settings") return text.includes("系统配置");
     return text.length > 40;
   }, path, { timeout: 8_000 }).catch(() => undefined);
@@ -146,8 +144,6 @@ async function waitForCorePage(path) {
 function corePathSignal(path, text) {
   if (path === "/monitor") return text.includes("实时监控") || text.includes("实时行动台");
   if (path === "/playbook") return text.includes("选股宝典");
-  if (path === "/backtest") return text.includes("回测页");
-  if (path === "/paper") return text.includes("模拟盘");
   if (path === "/settings") return text.includes("系统配置");
   return true;
 }

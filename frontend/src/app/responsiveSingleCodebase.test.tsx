@@ -14,7 +14,7 @@ function readProjectFile(path: string) {
 describe("responsive single codebase", () => {
   it("renders the same Web route shell for mobile-sized viewports", () => {
     const html = renderToStaticMarkup(<TqPageLoading label="工作台加载中" />);
-    const keyMobilePaths = ["/monitor", "/monitor/market", "/paper", "/strategy-tracking", "/settings"];
+    const keyMobilePaths = ["/monitor", "/monitor/market", "/strategy-tracking", "/settings"];
 
     expect(html).toContain("工作台加载中");
     expect(keyMobilePaths.every((path) => webRoutes.some((route) => route.path === path))).toBe(true);

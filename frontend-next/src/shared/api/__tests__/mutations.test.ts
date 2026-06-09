@@ -2,32 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import { createMutationClient, type Requester } from "../mutations";
 
 describe("frontend-next guarded mutations", () => {
-  it("keeps paper order mutations in shadow mode by default", async () => {
+  it("keeps ready mutations in shadow mode by default", async () => {
     const requester = vi.fn();
     const client = createMutationClient({ writeEnabled: false, requester });
 
-    const result = await client.createPaperOrder({
-      symbol: "000001",
-      name: "",
-      side: "buy",
-      order_type: "market",
-      quantity: 100,
-      price: 10,
-      current_price: 10,
-      up_limit: null,
-      down_limit: null,
-      is_suspended: false,
-      reason: "test",
-      require_intraday_confirmation: false,
-      source: "frontend-next-shadow",
-      strategy_key: "",
+    const result = await client.updateFeatureFlag("frontend_solid_island_enabled", {
+      key: "frontend_solid_island_enabled",
+      enabled: true,
     });
 
     expect(result.mode).toBe("shadow");
-    expect(result.operation).toBe("paperOrderCreate");
+    expect(result.operation).toBe("featureFlagUpdate");
     expect(result.contractStatus).toBe("ready");
-    expect(result.safeWriteContract?.id).toBe("FNX-SW-PAPER-ORDER");
-    expect(result.endpoint).toBe("/api/paper/orders");
+    expect(result.safeWriteContract?.id).toBe("FNX-SW-FEATURE-FLAG");
+    expect(result.endpoint).toBe("/api/settings/feature-flags/frontend_solid_island_enabled");
     expect(requester).not.toHaveBeenCalled();
   });
 
@@ -66,27 +54,19 @@ describe("frontend-next guarded mutations", () => {
     const requester = vi.fn(async () => ({ id: 42 })) as unknown as Requester;
     const client = createMutationClient({ writeEnabled: true, writeMode: "shadow", isAdmin: true, requester });
 
-    const result = await client.createBacktestRun({
-      name: "shadow mode",
-      strategies: ["n_pattern_long_wash"],
-      start_date: "2025-01-01",
-      end_date: "2026-06-05",
-      initial_capital: 100000,
-      benchmark: "000300",
-      data_version: "",
-      engine_version: "backtest-v2",
-      fee_model_version: "",
-      max_duration_seconds: 1800,
-      resource_tier: "light",
-      slippage_bps: 8,
-      strategy_version: "",
-      params: {},
-    });
+    const result = await client.upsertWatchlistShadow({ symbol: "600000", reason: "shadow mode" });
 
     expect(result.mode).toBe("shadow");
     expect(result.message).toContain("write mode shadow");
     expect(result.clientRequestId).toBeUndefined();
     expect(requester).not.toHaveBeenCalled();
+  });
+
+  it("does not expose backtest write adapters after the backtest page is removed", () => {
+    const client = createMutationClient();
+
+    expect("createBacktestRun" in client).toBe(false);
+    expect("cancelBacktestRun" in client).toBe(false);
   });
 
   it("blocks admin operations without explicit admin permission", async () => {

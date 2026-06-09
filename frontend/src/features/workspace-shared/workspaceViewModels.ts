@@ -21,6 +21,8 @@ export function priorityToCard(item: LowBuyPriorityBoardItem): StockCardView {
     riskText: riskTierText(item.risk_tier),
     expectedText: undefined,
     actionText: item.buy_signal_text || item.action_summary,
+    signalState: item.buy_signal_state,
+    simpleBucket: item.simple_bucket,
     entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
     stopText: optionalPrice(item.stop_loss),
     operationAmountText: item.suggested_position_text,
@@ -60,7 +62,7 @@ function strategyEngineShadowBadge(item: LowBuyPriorityBoardItem): string {
 
 function laneIdentityText(item: LowBuyPriorityBoardItem): string {
   if (item.display_lane === "front_row_weighted") {
-    return "前排加权 · 模拟验证中";
+    return "前排加权 · 影子验证中";
   }
   if (item.display_lane === "front_row_only") {
     return "前排极精选 · 只观察，不参与买入排序";
@@ -138,6 +140,7 @@ export function candidateToCard(item: LowBuyCandidate): StockCardView {
     riskText: riskTierText(item.risk_tier),
     expectedText: undefined,
     actionText: item.buy_signal_text,
+    signalState: item.buy_signal_state,
     entryText: optionalPriceRange(item.entry_zone_low, item.entry_zone_high),
     stopText: optionalPrice(item.stop_loss),
     operationAmountText: item.suggested_position_text,

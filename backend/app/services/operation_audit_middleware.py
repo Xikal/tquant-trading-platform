@@ -20,7 +20,6 @@ _AUDITED_PREFIXES = (
     "/api/research",
     "/api/analyze",
     "/api/watchlist",
-    "/api/paper",
     "/api/agent",
     "/api/ml",
     "/api/strategies",

@@ -4,8 +4,6 @@ export const queryKeys = {
   monitorSnapshot: (priorityLimit: number) => ["monitor", "snapshot", priorityLimit] as const,
   holdings: ["holdings"] as const,
   priorityBoard: (strategy: string, limit: number) => ["playbook", "priority", strategy, limit] as const,
-  paper: ["paper"] as const,
-  paperWorkspace: ["paper", "workspace"] as const,
   settings: ["settings"] as const,
   settingsWorkspace: ["settings", "workspace"] as const,
   strategyTracking: (params: Record<string, unknown>) => ["strategy-tracking", params] as const,
@@ -21,8 +19,5 @@ export const queryKeys = {
   tradingExperienceJournal: (accountId?: number | null) => ["trading-experience", "journal", accountId] as const,
   tradingExperienceVolumeTags: (symbol?: string | null) => ["trading-experience", "volume-tags", symbol] as const,
   tradingExperienceRelativeStrength: ["trading-experience", "relative-strength"] as const,
-  tradingExperienceHoldingDiscipline: (accountId?: number | null) =>
-    ["trading-experience", "holding-discipline", accountId] as const,
   tradingExperienceLimitUp: ["trading-experience", "limit-up"] as const,
-  tradingExperienceTTrade: (accountId?: number | null) => ["trading-experience", "t-trade", accountId] as const,
 };

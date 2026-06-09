@@ -8,7 +8,6 @@ export function useSaveHoldingMutation(save: () => Promise<unknown>) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.holdings });
       void client.invalidateQueries({ queryKey: queryKeys.monitor });
-      void client.invalidateQueries({ queryKey: queryKeys.paper });
     },
   });
 }

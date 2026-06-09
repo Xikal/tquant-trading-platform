@@ -34,7 +34,6 @@ describe("AnalysisPage", () => {
         loading=""
         onRun={vi.fn()}
         onBatchRun={vi.fn()}
-        onOpenPaperOrder={vi.fn()}
       />,
     );
 
@@ -68,7 +67,6 @@ describe("AnalysisPage", () => {
         loading=""
         onRun={vi.fn()}
         onBatchRun={vi.fn()}
-        onOpenPaperOrder={vi.fn()}
       />,
     );
 

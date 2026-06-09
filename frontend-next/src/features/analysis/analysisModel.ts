@@ -189,25 +189,6 @@ export function aiLines(snapshot: AnalysisSnapshot | null): string[] {
   return [text(ai.summary, "")].concat(readArray<string>(ai.suggestions)).filter(Boolean).slice(0, 4);
 }
 
-export function paperOrderDraftSearch(snapshot: AnalysisSnapshot | null, form: AnalysisFormState): Record<string, string> {
-  const payload = buildAnalysisPayload(form);
-  const root = readRecord(snapshot?.response);
-  const suggestion = readRecord(root.suggestion);
-  const quote = quoteRecord(snapshot);
-  const instrument = readRecord(root.instrument);
-  return {
-    source: "analysis",
-    symbol: text(root.symbol ?? payload.symbol, payload.symbol),
-    name: text(instrument.name ?? quote.name, ""),
-    side: text(suggestion.side ?? suggestion.order_side ?? suggestion.trade_side, "buy") === "sell" ? "sell" : "buy",
-    order_type: text(suggestion.order_type, "limit") === "market" ? "market" : "limit",
-    quantity: String(lotQuantity(payload.available_position || payload.base_position)),
-    price: numberSearchValue(pickFirst(suggestion, ["limit_price", "suggested_price", "price"]) ?? pickFirst(quote, ["last_price", "latest_price"])),
-    strategy_key: text(suggestion.strategy_key ?? root.strategy_key ?? payload.prefer_strategy, ""),
-    reason: analysisReason(snapshot).slice(0, 80),
-  };
-}
-
 export function parseSymbols(value: string): string[] {
   return Array.from(new Set(value.split(/[\s,，;；]+/).map(normalizeSymbol).filter(Boolean))).slice(0, 20);
 }
@@ -254,16 +235,6 @@ function positiveNumber(value: number, fallback: number): number {
 
 function withDefaultTimeout(init: RequestJsonOptions, timeoutMs: number): RequestJsonOptions {
   return init.timeoutMs === undefined ? { ...init, timeoutMs } : init;
-}
-
-function lotQuantity(value: number): number {
-  const quantity = Math.floor(positiveNumber(value, 100) / 100) * 100;
-  return quantity > 0 ? quantity : 100;
-}
-
-function numberSearchValue(value: unknown): string {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? String(parsed) : "";
 }
 
 function settledValue<T>(result: PromiseSettledResult<T>): T | undefined {

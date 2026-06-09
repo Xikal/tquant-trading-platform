@@ -1,21 +1,15 @@
-import type { AuthUser } from "../../types";
 import type { MonitorPageProps } from "../monitor/MonitorPage";
-import type { PaperTradingPageProps } from "../paper/PaperTradingPage";
 import type { useAnalysisData } from "./useAnalysisData";
 import type { useMonitorData } from "./useMonitorData";
-import type { usePaperTrading } from "./usePaperTrading";
 import type { Page, StockCardView, WatchDraft } from "../workspace-shared/workspaceTypes";
-import { useTradingExperienceReadiness } from "../strategy-tracking/queries";
 
 interface UseWorkspacePagePropsParams {
   analysis: ReturnType<typeof useAnalysisData>;
   loading: string;
   monitor: ReturnType<typeof useMonitorData>;
-  paper: ReturnType<typeof usePaperTrading>;
   watchDraft: WatchDraft;
   setWatchDraft: (draft: WatchDraft) => void;
   editingWatchSymbol: string;
-  currentUser: AuthUser | null;
   onAddWatchlist: () => void;
   onEditWatchlist: (card: StockCardView) => void;
   onNavigatePage: (page: Page) => void;
@@ -30,11 +24,9 @@ export function useWorkspacePageProps({
   analysis,
   loading,
   monitor,
-  paper,
   watchDraft,
   setWatchDraft,
   editingWatchSymbol,
-  currentUser,
   onAddWatchlist,
   onEditWatchlist,
   onNavigatePage,
@@ -44,8 +36,6 @@ export function useWorkspacePageProps({
   onRunPriorityAi,
   onSelectStock,
 }: UseWorkspacePagePropsParams) {
-  const tradingExperienceReadiness = useTradingExperienceReadiness();
-  const tradingExperienceFlags = tradingExperienceReadiness.data?.flags ?? {};
   const monitorPageProps: MonitorPageProps = {
     priorityBoard: monitor.priorityBoard,
     marketBreadth: monitor.marketBreadth,
@@ -78,42 +68,7 @@ export function useWorkspacePageProps({
     onCancelEdit: onCancelWatchlistEdit,
   };
 
-  const paperPageProps: PaperTradingPageProps = {
-    account: paper.account,
-    positions: paper.positions,
-    orders: paper.orders,
-    trades: paper.trades,
-    stockPnl: paper.stockPnl,
-    stockPnlSummary: paper.stockPnlSummary,
-    performance: paper.performance,
-    sectorEtfT0Performance: paper.sectorEtfT0Performance,
-    strategyPerformance: paper.strategyPerformance,
-    marketPerformance: paper.marketPerformance,
-    tagPerformance: paper.tagPerformance,
-    tradeTags: paper.tradeTags,
-    riskEvents: paper.riskEvents,
-    autoTradingStatus: paper.autoTradingStatus,
-    autoTradingRuns: paper.autoTradingRuns,
-    ledgerRepairStatus: paper.ledgerRepairStatus,
-    performanceDashboard: paper.performanceDashboard,
-    canManageReconcile: currentUser?.roles.some((role) => {
-      const normalized = role.trim().toLowerCase();
-      return normalized === "admin" || normalized === "administrator";
-    }) ?? false,
-    draft: paper.draft,
-    setDraft: paper.setDraft,
-    loading,
-    onRefreshLedgerRepair: () => void paper.refreshLedgerRepairStatus(),
-    onApplyLedgerRepair: () => void paper.applyLedgerRepair(),
-    onSubmitOrder: paper.submitOrder,
-    onTogglePause: paper.togglePause,
-    onAddTradeTag: (tradeId, tag) => void paper.addTradeTag(tradeId, tag),
-    onDeleteTradeTag: (tradeId, tagId) => void paper.deleteTradeTag(tradeId, tagId),
-    tradingExperienceFlags,
-  };
-
   return {
     monitorPageProps,
-    paperPageProps,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDriftRows } from "./strategyTrackingModel";
+import { buildDriftRows, isBuySignalRecord } from "./strategyTrackingModel";
 
 describe("strategy tracking display model", () => {
   it("does not fabricate drift metrics when backend payload has no drift fields", () => {
@@ -25,5 +25,16 @@ describe("strategy tracking display model", () => {
       { label: "实盘信号响应延时", value: "420 ms", status: "响应正常", tone: "green", hasData: true },
       { label: "时序排序一致性", value: "99.1%", status: "一致性稳定", tone: "green", hasData: true },
     ]);
+  });
+
+  it("uses structured signal state instead of production decision for buy-like display", () => {
+    expect(isBuySignalRecord({
+      signal_state: "near_entry",
+      signal_text: "接近买点",
+      production_decision: "portfolio_candidate",
+      action: "ready_for_production",
+    })).toBe(false);
+    expect(isBuySignalRecord({ signal_state: "soft_buy_now", signal_text: "小仓试买" })).toBe(true);
+    expect(isBuySignalRecord({ signal_text: "确定可买" })).toBe(true);
   });
 });

@@ -32,41 +32,14 @@ def _monthly_drift_due_time() -> dt_time:
     return dt_time(hour=settings.evolution_drift_scheduler_hour, minute=settings.evolution_drift_due_minute)
 
 
-def _ledger_reconcile_due_time() -> dt_time:
-    settings = get_settings()
-    return dt_time(hour=settings.evolution_ledger_scheduler_hour, minute=settings.evolution_ledger_due_minute)
-
-
 def self_evolution_due(now: datetime) -> bool:
     settings = get_settings()
     return now.weekday() == settings.evolution_scheduler_weekday and now.time() >= _self_evolution_due_time()
 
 
 def enqueue_strategy_self_evolution_once(now: datetime | None = None) -> Any | None:
-    now = now or beijing_now()
-    if not self_evolution_due(now):
-        return None
-    week_key = f"{now.isocalendar().year}-W{now.isocalendar().week:02d}"
-    with SessionLocal() as db:
-        task = RuntimeTaskQueue(db).enqueue(
-            RuntimeTaskCreate(
-                task_type="strategy_self_evolution",
-                payload={
-                    "model_type": "xgboost",
-                    "source": "paper",
-                    "limit": 5000,
-                    "min_samples": 100,
-                    "warm_start": True,
-                    "max_validation_p_value": 0.05,
-                    "operator": "weekly-self-evolution",
-                },
-                priority=180,
-                idempotency_key=f"strategy_self_evolution:{week_key}",
-                max_attempts=2,
-            )
-        )
-        logger.info("策略自进化任务检查完成: week=%s task_id=%s status=%s", week_key, task.id, task.status)
-        return task
+    logger.debug("策略自进化依赖模拟盘样本，模拟盘功能已下线，跳过任务入队。")
+    return None
 
 
 def enqueue_monthly_drift_monitor_once(now: datetime | None = None) -> Any | None:
@@ -89,28 +62,6 @@ def enqueue_monthly_drift_monitor_once(now: datetime | None = None) -> Any | Non
         return task
 
 
-def enqueue_daily_ledger_reconcile_preview_once(now: datetime | None = None) -> Any | None:
-    now = now or beijing_now()
-    if now.weekday() >= 5 or now.time() < _ledger_reconcile_due_time():
-        return None
-    bucket = now.strftime("%Y%m%d")
-    with SessionLocal() as db:
-        task = RuntimeTaskQueue(db).enqueue(
-            RuntimeTaskCreate(
-                task_type="paper_ledger_reconcile_preview",
-                payload={
-                    "threshold": float(get_settings().evolution_ledger_gap_alert_threshold),
-                    "channel": "feishu",
-                },
-                priority=140,
-                idempotency_key=f"paper_ledger_reconcile_preview:{bucket}",
-                max_attempts=2,
-            )
-        )
-        logger.info("模拟盘账本预检任务检查完成: bucket=%s task_id=%s status=%s", bucket, task.id, task.status)
-        return task
-
-
 def start_strategy_evolution_scheduler() -> bool:
     global _scheduler
     settings = get_settings()
@@ -120,19 +71,6 @@ def start_strategy_evolution_scheduler() -> bool:
     if _scheduler is not None and _scheduler.running:
         return True
     scheduler = BackgroundScheduler(timezone=BEIJING_TZ)
-    scheduler.add_job(
-        enqueue_strategy_self_evolution_once,
-        CronTrigger(
-            day_of_week=settings.evolution_scheduler_weekday,
-            hour=settings.evolution_scheduler_hour,
-            minute=settings.evolution_scheduler_minute,
-            timezone=BEIJING_TZ,
-        ),
-        id="strategy_self_evolution_weekly",
-        replace_existing=True,
-        max_instances=1,
-        coalesce=True,
-    )
     scheduler.add_job(
         enqueue_monthly_drift_monitor_once,
         CronTrigger(
@@ -146,22 +84,9 @@ def start_strategy_evolution_scheduler() -> bool:
         max_instances=1,
         coalesce=True,
     )
-    scheduler.add_job(
-        enqueue_daily_ledger_reconcile_preview_once,
-        CronTrigger(
-            day_of_week="mon-fri",
-            hour=settings.evolution_ledger_scheduler_hour,
-            minute=settings.evolution_ledger_scheduler_minute,
-            timezone=BEIJING_TZ,
-        ),
-        id="paper_ledger_reconcile_preview_daily",
-        replace_existing=True,
-        max_instances=1,
-        coalesce=True,
-    )
     scheduler.start()
     _scheduler = scheduler
-    logger.info("APScheduler 策略自进化调度已启动")
+    logger.info("APScheduler ML 漂移监控调度已启动")
     return True
 
 

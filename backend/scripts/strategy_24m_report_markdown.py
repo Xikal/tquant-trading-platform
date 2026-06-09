@@ -249,7 +249,7 @@ def _smart_t_lines(report: dict[str, Any]) -> list[str]:
         "## SmartT 日线代理验证",
         "",
         f"- 状态：{smart['status']}",
-        "- 策略链路：`backend/app/services/paper/smart_t_backtest.py`，API `/api/paper/performance/smart-t-backtest`。",
+        "- 策略链路：历史 SmartT 研究模块；模拟盘运行时入口已下线，不再提供 `/api/paper/*` API。",
         f"- 信号数：{payload.get('signal_count', 0)}，洗盘加仓样本：{payload.get('washout_signal_count', 0)}。",
         f"- 胜率：{payload.get('success_rate_pct', 0)}%，平均净最大反弹：{payload.get('avg_net_max_return_pct', 0)}%。",
     ]
@@ -302,7 +302,7 @@ def _gap_lines(report: dict[str, Any]) -> list[str]:
     conclusion = report["production_observation_conclusion"]
     lines.extend([
         "",
-        "## 是否具备进入模拟盘/生产观察",
+        "## 是否具备进入影子观察/生产观察",
         "",
         f"- 完整 24m 验收：{conclusion['complete_24m_acceptance']}",
         f"- ETF T0 验收：{conclusion['etf_t0_acceptance']}",

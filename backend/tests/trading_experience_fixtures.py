@@ -17,6 +17,7 @@ from app.models.schema_defs.key_levels import KeyLevelCandidate, KeyLevelResult
 from app.models.base import Base
 from app.models.entities import DailyBarSnapshot, Instrument, MinuteBarSnapshot, PaperAccount, PaperPosition, PaperTrade
 from app.services.key_levels.materialization import write_cached_key_level
+from app.services.shared.feature_flags import clear_feature_flag_cache
 
 
 def user_stub():
@@ -24,6 +25,7 @@ def user_stub():
 
 
 def session_factory():
+    clear_feature_flag_cache()
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)

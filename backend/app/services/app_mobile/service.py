@@ -5,7 +5,6 @@ from app.services.app_mobile.bootstrap import AppMobileBootstrapMixin
 from app.services.app_mobile.home import AppMobileHomeMixin
 from app.services.app_mobile.instruments import AppMobileInstrumentMixin
 from app.services.app_mobile.low_buy import AppMobileLowBuyMixin
-from app.services.app_mobile.paper import AppMobilePaperMixin
 from app.services.app_mobile.watchlist import AppMobileWatchlistMixin
 from app.services.watchlist_signal_service import WatchlistSignalService
 
@@ -16,7 +15,6 @@ class AppMobileService(
     AppMobileInstrumentMixin,
     AppMobileWatchlistMixin,
     AppMobileLowBuyMixin,
-    AppMobilePaperMixin,
 ):
     def __init__(self) -> None:
         self.watchlist_signal_service = WatchlistSignalService()

@@ -150,7 +150,6 @@ def _known_bff_source(source: str) -> str:
         "monitor_review",
         "monitor_snapshot",
         "paired_hedge",
-        "paper_workspace",
         "performance",
         "positions",
         "presets",

@@ -26,12 +26,15 @@ from app.models.schema_defs.phase4 import (
 from app.services.analytics.report_index import read_analytics_report_index
 from app.services.realtime import redis_runtime_task_events_enabled, subscribe_runtime_task_events
 from app.services.tasks import RuntimeTaskQueue
+from app.services.tasks.registry import RUNTIME_TASK_REGISTRY
 
 router = APIRouter(prefix="/runtime-tasks", dependencies=[Depends(require_admin_auth)])
 
 
 @router.post("", response_model=RuntimeTaskOut)
 def enqueue_runtime_task(request: Request, payload: RuntimeTaskCreate, db: Session = Depends(get_db)) -> RuntimeTaskOut:
+    if payload.task_type not in RUNTIME_TASK_REGISTRY:
+        raise HTTPException(status_code=400, detail=f"未知任务类型: {payload.task_type}")
     task = RuntimeTaskQueue(db).enqueue(payload)
     audit_id = record_frontend_next_audit(
         db,

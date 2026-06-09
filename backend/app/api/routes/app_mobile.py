@@ -16,7 +16,6 @@ from app.models.schemas import (
     AppLowBuyFavoriteRequest,
     AppLowBuyResponse,
     AppMutationResponse,
-    AppPaperSummaryResponse,
     AppWatchlistDetailResponse,
     AppWatchlistResponse,
     AppWatchlistUpsertRequest,
@@ -25,7 +24,6 @@ from app.models.schemas import (
 )
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.app_mobile import AppMobileService
-from app.services.app_mobile.common import now_string
 from app.services.app_mobile.update_manifest import (
     ANDROID_APK_PATH,
     android_apk_size,
@@ -219,22 +217,6 @@ def app_low_buy_favorite(
     current_user: User = Depends(get_current_user),
 ):
     return app_mobile_service.favorite_low_buy(symbol, payload, db, user_id=current_user.id)
-
-
-@router.get("/paper/summary", response_model=AppPaperSummaryResponse)
-def app_paper_summary(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    payload = app_mobile_service.paper_summary(db, user_id=current_user.id)
-    payload.update(
-        {
-            "updated_at": now_string(),
-            "is_stale": False,
-            "warnings": [],
-        }
-    )
-    return payload
 
 
 @router.get("/settings/sector-exclusions", response_model=UserSectorExclusionsResponse)

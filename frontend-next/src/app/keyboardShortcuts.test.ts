@@ -22,20 +22,19 @@ describe("installWorkspaceShortcuts", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("routes Cmd/Ctrl+1~8 to the configured core pages", () => {
+  it("routes Cmd/Ctrl+number to the configured core pages", () => {
     const openCommandPalette = vi.fn();
     const navigate = vi.fn();
     cleanups.push(installWorkspaceShortcuts({ navigate, openCommandPalette }));
 
-    for (const route of nextRoutes.filter((item) => item.commandIndex)) {
+    const commandRoutes = nextRoutes.filter((item) => item.commandIndex);
+    for (const route of commandRoutes) {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: String(route.commandIndex), ctrlKey: true }));
     }
 
-    expect(navigate).toHaveBeenCalledTimes(8);
+    expect(navigate).toHaveBeenCalledTimes(commandRoutes.length);
     expect(navigate.mock.calls.map(([options]) => options)).toEqual(
-      nextRoutes
-        .filter((item) => item.commandIndex)
-        .map((route) => ({ to: route.path })),
+      commandRoutes.map((route) => ({ to: route.path })),
     );
     expect(openCommandPalette).not.toHaveBeenCalled();
   });

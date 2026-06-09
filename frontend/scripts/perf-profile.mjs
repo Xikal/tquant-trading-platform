@@ -187,28 +187,6 @@ const trackingItems = priorityItems.slice(0, 160).map((item, index) => ({
   future_leak_check: "passed",
 }));
 
-const paperTrades = priorityItems.slice(0, 150).map((item, index) => ({
-  id: index + 1,
-  order_id: index + 1,
-  account_id: 1,
-  symbol: item.symbol,
-  side: index % 3 === 0 ? "sell" : "buy",
-  price: item.latest_price,
-  quantity: 100 + (index % 8) * 100,
-  gross_amount: item.latest_price * (100 + (index % 8) * 100),
-  commission: 1,
-  stamp_tax: index % 3 === 0 ? 1 : 0,
-  transfer_fee: 0,
-  net_amount: item.latest_price * (100 + (index % 8) * 100),
-  strategy_key: "first_board",
-  entry_reason: "回踩承接确认",
-  entry_reason_code: "support",
-  exit_reason: "冲高兑现",
-  exit_reason_code: "take_profit",
-  commission_warning: "",
-  trade_time: now,
-}));
-
 const equityPoints = Array.from({ length: 1800 }, (_, index) => {
   const nav = 1 + index * 0.0009 + Math.sin(index / 13) * 0.018;
   return {
@@ -363,42 +341,6 @@ function strategyTrackingSnapshot() {
     production_writeable: list.production_writeable,
     read_path: list.read_path,
     notes: list.notes,
-  };
-}
-
-function paperWorkspace() {
-  return {
-    api_version: "v1",
-    schema_version: "perf",
-    generated_at: now,
-    account: {
-      id: 1,
-      name: "Perf 模拟盘",
-      initial_cash: 100000,
-      cash_available: 90000,
-      frozen_cash: 0,
-      market_value: 12000,
-      total_assets: 102000,
-      realized_pnl: 1000,
-      unrealized_pnl: 1000,
-      total_return_pct: 2,
-      max_drawdown_pct: -1,
-      status: "active",
-      today_return_pct: 0.3,
-    },
-    positions: [],
-    orders: [],
-    trades: paperTrades,
-    stock_pnl: { items: [], summary: { item_count: 0, account_total_pnl: 2000, stock_total_pnl: 2000, realized_pnl: 1000, unrealized_pnl: 1000, reconciliation_gap: 0 } },
-    performance: { total_return_pct: 2, max_drawdown_pct: -1, win_rate_pct: 55, net_win_rate_pct: 53, avg_trade_return_pct: 0.4, avg_win_pct: 1.1, avg_loss_pct: -0.6, profit_factor: 1.4, stop_loss_rate_pct: 2, total_trades: paperTrades.length, avg_hold_days: 2, win_loss_ratio: 1.3 },
-    sector_etf_t0_performance: null,
-    strategy_performance: [],
-    market_performance: [],
-    tag_performance: [],
-    risk_events: [],
-    auto_trading_status: { running: false, engine_running: false, trading_time: true, dry_run: true, account_status: "active", interval_seconds: 60, last_cycle_summary: "perf", total_cycles: 0, total_executed: 0, total_errors: 0 },
-    auto_trading_runs: [],
-    partial_errors: [],
   };
 }
 
@@ -584,20 +526,6 @@ async function installRoutes(page) {
     if (path === "/strategy-tracking/items") return response(strategyTrackingList());
     if (path === "/strategy-tracking/summary") return response(strategyTrackingList().summary);
     if (path === "/strategy-tracking/performance") return response([]);
-    if (path === "/bff/v1/workspace/paper") return response(paperWorkspace());
-    if (path === "/paper/trades") return response({ trades: paperTrades });
-    if (path === "/paper/trades/tags") return response({ items: {} });
-    if (path.startsWith("/paper/trades/") && path.endsWith("/tags")) return response([]);
-    if (path === "/paper/orders") return response([]);
-    if (path === "/paper/positions") return response({ positions: [], total_market_value: 0, total_unrealized_pnl: 0 });
-    if (path === "/paper/positions/refresh") return response({ positions: [], total_market_value: 0, total_unrealized_pnl: 0 });
-    if (path === "/paper/account") return response(paperWorkspace().account);
-    if (path === "/paper/performance") return response(paperWorkspace().performance);
-    if (path === "/paper/performance/stock-pnl") return response(paperWorkspace().stock_pnl);
-    if (path === "/paper/performance/dashboard") return response({ account: {}, equity_curve: [], win_rate_trend: [], strategy_trend: [], market_perf_heatmap: [], strategy_market_matrix: [], strategy_correlation: { strategies: [], matrix: [], rows: [], notes: [] }, today_report: null, review_reports: [], updated_at: now });
-    if (path === "/paper/performance/sector-etf-t0") return response(null);
-    if (path.startsWith("/paper/performance/by-") || path === "/paper/risk/events" || path === "/paper/auto-trading/runs") return response([]);
-    if (path === "/paper/auto-trading/status") return response(paperWorkspace().auto_trading_status);
     if (path === "/backtests") return response(backtestList());
     if (path === "/backtests/optimize") return response(backtestOptimizationList());
     if (path === "/backtests/optimize/1") return response(backtestOptimizationList().items[0]);
@@ -699,12 +627,6 @@ async function scenario(page, path, name, locatorText, fromPath = "/monitor") {
   }).catch(() => {});
   if (name === "strategy_tracking_table_scroll") {
     await page.waitForSelector("text=性能样本1", { timeout: 10_000 }).catch(() => {});
-  } else if (name === "paper_trades_table_scroll") {
-    await page.getByText("成交记录").click({ force: true }).catch(() => {});
-    await page.waitForSelector("text=510300", { timeout: 10_000 }).catch(() => {});
-  } else if (name === "backtest_dashboard_dense_chart") {
-    await page.waitForSelector("text=性能样本回测", { timeout: 10_000 }).catch(() => {});
-    await page.waitForFunction(() => (window.__TQUANT_FRONTEND_PERF__?.workerTasks ?? []).some((item) => item.kind === "chartDownsample"), null, { timeout: 5_000 }).catch(() => {});
   } else if (name === "analysis_workspace_entry") {
     await page.waitForSelector("text=智能分析", { timeout: 10_000 }).catch(() => {});
   }
@@ -844,8 +766,6 @@ await installRoutes(page);
 const results = [];
 results.push(await scenario(page, "/monitor", "monitor_refresh_virtual_cards", ".panel", "/analysis"));
 results.push(await scenario(page, "/strategy-tracking", "strategy_tracking_table_scroll", ".ant-table-body"));
-results.push(await scenario(page, "/paper", "paper_trades_table_scroll", ".ant-table-body"));
-results.push(await scenario(page, "/backtest", "backtest_dashboard_dense_chart", ".ant-table-body"));
 results.push(await scenario(page, "/analysis", "analysis_workspace_entry", ".analysis-panel"));
 
 await browser.close();

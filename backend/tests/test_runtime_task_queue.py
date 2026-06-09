@@ -292,7 +292,7 @@ def test_runtime_task_queue_observability_summary_workers_failures_and_artifacts
         worker_id="runtime-test",
         now=datetime.utcnow(),
     )
-    for component in ("runtime-scheduler", "analytics-worker", "backtest-worker"):
+    for component in ("runtime-scheduler", "analytics-worker"):
         record_platform_component_heartbeat(
             db,
             component=component,
@@ -325,7 +325,7 @@ def test_runtime_task_queue_observability_summary_workers_failures_and_artifacts
     assert summary.failed >= 1
     assert any(item.task_type == "analytics_export_daily_bars" for item in summary.task_type_counts)
     components = {item.component for item in workers.items}
-    assert components >= {"runtime-worker", "runtime-scheduler", "analytics-worker", "backtest-worker"}
+    assert components >= {"runtime-worker", "runtime-scheduler", "analytics-worker"}
     runtime_worker = next(item for item in workers.items if item.component == "runtime-worker")
     assert runtime_worker.worker_id == "runtime-test"
     assert runtime_worker.running_task_count >= 1

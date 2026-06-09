@@ -12,7 +12,6 @@ Components:
   web               FastAPI/Gunicorn-compatible local Web process
   runtime-worker    RuntimeTask worker for refresh/materialization jobs
   analytics-worker  Analytics RuntimeTask worker with DuckDB/Parquet dependency check
-  backtest-worker   On-demand backtest DB worker
   scheduler         Runtime scheduler process
 
 This is a local process entrypoint. Production uses docker-compose.mysql.yml
@@ -75,17 +74,6 @@ case "$component" in
     export DATABASE_URL="${DATABASE_URL:-sqlite:///backend/data/t_quant.db}"
     export PYTHONPATH="${PYTHONPATH:-backend}"
     exec backend/.venv/bin/python backend/scripts/analytics_worker.py "$@"
-    ;;
-  backtest-worker)
-    command_text='DATABASE_URL=${DATABASE_URL:-sqlite:///backend/data/t_quant.db} PYTHONPATH=backend backend/.venv/bin/python scripts/backtest_worker.py'
-    if [[ "$PRINT_COMMAND" == "1" ]]; then
-      print_or_run "$command_text"
-      exit 0
-    fi
-    cd "$ROOT_DIR"
-    export DATABASE_URL="${DATABASE_URL:-sqlite:///backend/data/t_quant.db}"
-    export PYTHONPATH="${PYTHONPATH:-backend}"
-    exec backend/.venv/bin/python scripts/backtest_worker.py "$@"
     ;;
   scheduler)
     command_text='cd backend && DATABASE_URL=${DATABASE_URL:-sqlite:///./data/t_quant.db} RUNTIME_BACKGROUND_ROLE=${RUNTIME_BACKGROUND_ROLE:-scheduler} RUNTIME_BACKGROUND_JOBS_ENABLED=${RUNTIME_BACKGROUND_JOBS_ENABLED:-true} PYTHONPATH=. .venv/bin/python -m app.workers.runtime_scheduler'

@@ -45,7 +45,6 @@ def test_platform_components_print_independent_entrypoints() -> None:
         "runtime-worker",
         "scheduler",
         "analytics-worker",
-        "backtest-worker",
     )}
 
     assert "uvicorn app.main:app" in commands["web"]
@@ -55,7 +54,15 @@ def test_platform_components_print_independent_entrypoints() -> None:
     assert "RUNTIME_BACKGROUND_ROLE=${RUNTIME_BACKGROUND_ROLE:-scheduler}" in commands["scheduler"]
     assert "RUNTIME_BACKGROUND_JOBS_ENABLED=${RUNTIME_BACKGROUND_JOBS_ENABLED:-true}" in commands["scheduler"]
     assert "backend/scripts/analytics_worker.py" in commands["analytics-worker"]
-    assert "scripts/backtest_worker.py" in commands["backtest-worker"]
+    removed = subprocess.run(
+        ["bash", str(ROOT_DIR / "scripts/run_platform_component.sh"), "backtest-worker", "--print-command"],
+        cwd=ROOT_DIR,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert removed.returncode == 2
+    assert "unknown component: backtest-worker" in removed.stderr
 
 
 def test_mysql_compose_keeps_web_light_and_workers_independent() -> None:
@@ -73,9 +80,9 @@ def test_mysql_compose_keeps_web_light_and_workers_independent() -> None:
     assert 'command: ["python", "-m", "app.workers.runtime_scheduler"]' in compose
     assert "RUNTIME_BACKGROUND_ROLE: scheduler" in compose
     assert "RUNTIME_BACKGROUND_JOBS_ENABLED: ${RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED:-true}" in compose
-    assert "container_name: tquant-backtest-worker-mysql" in compose
-    assert 'profiles: ["backtest"]' in compose
-    assert 'command: ["python", "-m", "app.workers.backtest_queue_worker"]' in compose
+    assert "container_name: tquant-backtest-worker-mysql" not in compose
+    assert 'profiles: ["backtest"]' not in compose
+    assert 'command: ["python", "-m", "app.workers.backtest_queue_worker"]' not in compose
     assert "container_name: tquant-analytics-worker-mysql" in compose
     assert 'command: ["python", "/app/backend/scripts/analytics_worker.py"' in compose
     assert "INSTALL_ANALYTICS: \"1\"" in compose
@@ -87,13 +94,12 @@ def test_runtime_analytics_and_backtest_claim_scopes_are_bounded() -> None:
     analytics_worker = read_repo_file("backend/scripts/analytics_worker.py")
     analytics_registry = read_repo_file("backend/app/services/tasks/registry.py")
     analytics_handlers = read_repo_file("backend/app/services/tasks/analytics_handlers.py")
-    backtest_worker = read_repo_file("backend/app/workers/backtest_queue_worker.py")
 
     assert "RUNTIME_WORKER_TASK_TYPES" in runtime_worker
     assert "*HEAVY_RESEARCH_TASK_TYPES" in runtime_worker
     assert '"low_buy_execution_backtest"' in heavy_research_tasks
     assert '"analysis_batch"' in heavy_research_tasks
-    assert '"paper_smart_t_backtest"' in heavy_research_tasks
+    assert '"paper_smart_t_backtest"' not in heavy_research_tasks
     assert "queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_TASK_TYPES)" in runtime_worker
     assert "analytics_task_registry()" in analytics_worker
     assert "RuntimeTaskWorker" in analytics_worker
@@ -106,9 +112,7 @@ def test_runtime_analytics_and_backtest_claim_scopes_are_bounded() -> None:
         "data_repair_run",
     ):
         assert task_type in analytics_handlers
-    assert "BacktestWorker" in backtest_worker
-    assert "BacktestResearchWorker" in backtest_worker
-    assert "run_once" in backtest_worker
+    assert "backtest_research_worker" not in read_repo_file("backend/app/runtime/background_jobs.py")
 
 
 def test_runtime_and_analytics_workers_claim_only_their_task_types(monkeypatch) -> None:
@@ -137,8 +141,9 @@ def test_deploy_and_quick_verify_wait_for_independent_workers() -> None:
         assert "tquant-app-mysql" in script
         assert "tquant-runtime-scheduler-mysql" in script
         assert "tquant-runtime-worker-mysql" in script
-        assert "DEPLOY_WITH_BACKTEST_WORKER" in script
-        assert "backtest_worker:skipped_on_demand" in script
+        assert "DEPLOY_WITH_BACKTEST_WORKER" not in script
+        assert "backtest_worker:skipped_on_demand" not in script
+        assert "tquant-backtest-worker-mysql" in script
         assert "tquant-analytics-worker-mysql" in script
         assert "analytics_worker_readyz:ok" in script
         assert "DEPLOY_WITH_ANALYTICS_WORKER" in script
@@ -172,11 +177,14 @@ def test_runbooks_document_independent_health_and_rollback_commands() -> None:
         assert "runtime-worker" in text
         assert "runtime-scheduler" in text
         assert "analytics-worker" in text
-        assert "backtest-worker" in text
+        assert "docker compose --profile backtest" not in text
+        assert "scripts/run_platform_component.sh backtest-worker" not in text
+        assert "DEPLOY_WITH_BACKTEST_WORKER" not in text
+        assert "scripts/backtest_worker.py" not in text
+    assert "tquant-backtest-worker-mysql" in production
     assert "Web does not recompute 24-month reports" in topology
     assert "Restart runtime worker" in topology
     assert "Restart scheduler" in topology
     assert "Restart analytics worker" in topology
-    assert "Restart backtest worker" in topology
     assert "scripts/run_platform_component.sh analytics-worker --once" in worker
     assert "`portfolio_backtest_metrics` remains the final portfolio fact source" in worker

@@ -26,14 +26,11 @@ EXPECTED_AGENT_OS_TOOLS = {
     "get_priority_board",
     "analyze_stock",
     "get_daily_report",
-    "get_paper_portfolio",
-    "recommend_orders",
     "send_test_notification",
     "send_signal_notification",
     "scan_priority_board_notifications",
     "backtest_strategy",
     "compare_strategies",
-    "create_paper_order",
     "get_market_sentiment",
     "get_sector_heatmap",
     "get_position_t_signal",
@@ -83,8 +80,9 @@ def test_agent_os_tool_registry_acceptance_contract() -> None:
 
     missing = EXPECTED_AGENT_OS_TOOLS - set(tools)
     assert not missing
-    assert tools["create_paper_order"].permission == "write"
-    assert tools["recommend_orders"].permission == "write"
+    assert "create_paper_order" not in tools
+    assert "recommend_orders" not in tools
+    assert "get_paper_portfolio" not in tools
     assert tools["send_signal_notification"].permission == "notify"
     assert tools["scan_priority_board_notifications"].permission == "notify"
     assert tools["get_comprehensive_analysis"].permission == "read"
@@ -98,10 +96,12 @@ def test_agent_mcp_lists_write_tools_but_policy_blocks_execution(monkeypatch: py
     get_settings.cache_clear()
     try:
         tool_names = {item["name"] for item in server._mcp_tools()}
-        assert "recommend_orders" in tool_names
+        assert "recommend_orders" not in tool_names
+        assert "get_paper_portfolio" not in tool_names
+        assert "create_paper_order" not in tool_names
         assert "send_test_notification" in tool_names
 
-        payload = server._legacy_call_tool("recommend_orders", {"limit": 3})
+        payload = server._legacy_call_tool("send_test_notification", {"channel": "feishu"})
 
         assert payload["ok"] is False
         assert payload["error"]["code"] == "TOOL_PERMISSION_DENIED"
@@ -120,7 +120,7 @@ def test_provider_status_makes_disabled_capabilities_explicit(agent_client: Test
     assert body["notify_tools_enabled"] is False
     assert body["audit_enabled"] is True
     assert "get_comprehensive_analysis" in body["enabled_tools"]
-    assert "create_paper_order" in body["disabled_tools"]
+    assert "create_paper_order" not in body["enabled_tools"] + body["disabled_tools"]
     assert "send_signal_notification" in body["disabled_tools"]
 
 
@@ -338,13 +338,6 @@ def test_hermes_orchestration_contract_and_result_validation() -> None:
                         "executed": True,
                         "tool_calls": [
                             {"tool_name": "get_comprehensive_analysis", "ok": True, "error_code": None},
-                            {
-                                "tool_name": "recommend_orders",
-                                "ok": False,
-                                "error_code": "TOOL_PERMISSION_DENIED",
-                                "permission_denied": True,
-                            },
-                            {"tool_name": "get_paper_portfolio", "ok": True, "error_code": None},
                         ],
                     }
                 ],

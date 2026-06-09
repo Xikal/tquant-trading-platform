@@ -7,7 +7,6 @@ from app.core.config import get_settings
 from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.core.rate_limit import require_auth_login_rate_limit, require_auth_register_rate_limit
-from app.core.user_permissions import paper_trade_enabled
 from app.models.entities import User
 from app.models.schemas import (
     AuthLoginRequest,
@@ -15,7 +14,6 @@ from app.models.schemas import (
     AuthMeResponse,
     AuthMfaSetupResponse,
     AuthMfaUpdateRequest,
-    PaperAccessResponse,
     AuthRefreshRequest,
     AuthRegisterRequest,
     AuthTokenResponse,
@@ -129,15 +127,6 @@ def logout(
 @router.get("/me", response_model=AuthMeResponse)
 def me(current_user: User = Depends(get_current_user)):
     return AuthMeResponse(user=auth_service.to_user_out(current_user))
-
-
-@router.get("/paper-access", response_model=PaperAccessResponse)
-def paper_access(current_user: User = Depends(get_current_user)):
-    can_access = paper_trade_enabled(current_user.can_paper_trade)
-    return PaperAccessResponse(
-        can_paper_trade=can_access,
-        reason="" if can_access else "账号未开通模拟盘权限，请联系管理员加入白名单",
-    )
 
 
 @router.post("/mfa/totp/setup", response_model=AuthMfaSetupResponse)

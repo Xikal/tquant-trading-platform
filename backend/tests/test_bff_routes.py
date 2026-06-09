@@ -10,11 +10,9 @@ from fastapi.testclient import TestClient
 from app.api.routes import bff
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.core.paper_auth import require_paper_trading
 from app.models.schema_defs.bff import (
     BFF_SCHEMA_VERSION,
     MonitorWorkspaceBffResponse,
-    PaperWorkspaceBffResponse,
     SettingsWorkspaceBffResponse,
     StrategyWorkspaceBffResponse,
 )
@@ -46,40 +44,25 @@ def test_bff_manifest_exposes_versioned_frontend_contract() -> None:
     assert "strategy" in payload["modules"]
     assert "settings" in payload["modules"]
     assert payload["workspaces"]["strategy"]["schema_version"] == BFF_SCHEMA_VERSION
-    assert payload["workspaces"]["paper"]["path"] == "/api/bff/v1/workspace/paper"
+    assert "paper" not in payload["workspaces"]
 
 
-def test_paper_workspace_uses_bff_contract(monkeypatch) -> None:
+def test_paper_workspace_route_is_removed() -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")
     user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
     app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[require_paper_trading] = lambda: user
-    app.dependency_overrides[get_db] = lambda: object()
-
-    def fake_builder(*args, **kwargs):
-        return PaperWorkspaceBffResponse(
-            generated_at="2026-05-20 09:30:00",
-            auto_trading_status={"running": False},
-        )
-
-    monkeypatch.setattr(bff, "build_paper_workspace", fake_builder)
 
     response = TestClient(app).get("/api/bff/v1/workspace/paper")
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["api_version"] == "v1"
-    assert payload["schema_version"] == BFF_SCHEMA_VERSION
-    assert payload["auto_trading_status"]["running"] is False
+    assert response.status_code == 404
 
 
-def test_paper_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
+def test_strategy_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")
     user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
     app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[require_paper_trading] = lambda: user
     app.dependency_overrides[get_db] = lambda: object()
     monkeypatch.setattr(
         bff,
@@ -92,16 +75,16 @@ def test_paper_workspace_timeout_returns_partial_payload(monkeypatch) -> None:
 
     def slow_builder(*args, **kwargs):
         time.sleep(0.05)
-        return PaperWorkspaceBffResponse(generated_at="2026-05-20 09:30:00")
+        return StrategyWorkspaceBffResponse(generated_at="2026-05-20 09:30:00")
 
-    monkeypatch.setattr(bff, "build_paper_workspace", slow_builder)
+    monkeypatch.setattr(bff, "build_strategy_workspace", slow_builder)
 
-    response = TestClient(app).get("/api/bff/v1/workspace/paper")
+    response = TestClient(app).get("/api/bff/v1/workspace/strategy")
 
     assert response.status_code == 200
     payload = response.json()
     error = payload["partial_errors"][0]
-    assert error["source"] == "paper_workspace"
+    assert error["source"] == "strategy_workspace"
     assert error["reason"] == "timeout"
     assert error["timeout_ms"] == 10
     assert error["status_code"] is None
@@ -121,7 +104,6 @@ def test_monitor_workspace_builder_errors_return_partial_payload(monkeypatch) ->
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -174,7 +156,6 @@ def test_bff_partial_errors_are_exposed_by_source_and_reason_metrics(monkeypatch
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -220,7 +201,6 @@ def test_monitor_workspace_request_path_uses_cached_snapshot_when_sources_unreac
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=True,
             bff_monitor_cache_ttl_seconds=30,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -280,7 +260,6 @@ def test_monitor_workspace_uses_fast_breadth_without_workspace_timeout(monkeypat
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -343,7 +322,6 @@ def test_monitor_workspace_view_action_projects_action_payload(monkeypatch) -> N
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -447,7 +425,6 @@ def test_monitor_workspace_falls_back_when_remote_monitor_adapter_returns_none(m
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -508,7 +485,6 @@ def test_monitor_workspace_view_action_skips_market_context_sources(monkeypatch)
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -574,7 +550,6 @@ def test_monitor_workspace_view_market_keeps_priority_alias_without_watchlist(mo
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),
@@ -612,84 +587,56 @@ def test_monitor_workspace_view_market_keeps_priority_alias_without_watchlist(mo
     assert payload["market_pulse"]["pulse_text"] == "市场可观察"
 
 
-def test_paper_workspace_can_use_remote_adapter(monkeypatch) -> None:
+def test_bff_hop_header_forces_strategy_local_fallback(monkeypatch) -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")
     user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
     app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[require_paper_trading] = lambda: user
-    app.dependency_overrides[get_db] = lambda: object()
-
-    def fake_remote(*args, **kwargs):
-        return PaperWorkspaceBffResponse(
-            generated_at="2026-05-20 09:31:00",
-            auto_trading_status={"source": "remote"},
-        )
-
-    def forbidden_local(*args, **kwargs):
-        raise AssertionError("local fallback should not run when remote adapter succeeds")
-
-    monkeypatch.setattr(bff, "load_remote_paper_workspace", fake_remote)
-    monkeypatch.setattr(bff, "build_paper_workspace", forbidden_local)
-
-    response = TestClient(app).get("/api/bff/v1/workspace/paper", headers={"Authorization": "Bearer test"})
-
-    assert response.status_code == 200
-    assert response.json()["auto_trading_status"]["source"] == "remote"
-
-
-def test_bff_hop_header_forces_local_fallback(monkeypatch) -> None:
-    app = FastAPI()
-    app.include_router(bff.router, prefix="/api")
-    user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
-    app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[require_paper_trading] = lambda: user
     app.dependency_overrides[get_db] = lambda: object()
 
     def forbidden_remote(*args, **kwargs):
         raise AssertionError("remote adapter should not run on a BFF hop request")
 
     def fake_builder(*args, **kwargs):
-        return PaperWorkspaceBffResponse(
+        return StrategyWorkspaceBffResponse(
             generated_at="2026-05-20 09:32:00",
-            auto_trading_status={"source": "local"},
+            tracking_notes=["local"],
         )
 
-    monkeypatch.setattr(bff, "load_remote_paper_workspace", forbidden_remote)
-    monkeypatch.setattr(bff, "build_paper_workspace", fake_builder)
+    monkeypatch.setattr(bff, "load_remote_strategy_workspace", forbidden_remote)
+    monkeypatch.setattr(bff, "build_strategy_workspace", fake_builder)
     monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token="internal-secret"))
 
     response = TestClient(app).get(
-        "/api/bff/v1/workspace/paper",
+        "/api/bff/v1/workspace/strategy",
         headers={"X-TQuant-Bff-Hop": "1", "X-Internal-Service-Token": "internal-secret"},
     )
 
     assert response.status_code == 200
-    assert response.json()["auto_trading_status"]["source"] == "local"
+    assert response.json()["tracking_notes"] == ["local"]
 
 
-def test_forged_bff_hop_header_does_not_skip_remote(monkeypatch) -> None:
+def test_forged_bff_hop_header_does_not_skip_strategy_remote(monkeypatch) -> None:
     app = FastAPI()
     app.include_router(bff.router, prefix="/api")
     user = SimpleNamespace(id=1, username="tester", is_active=True, roles="")
     app.dependency_overrides[get_current_user] = lambda: user
-    app.dependency_overrides[require_paper_trading] = lambda: user
     app.dependency_overrides[get_db] = lambda: object()
 
     monkeypatch.setattr(bff, "get_settings", lambda: SimpleNamespace(tquant_internal_service_token="internal-secret"))
     monkeypatch.setattr(
         bff,
-        "load_remote_paper_workspace",
-        lambda *args, **kwargs: PaperWorkspaceBffResponse(
+        "load_remote_strategy_workspace",
+        lambda *args, **kwargs: StrategyWorkspaceBffResponse(
             generated_at="2026-05-20 09:33:00",
-            auto_trading_status={"source": "remote"},
+            tracking_notes=["remote"],
         ),
     )
 
-    response = TestClient(app).get("/api/bff/v1/workspace/paper", headers={"X-TQuant-Bff-Hop": "1"})
+    response = TestClient(app).get("/api/bff/v1/workspace/strategy", headers={"X-TQuant-Bff-Hop": "1"})
 
     assert response.status_code == 200
-    assert response.json()["auto_trading_status"]["source"] == "remote"
+    assert response.json()["tracking_notes"] == ["remote"]
 
 
 def test_strategy_workspace_uses_bff_contract(monkeypatch) -> None:
@@ -732,17 +679,17 @@ def test_remote_adapter_schema_mismatch_falls_back(monkeypatch, caplog) -> None:
     monkeypatch.setattr(
         remote_adapters,
         "get_settings",
-        lambda: SimpleNamespace(tquant_trade_service_url="http://trade-service"),
+        lambda: SimpleNamespace(tquant_strategy_service_url="http://strategy-service"),
     )
     monkeypatch.setattr(remote_adapters, "remote_bff_get", lambda *args, **kwargs: {"api_version": "v1", "schema_version": "v99"})
     opened: list[str] = []
     monkeypatch.setattr(remote_adapters, "open_remote_bff_circuit", lambda base_url: opened.append(base_url))
 
     with caplog.at_level(logging.WARNING):
-        result = remote_adapters.load_remote_paper_workspace(order_limit=1, trade_limit=1, run_limit=1)
+        result = remote_adapters.load_remote_strategy_workspace(run_limit=1)
 
     assert result is None
-    assert opened == ["http://trade-service"]
+    assert opened == ["http://strategy-service"]
     assert "schema_version=v99" in caplog.text
     assert "missing_fields" in caplog.text
 
@@ -751,7 +698,7 @@ def test_remote_adapter_remote_failure_falls_back(monkeypatch) -> None:
     monkeypatch.setattr(
         remote_adapters,
         "get_settings",
-        lambda: SimpleNamespace(tquant_trade_service_url="http://trade-service"),
+        lambda: SimpleNamespace(tquant_strategy_service_url="http://strategy-service"),
     )
 
     def fake_remote(*args, **kwargs):  # noqa: ANN002, ANN003
@@ -759,7 +706,7 @@ def test_remote_adapter_remote_failure_falls_back(monkeypatch) -> None:
 
     monkeypatch.setattr(remote_adapters, "remote_bff_get", fake_remote)
 
-    assert remote_adapters.load_remote_paper_workspace(order_limit=1, trade_limit=1, run_limit=1) is None
+    assert remote_adapters.load_remote_strategy_workspace(run_limit=1) is None
 
 
 def test_remote_client_does_not_forward_credentials_to_untrusted_http(monkeypatch) -> None:
@@ -790,7 +737,7 @@ def test_remote_client_does_not_forward_credentials_to_untrusted_http(monkeypatc
 
     payload = remote_client.remote_bff_get(
         "http://remote-bff.example.invalid:18090",
-        "/api/bff/v1/workspace/paper",
+        "/api/bff/v1/workspace/strategy",
         forward_headers={
             "Authorization": "Bearer user-token",
             "Cookie": "refresh=secret",
@@ -830,7 +777,7 @@ def test_remote_client_forwards_request_id_to_trusted_target(monkeypatch) -> Non
 
     payload = remote_client.remote_bff_get(
         "http://trade-service",
-        "/api/bff/v1/workspace/paper",
+        "/api/bff/v1/workspace/strategy",
         forward_headers={
             "Authorization": "Bearer user-token",
             "X-Request-ID": "req-test-123",
@@ -869,9 +816,9 @@ def test_remote_client_opens_circuit_after_failure(monkeypatch) -> None:
     monkeypatch.setattr(remote_client.requests, "get", failing_get)
 
     with pytest.raises(remote_client.RemoteBffError):
-        remote_client.remote_bff_get("http://trade-service", "/api/bff/v1/workspace/paper")
+        remote_client.remote_bff_get("http://trade-service", "/api/bff/v1/workspace/strategy")
     with pytest.raises(remote_client.RemoteBffError):
-        remote_client.remote_bff_get("http://trade-service", "/api/bff/v1/workspace/paper")
+        remote_client.remote_bff_get("http://trade-service", "/api/bff/v1/workspace/strategy")
 
     assert calls["count"] == 1
     metrics = remote_client.remote_bff_metrics_snapshot()
@@ -889,7 +836,6 @@ def test_bff_workspace_cache_reuses_valid_payload(monkeypatch) -> None:
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=True,
             bff_monitor_cache_ttl_seconds=5,
-            bff_paper_cache_ttl_seconds=3,
             bff_strategy_cache_ttl_seconds=30,
             bff_settings_cache_ttl_seconds=30,
         ),
@@ -899,28 +845,28 @@ def test_bff_workspace_cache_reuses_valid_payload(monkeypatch) -> None:
 
     def loader():
         calls["count"] += 1
-        return PaperWorkspaceBffResponse(
+        return StrategyWorkspaceBffResponse(
             generated_at="2026-05-22 09:30:00",
-            auto_trading_status={"source": "local"},
+            tracking_notes=["local"],
         )
 
     first = workspace_cache.load_cached_workspace(
-        workspace="paper",
-        model=PaperWorkspaceBffResponse,
+        workspace="strategy",
+        model=StrategyWorkspaceBffResponse,
         user_id=7,
-        params={"order_limit": 5},
+        params={"run_limit": 5},
         loader=loader,
     )
     second = workspace_cache.load_cached_workspace(
-        workspace="paper",
-        model=PaperWorkspaceBffResponse,
+        workspace="strategy",
+        model=StrategyWorkspaceBffResponse,
         user_id=7,
-        params={"order_limit": 5},
+        params={"run_limit": 5},
         loader=loader,
     )
 
     assert calls["count"] == 1
-    assert first.auto_trading_status == second.auto_trading_status == {"source": "local"}
+    assert first.tracking_notes == second.tracking_notes == ["local"]
     metrics = workspace_cache.bff_workspace_cache_metrics_snapshot()
     assert metrics["reads"] >= 2
     assert metrics["hits"] >= 1

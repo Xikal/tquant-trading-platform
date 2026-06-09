@@ -6,7 +6,7 @@ import { useWorkspaceStore } from "../../stores/workspaceStore";
 import { pageFromPath } from "../../features/trading-workspace/workspaceRoutes";
 
 describe("webRoutes", () => {
-  it.each(["/monitor", "/monitor/market", "/paper", "/strategy-tracking", "/data"])("keeps %s mounted as a real route entry", (path) => {
+  it.each(["/monitor", "/monitor/market", "/strategy-tracking", "/data"])("keeps %s mounted as a real route entry", (path) => {
     const route = webRoutes.find((item) => item.path === path);
 
     expect(route).toBeDefined();
@@ -17,6 +17,8 @@ describe("webRoutes", () => {
     ["/strategy", "/strategy-tracking"],
     ["/backtest", "/monitor"],
     ["/emotion", "/monitor"],
+    ["/paper", "/monitor"],
+    ["/performance", "/monitor"],
   ])("redirects %s to %s", (path, target) => {
     const route = webRoutes.find((item) => item.path === path);
     const element = route?.element;
@@ -28,7 +30,7 @@ describe("webRoutes", () => {
     expect(redirect.props.to).toBe(target);
   });
 
-  it.each(["monitor", "monitor-market", "strategy-tracking", "paper", "data"] as const)(
+  it.each(["monitor", "monitor-market", "strategy-tracking", "data"] as const)(
     "workspace store accepts cold route page state %s",
     (page) => {
       useWorkspaceStore.setState({ page: "settings" });
@@ -43,6 +45,8 @@ describe("webRoutes", () => {
     expect(pageFromPath("/strategy-tracking")).toBe("strategy-tracking");
     expect(pageFromPath("/monitor/market")).toBe("monitor-market");
     expect(pageFromPath("/data")).toBe("data");
+    expect(pageFromPath("/paper")).toBe("monitor");
+    expect(pageFromPath("/performance")).toBe("monitor");
     expect(pageFromPath("/backtest")).toBe("monitor");
     expect(pageFromPath("/strategy")).toBe("monitor");
     expect(pageFromPath("/emotion")).toBe("monitor");

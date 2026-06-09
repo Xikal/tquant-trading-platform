@@ -106,7 +106,7 @@ Latest-data gaps, stuck `runtime_tasks`, empty priority board recovery, and runt
 
 ### Deployment Topology And Workers
 
-Independent Web, runtime-worker, scheduler, analytics-worker and backtest-worker operation is documented in [deployment-topology-runbook.md](docs/operations/deployment-topology-runbook.md) and [worker-runbook.md](docs/operations/worker-runbook.md).
+Independent Web, runtime-worker, scheduler and analytics-worker operation is documented in [deployment-topology-runbook.md](docs/operations/deployment-topology-runbook.md) and [worker-runbook.md](docs/operations/worker-runbook.md).
 
 ## 5.1 单端口生产化运行
 
@@ -230,8 +230,7 @@ CLOUD_SSH_KEY=/path/to/gupiao.pem \
 - `DEPLOY_SYNC_MODE=package-only` 会打包当前项目，排除 `.runtime`、虚拟环境、`node_modules`、本地数据库运行配置等非发布内容。
 - 远端 GitHub clone/fetch 默认不使用；只有显式设置 `DEPLOY_SYNC_MODE=git-inplace` 或 `DEPLOY_SYNC_MODE=git-clone` 才启用。
 - 备份远端当前 `/home/ubuntu/gupiao-upload`。
-- 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-scheduler`、`runtime-worker`，不删除 MySQL volume。
-- `backtest-worker` 默认按需，不是常驻部署验收项；只有设置 `DEPLOY_WITH_BACKTEST_WORKER=1` 或 `scripts/quick_cloud_deploy.sh --with-backtest-worker` 时才拉起并校验。
+- 使用 `docker-compose.mysql.yml` 先执行 `migration` 容器完成 Alembic 迁移，再重建 `app`、`runtime-scheduler`、`runtime-worker`，不删除 MySQL volume；部署脚本会清理历史残留的 `tquant-backtest-worker-mysql` 容器。
 - `analytics-worker` 默认按需，不是常驻部署验收项；只有设置 `DEPLOY_WITH_ANALYTICS_WORKER=1` 或 `scripts/quick_cloud_deploy.sh --with-analytics-worker` 时才拉起并校验。
 - 自动验证 `/readyz`、默认低吸接口和前端首页。
 - 部署日志输出 `sync_mode`、`changed_count`、`deleted_count`、`delta_bytes`、`full_bytes`、`upload_seconds`、`fallback_reason`，用于比较差量上传和全量包。
@@ -365,7 +364,7 @@ APP_PORT=18090 docker compose -f docker-compose.mysql.yml up -d --build
 - `app` 容器默认关闭运行时后台任务，只负责 Web/API 响应
 - `runtime-worker` 容器运行 `python -m app.workers.runtime_worker`，消费 `runtime_tasks` 持久化任务队列
 - `runtime-scheduler` 容器独立运行 `python -m app.workers.runtime_scheduler`，负责周期性入队；Web 容器不打开调度循环
-- `backtest-worker` 通过 `profiles: ["backtest"]` 按需启动，默认不常驻；只在临时研究/回测任务窗口消费回测任务
+- 回测页面和独立 `backtest-worker` 已移除；历史回测研究代码保留为只读/内部研究边界，不作为常驻生产进程
 - `analytics-worker` 通过 `profiles: ["analytics"]` 按需启动，消费 `strategy_24m_duckdb_report`、`analytics_export_daily_bars`、`analytics_quality_check`、`data_quality_sla_refresh`、`data_repair_run` 等分析与数据质量任务，并在镜像构建时通过 `INSTALL_ANALYTICS=1` 安装 `duckdb`、`pyarrow`
 - `go-bff-gateway`、`go-market-read-service`、`go-scan-worker` 是生产主路径组件，MySQL compose 默认启动；Python 保留 fallback，但 fallback 必须通过日志或 metrics 可观测
 - 默认数据库为 `t_quant`
@@ -419,10 +418,8 @@ cp .env.docker.example .env
   Web 容器默认 `false`，避免 Gunicorn worker 内重复跑扫描、研究和调度循环。
 - `RUNTIME_BACKGROUND_JOBS_ENABLED`
   仅用于专门调度容器；MySQL Compose 中 `runtime-worker` 通过独立进程消费任务，Web 不应打开该开关。
-- `PAPER_AUTO_TRADING_ENABLED`
-  默认 `false`，只允许明确授权的模拟盘自动交易进程开启。
 - `TQUANT_RESEARCH_JOBS_ENABLED` / `TQUANT_ML_JOBS_ENABLED` / `TQUANT_FACTOR_JOBS_ENABLED` / `TQUANT_STRATEGY_EVOLUTION_ENABLED`
-  研究、ML、因子、策略自进化循环默认关闭；需要研究任务时只在 `runtime-worker`、`backtest-worker` 或专用调度容器开启，不在 Web 容器开启。
+  研究、ML、因子、策略自进化循环默认关闭；需要研究任务时只在 `runtime-worker`、`analytics-worker` 或专用调度容器开启，不在 Web 容器开启。
 - `WEB_TQUANT_ANALYTICS_ENABLED`
   Web `/readyz` 的 Analytics 依赖检查开关，默认 `false`，避免未安装 `duckdb`/`pyarrow` 的 Web 镜像因为分析依赖缺失而降级。
 - `ANALYTICS_WORKER_TQUANT_ANALYTICS_ENABLED`
@@ -615,7 +612,6 @@ PYTHONPATH=. .venv/bin/python scripts/low_buy_materialization_health.py
 ```bash
 docker compose -f docker-compose.mysql.yml logs --tail=200 app
 docker compose -f docker-compose.mysql.yml logs --tail=200 runtime-worker
-docker compose --profile backtest -f docker-compose.mysql.yml logs --tail=200 backtest-worker
 docker compose --profile analytics -f docker-compose.mysql.yml logs --tail=200 analytics-worker
 ```
 
@@ -702,7 +698,7 @@ curl -sS -H "Authorization: Bearer <TOKEN>" https://<domain>/api/track-record/dr
 
 - 先在 staging 执行并计时：`time docker compose -f docker-compose.mysql.yml run --rm migration`，记录开始/结束时间、表行数、MySQL 版本。
 - 只在低峰期执行生产迁移；迁移期间暂停写入型后台任务和研究类 worker。
-- 回滚预案：迁移前完成 `./scripts/backup_database.sh` 或 MySQL dump；失败时停止 `app`、`runtime-worker`、按需启动的 `backtest-worker` / `analytics-worker`，恢复备份后再启动旧镜像。
+- 回滚预案：迁移前完成 `./scripts/backup_database.sh` 或 MySQL dump；失败时停止 `app`、`runtime-worker`、按需启动的 `analytics-worker`，恢复备份后再启动旧镜像。
 - 截断排查：迁移后抽样检查大字段长度，例如 `SELECT id, CHAR_LENGTH(payload_json) FROM runtime_tasks ORDER BY id DESC LIMIT 20;`；如果发现截断，立即回滚并保留失败 SQL、行 id、字段长度证据。
 
 ## 11. 磁盘空间清理

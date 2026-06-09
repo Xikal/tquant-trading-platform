@@ -10,12 +10,10 @@ from backend.tests.trading_experience_fixtures import seed_paper, session_factor
 def test_trade_journal_creates_manual_discipline_entry() -> None:
     Session = session_factory()
     db = Session()
-    account = seed_paper(db)
 
     entry = create_entry(
         db,
         TradeJournalEntryCreate(
-            account_id=account.id,
             symbol="600000",
             action="note",
             reason_text="记录盘后纪律复盘",
@@ -27,7 +25,7 @@ def test_trade_journal_creates_manual_discipline_entry() -> None:
 
     assert entry.entry_id > 0
     assert entry.discipline_flags["stop_loss_set"] is True
-    rows = list_entries(db, user_id=1, account_id=account.id)
+    rows = list_entries(db, user_id=1)
     assert rows[0].symbol == "600000"
 
 
@@ -43,19 +41,21 @@ def test_trade_journal_blocks_forbidden_copy() -> None:
         )
 
 
-def test_trade_journal_rejects_other_users_account() -> None:
+def test_trade_journal_ignores_legacy_account_scope_after_paper_removal() -> None:
     Session = session_factory()
     db = Session()
     account = seed_paper(db)
 
-    with pytest.raises(ValueError, match="paper_account_not_found"):
-        create_entry(
-            db,
-            TradeJournalEntryCreate(account_id=account.id, symbol="600000", action="note"),
-            user_id=2,
-        )
+    entry = create_entry(
+        db,
+        TradeJournalEntryCreate(account_id=account.id, symbol="600000", action="note"),
+        user_id=2,
+    )
 
-    assert list_entries(db, user_id=2, account_id=account.id) == []
+    assert entry.account_id is None
+    rows = list_entries(db, user_id=2, account_id=account.id)
+    assert [row.entry_id for row in rows] == [entry.entry_id]
+    assert rows[0].account_id is None
 
 
 def test_trade_journal_can_update_and_delete_own_entry() -> None:

@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { installE2eAuthState } from "./auth-state";
-import { captureApiWrites, installAnalysisFixture, installPaperFixture } from "./cutover-fixtures";
+import { captureApiWrites, installAnalysisFixture } from "./cutover-fixtures";
 
-test("analysis readiness covers symbol flow, K line canvas, batch worker sort, and paper draft handoff", async ({ page }) => {
+test("analysis readiness covers symbol flow, K line canvas, and batch worker sort", async ({ page }) => {
   await installE2eAuthState(page);
   await installAnalysisFixture(page);
-  await installPaperFixture(page);
   const writes = captureApiWrites(page);
 
   await page.goto("/next/analysis");
@@ -23,9 +22,6 @@ test("analysis readiness covers symbol flow, K line canvas, batch worker sort, a
   await expect(page.getByText("2 个标的批量分析完成")).toBeVisible();
   await expect(page.getByTestId("analysis-batch-results").locator("tbody tr").first()).toContainText("600000");
 
-  await page.getByTestId("analysis-open-paper").click();
-  await expect(page).toHaveURL(/\/next\/paper.*source=analysis/);
-  await expect(page.getByRole("dialog", { name: "模拟委托" })).toBeVisible();
-  await expect(page.getByLabel("代码")).toHaveValue("600000");
+  await expect(page.getByTestId("analysis-open-paper")).toHaveCount(0);
   expect(writes()).toEqual(["POST /api/analyze", "POST /api/analyze/batch"]);
 });

@@ -27,7 +27,6 @@ const { useBreakpoint } = Grid;
 const AnalysisPage = lazy(async () => ({ default: (await import("../analysis/AnalysisPage")).AnalysisPage }));
 const MonitorPage = lazy(async () => ({ default: (await import("../monitor/MonitorPage")).MonitorPage }));
 const MonitorMarketPage = lazy(async () => ({ default: (await import("../monitor/MonitorMarketPage")).MonitorMarketPage }));
-const PaperTradingPage = lazy(async () => ({ default: (await import("../paper/PaperTradingPage")).PaperTradingPage }));
 const PlaybookPage = lazy(async () => ({ default: (await import("../playbook/PlaybookPage")).PlaybookPage }));
 const SettingsPage = lazy(async () => ({ default: (await import("../settings/SettingsPage")).SettingsPage }));
 const StrategyTrackingPage = lazy(async () => ({ default: (await import("../strategy-tracking/StrategyTrackingPage")).StrategyTrackingPage }));
@@ -37,7 +36,6 @@ const PAGES_WITHOUT_PRIORITY_STRIP: ReadonlySet<Page> = new Set([
   "monitor",
   "monitor-market",
   "strategy-tracking",
-  "paper",
   "data",
 ]);
 
@@ -59,8 +57,6 @@ type TradingWorkspaceChromeProps = {
   monitorPageProps: any;
   notice: string;
   page: Page;
-  paperPageProps: any;
-  paperRefreshLoading: boolean;
   playbookData: any;
   selectedStock: StockCardView | null;
   settingsData: any;
@@ -73,8 +69,6 @@ type TradingWorkspaceChromeProps = {
   onLogout: () => void;
   onNavigate: (page: Page) => void;
   onOpenStrategy: (strategyKey: string) => void;
-  onPaperRefresh?: () => void;
-  onPreparePaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
   onSelectStock: (stock: StockCardView | null) => void;
   onUserUpdate: (user: AuthUser) => void;
 };
@@ -127,8 +121,6 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
           onLogout={props.onLogout}
           onNavigate={props.onNavigate}
           onOpenNav={() => setMobileNavOpen(true)}
-          onPaperRefresh={props.onPaperRefresh}
-          paperRefreshLoading={props.paperRefreshLoading}
         />
         <main style={CONTENT_MAIN_STYLE}>
           <div style={CONTENT_INNER_STYLE}>
@@ -161,7 +153,6 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
               DataConsolePage={DataConsolePage}
               MonitorPage={MonitorPage}
               MonitorMarketPage={MonitorMarketPage}
-              PaperTradingPage={PaperTradingPage}
               PlaybookPage={PlaybookPage}
               SettingsPage={SettingsPage}
               StrategyTrackingPage={StrategyTrackingPage}
@@ -171,12 +162,10 @@ export function TradingWorkspaceChrome(props: TradingWorkspaceChromeProps) {
               monitor={props.monitor}
               monitorPageProps={props.monitorPageProps}
               page={props.page}
-              paperPageProps={props.paperPageProps}
               playbookData={props.playbookData}
               settingsData={props.settingsData}
               strategyMeta={props.strategyMeta}
               onSelectStock={props.onSelectStock}
-              onPreparePaperOrder={props.onPreparePaperOrder}
               onUserUpdate={props.onUserUpdate}
             />
           </div>

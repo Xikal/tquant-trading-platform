@@ -74,17 +74,6 @@ class AdminTestUserCleanupResponse(BaseModel):
     deleted_counts: dict[str, int] = Field(default_factory=dict)
 
 
-@router.get("/whitelist", response_model=AdminUsersResponse)
-def list_paper_whitelist(
-    _: None = Depends(require_admin_auth),
-    db: Session = Depends(get_db),
-) -> AdminUsersResponse:
-    rows = db.execute(
-        select(User).where(User.can_paper_trade.is_(True)).order_by(User.id.desc())
-    ).scalars().all()
-    return AdminUsersResponse(users=[_user_out(row) for row in rows])
-
-
 @router.get("", response_model=AdminUsersResponse)
 def list_users(
     q: str = Query(default="", max_length=64),

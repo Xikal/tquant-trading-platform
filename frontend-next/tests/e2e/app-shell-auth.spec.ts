@@ -136,10 +136,10 @@ test("command palette routes named pages without losing app shell", async ({ pag
   await installE2eAuthState(page);
   await page.goto("/next/monitor");
   await openCommandPalette(page);
-  await page.getByPlaceholder("搜索页面、策略或输入 6 位股票代码").fill("模拟盘");
+  await page.getByPlaceholder("搜索页面、策略或输入 6 位股票代码").fill("数据");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/next\/paper$/);
-  await expect(page.getByRole("heading", { name: "模拟盘" }).first()).toBeVisible();
+  await expect(page).toHaveURL(/\/next\/data$/);
+  await expect(page.getByRole("heading", { name: "数据中心" }).first()).toBeVisible();
 });
 
 test("command palette routes strategy commands to playbook and strategy tracking", async ({ page }) => {
@@ -181,7 +181,7 @@ test("compatibility routes redirect to their /next targets under auth guard and 
     ["/next/emotion", "/next/monitor", "实时流 未连接", "text"],
     ["/next/low-buy", "/next/playbook", "选股宝典", "heading"],
     ["/next/strategy", "/next/strategy-tracking", "策略跟踪", "heading"],
-    ["/next/performance", "/next/paper", "模拟盘", "heading"],
+    ["/next/performance", "/next/monitor", "实时流 未连接", "text"],
   ] as const;
 
   for (const [from, to, title, role] of cases) {
@@ -226,13 +226,6 @@ test("non-admin users cannot enter data console or admin-only settings controls"
   await expect(page.getByRole("radio", { name: "治理" })).toHaveCount(0);
   await expect(page.getByRole("radio", { name: "Audit" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "功能开关写入" })).toHaveCount(0);
-});
-
-test("users without paper trading permission cannot enter paper workspace", async ({ page }) => {
-  await installE2eAuthState(page, { canPaperTrade: false });
-
-  await page.goto("/next/paper");
-  await expect(page.getByRole("heading", { name: "模拟盘权限不足" })).toBeVisible();
 });
 
 test("route-level errors keep the app shell available and redact sensitive details", async ({ page }) => {

@@ -9,9 +9,8 @@ describe("frontend-next API operations", () => {
     expect(featureOperations.auth).toContain("authLogin");
     expect(featureOperations.analysis).toContain("analyzeSymbol");
     expect(featureOperations.playbook).toContain("lowBuyPriorityBoard");
-    expect(featureOperations.paper).toContain("paperOrderCreate");
     expect(featureOperations["strategy-tracking"]).toContain("strategyReviewRecord");
-    expect(featureOperations.backtest).toContain("backtestRunCreate");
+    expect(featureOperations.backtest).toContain("backtestRuns");
     expect(featureOperations["data-console"]).toContain("dataJobSubmit");
     expect(featureOperations.settings).toContain("featureFlagUpdate");
   });
@@ -30,8 +29,10 @@ describe("frontend-next API operations", () => {
 
   it("marks production-ready and still-blocked write contracts explicitly", () => {
     expect(getOperation("watchlistUpsert").contractStatus).toBe("ready");
-    expect(getOperation("paperOrderCreate").contractStatus).toBe("ready");
-    expect(getOperation("backtestRunCreate").contractStatus).toBe("ready");
+    expect(getOperation("backtestRunCreate").contractStatus).toBe("blocked_contract_needed");
+    expect(getOperation("backtestRunCancel").contractStatus).toBe("blocked_contract_needed");
+    expect(getOperation("backtestValidationCreate").contractStatus).toBe("blocked_contract_needed");
+    expect(getOperation("backtestOptimizationCreate").contractStatus).toBe("blocked_contract_needed");
     expect(getOperation("featureFlagUpdate").contractStatus).toBe("ready");
     expect(getOperation("settingsUpdate").contractStatus).toBe("ready");
     expect(getOperation("strategyReviewRecord").contractStatus).toBe("ready");
@@ -40,7 +41,6 @@ describe("frontend-next API operations", () => {
   });
 
   it("keeps query keys tied to operation names", () => {
-    expect(queryKeys.paperWorkspace).toEqual(["frontend-next", "operation", "paperWorkspace", {}]);
     expect(queryKeys.strategyTrackingDetail("abc")).toEqual([
       "frontend-next",
       "operation",
@@ -53,9 +53,23 @@ describe("frontend-next API operations", () => {
     expect(Object.values(apiOperations).every((operation) => operation.contractStatus)).toBe(true);
   });
 
-  it("maps every guarded non-ready write operation to a safe write contract", () => {
+  it("does not expose removed backtest task writes through safe write contracts", () => {
+    expect(safeWriteContractForOperation("backtestRunCreate")).toBeUndefined();
+    expect(safeWriteContractForOperation("backtestRunCancel")).toBeUndefined();
+    expect(safeWriteContractForOperation("backtestValidationCreate")).toBeUndefined();
+    expect(safeWriteContractForOperation("backtestOptimizationCreate")).toBeUndefined();
+  });
+
+  it("maps every active guarded non-ready write operation to a safe write contract", () => {
+    const cutoverExcludedWrites = new Set([
+      "backtestRunCreate",
+      "backtestRunCancel",
+      "backtestValidationCreate",
+      "backtestOptimizationCreate",
+    ]);
     const missing = Object.entries(apiOperations)
       .filter(([, operation]) => operation.method !== "GET" && operation.contractStatus !== "ready")
+      .filter(([name]) => !cutoverExcludedWrites.has(name))
       .filter(([name]) => !safeWriteContractForOperation(name as keyof typeof apiOperations))
       .map(([name]) => name);
 
@@ -64,18 +78,18 @@ describe("frontend-next API operations", () => {
 
   it("builds audit headers for guarded live write requests", () => {
     const evidence = safeWriteRequestEvidenceForOperation(
-      "paperOrderCreate",
+      "featureFlagUpdate",
       "live",
-      "fnx-paperOrderCreate-test",
+      "fnx-featureFlagUpdate-test",
     );
 
-    expect(evidence?.clientRequestId).toBe("fnx-paperOrderCreate-test");
-    expect(evidence?.contract.id).toBe("FNX-SW-PAPER-ORDER");
+    expect(evidence?.clientRequestId).toBe("fnx-featureFlagUpdate-test");
+    expect(evidence?.contract.id).toBe("FNX-SW-FEATURE-FLAG");
     expect(evidence?.headers).toEqual({
-      "X-Frontend-Next-Client-Request-Id": "fnx-paperOrderCreate-test",
-      "X-Frontend-Next-Contract-Id": "FNX-SW-PAPER-ORDER",
+      "X-Frontend-Next-Client-Request-Id": "fnx-featureFlagUpdate-test",
+      "X-Frontend-Next-Contract-Id": "FNX-SW-FEATURE-FLAG",
       "X-Frontend-Next-Contract-State": "defined_production_ready",
-      "X-Frontend-Next-Operation": "paperOrderCreate",
+      "X-Frontend-Next-Operation": "featureFlagUpdate",
       "X-Frontend-Next-Source": "frontend-next",
       "X-Frontend-Next-Write-Mode": "live",
     });
@@ -111,11 +125,8 @@ describe("frontend-next API operations", () => {
       "FNX-SW-AUTH-MFA",
       "FNX-SW-WATCHLIST",
       "FNX-SW-PLAYBOOK-LIFECYCLE",
-      "FNX-SW-PAPER-ORDER",
-      "FNX-SW-PAPER-ACCOUNT",
       "FNX-SW-STRATEGY-REVIEW",
       "FNX-SW-TRADE-JOURNAL",
-      "FNX-SW-BACKTEST-TASK",
       "FNX-SW-DATA-TASK",
       "FNX-SW-DATA-REPAIR",
       "FNX-SW-SETTINGS-SECTION",
@@ -123,7 +134,6 @@ describe("frontend-next API operations", () => {
     ]);
     expect(blockers.map((contract) => contract.id)).toEqual([]);
     expect(safeWriteContracts["FNX-SW-DATABASE-MAINTENANCE"].state).toBe("cutover_excluded");
-    expect(getOperation("paperOrderCreate").contractStatus).toBe("ready");
     expect(getOperation("featureFlagUpdate").contractStatus).toBe("ready");
     expect(getOperation("databaseMigrate").contractStatus).toBe("blocked_contract_needed");
   });

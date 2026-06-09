@@ -24,8 +24,6 @@ from app.api.routes import (
     ml_signals,
     monitor,
     operation_audit,
-    paper,
-    paper_compare,
     quant_config,
     research,
     runtime_tasks,
@@ -68,8 +66,6 @@ api_router.include_router(trading_experience.router, tags=["trading-experience"]
 api_router.include_router(track_record.router, tags=["track-record"])
 api_router.include_router(agent.router, tags=["agent"])
 api_router.include_router(agent_quality.router, tags=["agent"])
-api_router.include_router(paper.router, tags=["paper"])
-api_router.include_router(paper_compare.router, tags=["paper"])
 api_router.include_router(feishu.router, tags=["feishu"])
 api_router.include_router(factor_mining.router, tags=["factor-mining"])
 api_router.include_router(feature_flags.router, tags=["feature-flags"])

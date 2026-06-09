@@ -321,24 +321,6 @@ body {
   align-items: start;
 }
 
-.paper-page.tq-page--two-column {
-  grid-template-columns: 1fr;
-}
-
-.paper-workspace-grid,
-.paper-page .paper-hero-grid {
-  grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
-  gap: 7px;
-}
-
-.paper-conclusion-panel .tq-panel__body--md {
-  min-height: 486px;
-}
-
-.paper-mecha-action-panel {
-  min-height: 486px;
-}
-
 .tq-page--dashboard {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
@@ -924,8 +906,6 @@ select:focus,
   .tq-page,
   .tq-page--two-column,
   .tq-page--dashboard,
-  .paper-workspace-grid,
-  .paper-page .paper-hero-grid,
   .strategy-tracking-control-grid,
   .strategy-tracking-filter-toolbar,
   .monitor-market-page__split,

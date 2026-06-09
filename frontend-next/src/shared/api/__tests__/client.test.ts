@@ -225,10 +225,9 @@ describe("frontend-next operation client", () => {
 
     const { apiClient } = await import("../client");
     await apiClient.monitorWorkspace("action", 18, { signal });
-    await apiClient.paperWorkspace({ signal });
     await apiClient.backtestRuns(undefined, { signal });
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls.map((call) => call.at(1)).every((init) => (init as RequestInit | undefined)?.signal instanceof AbortSignal)).toBe(true);
     vi.unstubAllGlobals();
   });

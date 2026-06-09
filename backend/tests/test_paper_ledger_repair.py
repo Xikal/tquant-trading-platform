@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.routes import auth, paper
+from app.api.routes import auth
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rate_limit import clear_rate_limit_events
@@ -38,7 +38,6 @@ class PaperLedgerRepairTests(unittest.TestCase):
 
         app = FastAPI()
         app.include_router(auth.router, prefix="/api")
-        app.include_router(paper.router, prefix="/api")
 
         def override_db():
             db = self.Session()
@@ -77,32 +76,6 @@ class PaperLedgerRepairTests(unittest.TestCase):
                 db.execute(select(PaperTrade).where(PaperTrade.account_id == account.id)).scalars().all()[1].quantity,
                 100,
             )
-
-    def test_admin_route_can_preview_and_apply_repair(self) -> None:
-        headers = self._register("paper_repair_admin")
-        with self.Session() as db:
-            user = db.execute(select(User).where(User.username == "paper_repair_admin")).scalar_one()
-            user.roles = "admin"
-            account = self._seed_invalid_account(db, user_id=user.id)
-            account_id = account.id
-            db.commit()
-
-        preview = self.client.post(
-            "/api/paper/account/reconcile",
-            headers={**headers, "X-Admin-Token": "test-admin-token"},
-            json={"account_id": account_id, "apply": False},
-        )
-        self.assertEqual(preview.status_code, 200)
-        self.assertEqual(preview.json()["issue_count"], 2)
-
-        applied = self.client.post(
-            "/api/paper/account/reconcile",
-            headers={**headers, "X-Admin-Token": "test-admin-token"},
-            json={"account_id": account_id, "apply": True},
-        )
-        self.assertEqual(applied.status_code, 200)
-        self.assertTrue(applied.json()["applied"])
-        self.assertAlmostEqual(applied.json()["reconciliation_gap_after"], 0.0, places=2)
 
     def test_apply_rolls_back_all_changes_when_replay_fails(self) -> None:
         with self.Session() as db:

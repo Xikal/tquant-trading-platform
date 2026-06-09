@@ -12,7 +12,6 @@ export const queryKeys = {
   operation: operationQueryKey,
 
   authMe: operationQueryKey("authMe"),
-  authPaperAccess: operationQueryKey("authPaperAccess"),
 
   monitorWorkspace: (view: "action" | "market" | "full") => operationQueryKey("monitorWorkspace", { query: { view } }),
   monitorSnapshot: (priorityLimit = 12) => operationQueryKey("monitorSnapshot", { query: { priority_limit: priorityLimit } }),
@@ -23,16 +22,6 @@ export const queryKeys = {
   watchlist: operationQueryKey("watchlist"),
   watchlistSignals: operationQueryKey("watchlistSignals"),
   watchlistQuotes: operationQueryKey("watchlistQuotes"),
-
-  paperWorkspace: operationQueryKey("paperWorkspace"),
-  paperAccount: operationQueryKey("paperAccount"),
-  paperOrders: (limit = 50) => operationQueryKey("paperOrders", { query: { limit } }),
-  paperPositions: operationQueryKey("paperPositions"),
-  paperPerformanceDashboard: (days = 30) => operationQueryKey("paperPerformanceDashboard", { query: { days } }),
-  paperTrades: (limit = 50) => operationQueryKey("paperTrades", { query: { limit } }),
-  paperRiskEvents: operationQueryKey("paperRiskEvents"),
-  paperAutoTradingStatus: operationQueryKey("paperAutoTradingStatus"),
-  paperAutoTradingRuns: (limit = 20) => operationQueryKey("paperAutoTradingRuns", { query: { limit } }),
 
   strategyWorkspace: operationQueryKey("strategyWorkspace"),
   strategyTrackingItems: (query: OperationPathOptions["query"] = {}) => operationQueryKey("strategyTrackingItems", { query }),

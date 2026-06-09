@@ -8,16 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
-from app.core.paper_auth import require_paper_trading
 from app.models.entities import User
 from app.services.trading_experience.schemas import (
     BoardFilter,
-    HoldingDisciplineResponse,
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
     ReviewPoolResponse,
     ReviewWorkspaceResponse,
-    TTradeAttributionResponse,
     TradeJournalEntryCreate,
     TradeJournalEntryOut,
     TradeJournalEntryUpdate,
@@ -51,7 +48,7 @@ def get_review_workspace(
     limit: Annotated[int, Query(ge=1, le=100)] = 30,
     board_filter: BoardFilter = "include_all",
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_paper_trading),
+    current_user: User = Depends(get_current_user),
 ) -> ReviewWorkspaceResponse:
     return TradingExperienceService(db).review_workspace(
         pool_date=pool_date,
@@ -67,7 +64,7 @@ def get_trade_journal(
     symbol: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_paper_trading),
+    current_user: User = Depends(get_current_user),
 ) -> TradeJournalResponse:
     return TradingExperienceService(db).trade_journal(
         user_id=getattr(current_user, "id", None),
@@ -81,7 +78,7 @@ def get_trade_journal(
 def create_trade_journal(
     payload: TradeJournalEntryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_paper_trading),
+    current_user: User = Depends(get_current_user),
 ) -> TradeJournalEntryOut:
     try:
         return TradingExperienceService(db).create_trade_journal(payload, user_id=getattr(current_user, "id", None))
@@ -94,7 +91,7 @@ def update_trade_journal(
     entry_id: int,
     payload: TradeJournalEntryUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_paper_trading),
+    current_user: User = Depends(get_current_user),
 ) -> TradeJournalEntryOut:
     try:
         return TradingExperienceService(db).update_trade_journal(
@@ -111,7 +108,7 @@ def update_trade_journal(
 def delete_trade_journal(
     entry_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_paper_trading),
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     try:
         TradingExperienceService(db).delete_trade_journal(entry_id, user_id=getattr(current_user, "id", None))
@@ -139,15 +136,6 @@ def get_relative_strength(
     return TradingExperienceService(db).relative_strength(trade_date=trade_date, limit=limit)
 
 
-@router.get("/holding-discipline", response_model=HoldingDisciplineResponse)
-def get_holding_discipline(
-    account_id: int | None = None,
-    current_user: User = Depends(require_paper_trading),
-    db: Session = Depends(get_db),
-) -> HoldingDisciplineResponse:
-    return TradingExperienceService(db).holding_discipline(account_id=account_id, user_id=current_user.id)
-
-
 @router.get("/limit-up-followthrough", response_model=LimitUpFollowthroughResponse)
 def get_limit_up_followthrough(
     trade_date: date | None = None,
@@ -155,13 +143,3 @@ def get_limit_up_followthrough(
     db: Session = Depends(get_db),
 ) -> LimitUpFollowthroughResponse:
     return TradingExperienceService(db).limit_up_followthrough(trade_date=trade_date, limit=limit)
-
-
-@router.get("/t-trade-attribution", response_model=TTradeAttributionResponse)
-def get_t_trade_attribution(
-    account_id: int | None = None,
-    days: Annotated[int, Query(ge=1, le=120)] = 30,
-    current_user: User = Depends(require_paper_trading),
-    db: Session = Depends(get_db),
-) -> TTradeAttributionResponse:
-    return TradingExperienceService(db).t_trade_attribution(account_id=account_id, days=days, user_id=current_user.id)

@@ -20,7 +20,6 @@ from app.core.database import get_db
 from app.models.base import Base
 from app.models.entities import AgentAuditLog
 from app.models.schema_defs.agent import (
-    AgentOrderRecommendationResponse,
     AgentBacktestRequest,
     AgentBacktestResponse,
     AgentCompareStrategiesResponse,
@@ -28,11 +27,8 @@ from app.models.schema_defs.agent import (
     AgentDailyReportPushResponse,
     AgentHealthResponse,
     AgentMarketSentimentResponse,
-    AgentPaperOrderRequest,
-    AgentPaperOrderResponse,
     AgentSignalNotificationResponse,
     AgentSignalNotificationScanResponse,
-    AgentPaperPortfolioResponse,
     AgentPositionTSignalRequest,
     AgentPositionTSignalResponse,
     AgentPriorityBoardResponse,
@@ -68,12 +64,6 @@ class _ContextServiceStub:
 
         return AgentAnalysisResponse(symbol=payload.symbol, name=payload.symbol, summary="测试")
 
-    def paper_portfolio(self, db, account_id=None, *, user_id=None):  # noqa: ANN001, ARG002
-        return AgentPaperPortfolioResponse(updated_at="2026-04-29 10:30:00", account_id=account_id)
-
-    def recommend_orders(self, db, payload, *, user_id=None):  # noqa: ANN001, ARG002
-        return AgentOrderRecommendationResponse(updated_at="2026-04-29 10:30:00", account_id=payload.account_id)
-
     def backtest_strategy(self, db, payload: AgentBacktestRequest):  # noqa: ANN001, ARG002
         return AgentBacktestResponse(
             strategy_key=payload.strategy_key,
@@ -98,19 +88,6 @@ class _ContextServiceStub:
 
     def position_t_signal(self, db, payload: AgentPositionTSignalRequest):  # noqa: ANN001, ARG002
         return AgentPositionTSignalResponse(symbol=payload.symbol, action="hold", action_text="观望", summary="测试")
-
-    def create_paper_order(self, db, payload: AgentPaperOrderRequest, *, user_id=None):  # noqa: ANN001, ARG002
-        return AgentPaperOrderResponse(
-            ok=True,
-            account_id=payload.account_id,
-            symbol=payload.symbol,
-            side=payload.side,
-            quantity=payload.quantity,
-            price=payload.price,
-            status="filled",
-            summary="created",
-        )
-
 
 class _ReportServiceStub:
     def daily_report(self, db):  # noqa: ANN001, ARG002
@@ -318,7 +295,7 @@ class AgentRouteTests(unittest.TestCase):
             self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
         self.assertEqual(response.status_code, 403)
 
-    def test_scoped_agent_token_without_write_scope_is_denied_for_paper_order(self) -> None:
+    def test_scoped_agent_token_paper_order_route_is_removed(self) -> None:
         self.app.dependency_overrides.pop(require_current_user_or_agent_token, None)
         environ["AGENT_TOKENS"] = '{"agent-analyst":"scoped-read-token:read"}'
         get_settings.cache_clear()
@@ -330,9 +307,9 @@ class AgentRouteTests(unittest.TestCase):
             )
         finally:
             self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
-    def test_scoped_agent_token_cannot_directly_create_paper_order_even_with_write_scope(self) -> None:
+    def test_scoped_agent_token_paper_order_route_stays_removed_with_write_scope(self) -> None:
         self.app.dependency_overrides.pop(require_current_user_or_agent_token, None)
         environ["AGENT_ENABLE_WRITE_TOOLS"] = "true"
         environ["AGENT_TOKENS"] = '{"agent-analyst":"scoped-write-token:write_paper"}'
@@ -345,10 +322,9 @@ class AgentRouteTests(unittest.TestCase):
             )
         finally:
             self.app.dependency_overrides[require_current_user_or_agent_token] = _override_user
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("用户会话", response.json()["detail"])
+        self.assertEqual(response.status_code, 404)
 
-    def test_agent_paper_order_allows_whitelisted_user_without_mfa_when_write_tools_enabled(self) -> None:
+    def test_agent_paper_order_route_is_removed(self) -> None:
         class UserWithoutMfa:
             id = 1
             username = "paper_agent_user"
@@ -364,8 +340,7 @@ class AgentRouteTests(unittest.TestCase):
             "/api/agent/paper/order",
             json={"symbol": "510300", "side": "buy", "quantity": 100, "price": 4.0},
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.status_code, 404)
 
     def test_watchlist_context_route(self) -> None:
         response = self.client.get("/api/agent/context/watchlist")
@@ -392,14 +367,13 @@ class AgentRouteTests(unittest.TestCase):
         self.assertTrue(response.json()["sent"])
         self.assertEqual(response.json()["trade_date"], "2026-05-04")
 
-    def test_paper_portfolio_route(self) -> None:
+    def test_paper_portfolio_route_is_removed(self) -> None:
         response = self.client.get("/api/agent/context/paper-portfolio?account_id=1")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["account_id"], 1)
+        self.assertEqual(response.status_code, 404)
 
-    def test_recommend_orders_route(self) -> None:
+    def test_recommend_orders_route_is_removed(self) -> None:
         response = self.client.post("/api/agent/context/recommend-orders", json={"limit": 3, "account_id": 1})
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
     def test_new_read_routes_are_available(self) -> None:
         backtest = self.client.post(
@@ -466,7 +440,7 @@ class AgentRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["provider"], "none")
         self.assertEqual(response.json()["tool_count"], len(list_tool_definitions()))
-        self.assertIn("create_paper_order", response.json()["disabled_tools"])
+        self.assertNotIn("create_paper_order", response.json()["enabled_tools"] + response.json()["disabled_tools"])
 
     def test_signal_notification_route(self) -> None:
         response = self.client.post(

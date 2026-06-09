@@ -27,7 +27,6 @@ export function accountMetrics(data: unknown): { label: string; value: string; t
     { label: "账户", value: text(user.display_name ?? user.username) },
     { label: "角色", value: listText(user.roles) },
     { label: "MFA", value: text(user.mfa_totp_enabled), tone: user.mfa_totp_enabled ? "up" : "warn" },
-    { label: "模拟盘", value: text(user.can_paper_trade), tone: user.can_paper_trade ? "up" : "warn" },
   ];
 }
 

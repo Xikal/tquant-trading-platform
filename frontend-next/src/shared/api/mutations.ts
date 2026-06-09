@@ -17,14 +17,10 @@ import {
   type SafeWriteContractSummary,
 } from "./safeWriteContracts";
 import type {
-  BacktestRunCreate,
-  BacktestRunCreateResponse,
   FactorWeightsUpdate,
   FactorWeightsUpdateResponse,
   FeatureFlagUpdateRequest,
   FeatureFlagUpdateResponse,
-  PaperOrderCreate,
-  PaperOrderResponse,
   SectorExclusionsUpdateResponse,
   SettingsPayload,
   SettingsUpdateResponse,
@@ -34,10 +30,6 @@ import type {
 } from "./types";
 
 export type MutationKind =
-  | "paper-order"
-  | "paper-account"
-  | "backtest-run"
-  | "backtest-task"
   | "feature-flag"
   | "settings"
   | "watchlist"
@@ -155,36 +147,6 @@ export function createMutationClient(options: { writeEnabled?: boolean; writeMod
   }
 
   return {
-    createPaperOrder: (payload: PaperOrderCreate) =>
-      mutate<PaperOrderResponse>("paper-order", "paperOrderCreate", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    pausePaperAccount: (payload: Record<string, unknown> = {}) =>
-      mutate("paper-account", "paperAccountPause", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    resumePaperAccount: (payload: Record<string, unknown> = {}) =>
-      mutate("paper-account", "paperAccountResume", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    reconcilePaperAccount: (payload: Record<string, unknown>) =>
-      mutate("paper-account", "paperAccountReconcile", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    createBacktestRun: (payload: BacktestRunCreate) =>
-      mutate<BacktestRunCreateResponse>("backtest-run", "backtestRunCreate", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    cancelBacktestRun: (runId: string | number, payload: Record<string, unknown> = {}) =>
-      mutate("backtest-task", "backtestRunCancel", payload, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }, { path: { run_id: runId } }),
     updateFeatureFlag: (key: string, payload: FeatureFlagUpdateRequest) =>
       mutate<FeatureFlagUpdateResponse>("feature-flag", "featureFlagUpdate", payload, {
         method: "PUT",

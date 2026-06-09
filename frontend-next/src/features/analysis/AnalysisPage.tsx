@@ -1,6 +1,6 @@
 import type { ColumnDef } from "@tanstack/solid-table";
 import { createQuery } from "@tanstack/solid-query";
-import { useLocation, useNavigate } from "@tanstack/solid-router";
+import { useLocation } from "@tanstack/solid-router";
 import { For, Show, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js";
 import { apiClient } from "../../shared/api/client";
 import { errorMessage } from "../../shared/api/errors";
@@ -20,7 +20,6 @@ import {
   intradayChartPoints,
   keyLevelRows,
   parseSymbols,
-  paperOrderDraftSearch,
   quoteRecord,
   runAnalysisWorkflow,
   runBatchAnalysis,
@@ -31,7 +30,6 @@ import {
 import "./analysisSlice.css";
 
 export function AnalysisPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const routeSymbol = createMemo(() => symbolFromSearch(location().search));
   const [form, setForm] = createSignal<AnalysisFormState>(defaultAnalysisForm);
@@ -77,7 +75,6 @@ export function AnalysisPage() {
   const supportLevel = createMemo(() => keyLevelRows(snapshot()).find((item) => String(item.direction) === "support") ?? keyLevelRows(snapshot())[0]);
   const resistanceLevel = createMemo(() => keyLevelRows(snapshot()).find((item) => String(item.direction) === "resistance") ?? keyLevelRows(snapshot())[1]);
   const aiSummary = createMemo(() => aiLines(snapshot())[0] ?? "AI 只解释，不放宽底线规则。");
-  const canOpenPaperOrder = createMemo(() => Boolean(snapshot() && currentSymbol()));
   const routeSymbolActive = createMemo(() => Boolean(routeSymbol() && routeSymbol() === currentSymbol()));
 
   onCleanup(() => activeRequest?.abort());
@@ -174,9 +171,6 @@ export function AnalysisPage() {
         <div class="analysis-clean-card analysis-clean-action-card tq-analysis-page__key-levels">
           <div class="analysis-clean-title">
             <h3>当前行动建议细则点</h3>
-            <button class="analysis-clean-secondary" type="button" disabled={!canOpenPaperOrder()} onClick={() => void openPaperDraft()} data-testid="analysis-open-paper">
-              模拟下单
-            </button>
           </div>
           <div class="analysis-stat-grid">
             <StatCell label="入场参考位" value={numberText(supportLevel()?.price, "--")} />
@@ -307,10 +301,6 @@ export function AnalysisPage() {
     } finally {
       if (activeRequest === controller) activeRequest = null;
     }
-  }
-
-  function openPaperDraft() {
-    return navigate({ to: "/next/paper", search: paperOrderDraftSearch(snapshot(), form()) });
   }
 }
 

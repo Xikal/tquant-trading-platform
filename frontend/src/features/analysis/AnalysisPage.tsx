@@ -19,7 +19,6 @@ export function AnalysisPage({
   loading,
   onRun,
   onBatchRun,
-  onOpenPaperOrder,
 }: {
   draft: AnalysisDraft;
   setDraft: (draft: AnalysisDraft) => void;
@@ -31,12 +30,10 @@ export function AnalysisPage({
   loading: string;
   onRun: () => void;
   onBatchRun: () => void;
-  onOpenPaperOrder: (payload: { symbol: string; name?: string; price?: number | null }) => void;
 }) {
   const suggestion = result?.suggestion;
   const quote = result?.quote;
   const actionHeadline = suggestion?.plain_action_text || (suggestion ? actionText(suggestion.action) : "等待分析");
-  const canOpenPaperOrder = Boolean(draft.symbol.trim() && suggestion?.is_actionable);
   const statusText = actionStatusText(suggestion?.signal_layer, suggestion?.signal_layer_text);
   const actionReason = suggestion?.plain_action_reason || plainTradingText(suggestion?.trade_scene_text) || "--";
   const executionText =
@@ -137,18 +134,7 @@ export function AnalysisPage({
         </div>
       </div>
       <div className="panel decision tq-analysis-page__decision">
-        <PanelTitle
-          title={`当前建议 / ${actionHeadline}`}
-          actions={
-            <Button
-              type="primary"
-              onClick={() => onOpenPaperOrder({ symbol: draft.symbol, name: result?.instrument.name, price: quote?.last_price })}
-              disabled={!canOpenPaperOrder}
-            >
-              {suggestion?.is_actionable === false ? "不建议下单" : "模拟下单"}
-            </Button>
-          }
-        />
+        <PanelTitle title={`当前建议 / ${actionHeadline}`} />
         <InfoPill compact label="现在怎么做" value={executionText} />
         <InfoPill compact label="错了怎么办" value={invalidText} />
         <InfoPill compact label="当前能否操作" value={`${statusText}${suggestion?.why_not_execute ? ` / ${plainTradingText(suggestion.why_not_execute)}` : ""}`} />

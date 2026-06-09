@@ -35,8 +35,8 @@ export const MODE_SAFETY_BADGES: Record<ModeSafetyKind, ModeSafetyBadgeDefinitio
   },
   paper: {
     kind: "paper",
-    label: "模拟盘",
-    tooltip: "模拟成交用于复盘，不作为生产事实源。",
+    label: "观察验证",
+    tooltip: "观察验证用于复盘，不作为生产事实源。",
     docHref: "/docs/architecture/current-boundary-map.md",
     color: "gold",
   },

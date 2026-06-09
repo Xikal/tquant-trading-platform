@@ -31,7 +31,7 @@ def test_frontend_legacy_only_routes_to_frontend_legacy() -> None:
 
 
 def test_backend_api_only_routes_to_backend_api() -> None:
-    result = resolve_deploy_scope(["backend/app/api/routes/paper.py"])
+    result = resolve_deploy_scope(["backend/app/api/routes/monitor.py"])
 
     assert result.scope == "backend-api"
     assert result.requires_backend_restart is True
@@ -89,7 +89,7 @@ def test_strategy_policy_blocks_auto_deploy() -> None:
 
 
 def test_mixed_frontend_next_and_backend_routes_to_both_units() -> None:
-    result = resolve_deploy_scope(["frontend-next/src/index.tsx", "backend/app/api/routes/paper.py"])
+    result = resolve_deploy_scope(["frontend-next/src/index.tsx", "backend/app/api/routes/monitor.py"])
 
     assert result.scope == "backend-api,frontend-next"
     assert result.units == ("backend-api", "frontend-next")
@@ -140,7 +140,7 @@ def test_cli_outputs_shell_assignments(tmp_path) -> None:
 
 def test_cli_outputs_json() -> None:
     completed = subprocess.run(
-        ["python3", "scripts/deploy_scope.py", "backend/app/api/routes/paper.py"],
+        ["python3", "scripts/deploy_scope.py", "backend/app/api/routes/monitor.py"],
         text=True,
         capture_output=True,
         check=True,

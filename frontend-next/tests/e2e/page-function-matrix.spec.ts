@@ -5,7 +5,6 @@ import {
   installAnalysisFixture,
   installDataSettingsFixtures,
   installMonitorActionFixture,
-  installPaperFixture,
   installPlaybookFixture,
   installStrategyFixture,
 } from "./cutover-fixtures";
@@ -77,33 +76,6 @@ test("/next/monitor/market covers gate mode, refresh, and runtime panels", async
   expect(writes()).toEqual([]);
 });
 
-test("/next/paper covers console, mecha state, workflow tabs, and order draft guard", async ({ page }) => {
-  await installE2eAuthState(page);
-  await installPaperFixture(page);
-  const writes = captureApiWrites(page);
-
-  await page.goto("/next/paper");
-  await expect(page.getByRole("heading", { name: "模拟盘" })).toBeVisible();
-  await expect(page.locator(".paper-mecha-action-panel")).toBeVisible();
-  await page.locator(".paper-mecha-action-panel").getByRole("button", { name: "零式·蓝白" }).click();
-  await expect(page.locator(".paper-mecha-action-panel__status").getByText("零式·蓝白", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "展开工作流" }).click();
-  await page.getByRole("tab", { name: "记录" }).click();
-  await expect(page.getByRole("tabpanel", { name: "记录" })).toContainText("600000");
-  await expect(page.getByRole("tabpanel", { name: "记录" })).toContainText("订单");
-  await page.getByTestId("paper-open-order").click();
-  await expect(page.getByRole("dialog", { name: "模拟委托" })).toBeVisible();
-  await page.getByLabel("代码").fill("600000");
-  await page.getByLabel("数量").fill("200");
-  await page.getByLabel("价格").fill("8.72");
-  await page.getByTestId("paper-order-form").getByRole("button", { name: "确认" }).click();
-  await expect(page.getByText("模拟委托已进入二次确认")).toBeVisible();
-  await page.getByTestId("paper-order-form").getByRole("button", { name: "提交委托" }).click();
-  await expect(page.getByText("提交委托已记录")).toBeVisible();
-  expect(writes()).toEqual([]);
-});
-
 test("/next/strategy-tracking covers filters, detail, holding, and review intents", async ({ page }) => {
   await installE2eAuthState(page);
   await installStrategyFixture(page);
@@ -129,10 +101,9 @@ test("/next/strategy-tracking covers filters, detail, holding, and review intent
   expect(writes()).toEqual([]);
 });
 
-test("/next/analysis covers symbol analysis, chart, batch, and paper handoff", async ({ page }) => {
+test("/next/analysis covers symbol analysis, chart, and batch without trading handoff", async ({ page }) => {
   await installE2eAuthState(page);
   await installAnalysisFixture(page);
-  await installPaperFixture(page);
   const writes = captureApiWrites(page);
 
   await page.goto("/next/analysis");
@@ -146,9 +117,7 @@ test("/next/analysis covers symbol analysis, chart, batch, and paper handoff", a
   await page.getByTestId("analysis-batch").click();
   await expect(page.getByText("2 个标的批量分析完成")).toBeVisible();
   await expect(page.getByTestId("analysis-batch-results")).toContainText("600000");
-  await page.getByTestId("analysis-open-paper").click();
-  await expect(page).toHaveURL(/\/next\/paper.*source=analysis/);
-  await expect(page.getByRole("dialog", { name: "模拟委托" })).toBeVisible();
+  await expect(page.getByTestId("analysis-open-paper")).toHaveCount(0);
   expect(writes()).toEqual(["POST /api/analyze", "POST /api/analyze/batch"]);
 });
 

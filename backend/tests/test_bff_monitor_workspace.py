@@ -18,6 +18,7 @@ from app.models.schema_defs.monitor import MonitorSnapshotResponse
 from app.models.schema_defs.screener_parts.priority import LowBuyPriorityBoardResponse, LowBuyPriorityBoardItemOut
 from app.models.schema_defs.settings import RuntimeStatusResponse
 from app.services import monitor_snapshot_service
+from app.services.monitor_snapshot_cache import MonitorSnapshotCacheHit
 
 
 def _db_with_user(user_id: int = 9):
@@ -157,6 +158,83 @@ def test_monitor_snapshot_cache_miss_uses_priority_board_read_model(monkeypatch)
     assert response.priority_board["items"][0]["symbol"] == "600000"
     assert response.priority_board["read_path"] == "priority_board_latest_successful_snapshot"
     assert enqueued == [{"user_id": 14, "priority_limit": 18}]
+
+
+def test_monitor_snapshot_stale_cache_uses_fresher_priority_board_read_model(monkeypatch) -> None:
+    db = _db_with_user(15)
+
+    monkeypatch.setattr(monitor_snapshot_service, "list_user_watchlist_rows", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "read_monitor_snapshot_cache",
+        lambda *_args, **_kwargs: MonitorSnapshotCacheHit(
+            payload={
+                "updated_at": "2026-06-09 10:00:00",
+                "watchlist_signals": [],
+                "priority_board": {
+                    "latest_trade_date": "2026-06-09",
+                    "updated_at": "2026-06-09 10:00:00",
+                    "data_quality": "stale",
+                    "snapshot_warning": "优先榜正在后台刷新，当前展示上次可用榜单。",
+                    "total_candidates": 31,
+                    "immediate_count": 2,
+                    "focus_count": 12,
+                    "track_count": 14,
+                    "items": [
+                        {
+                            "symbol": "600237",
+                            "name": "旧榜",
+                            "buy_signal_state": "soft_buy_now",
+                            "buy_signal_text": "确定买入",
+                            "simple_bucket": "buy_now",
+                        }
+                    ],
+                },
+                "sector_etf_t0": {},
+            },
+            needs_refresh=True,
+        ),
+    )
+    enqueued: list[dict[str, int]] = []
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "enqueue_monitor_snapshot_refresh",
+        lambda _db, *, user_id, priority_limit: enqueued.append({"user_id": user_id, "priority_limit": priority_limit}),
+    )
+    monkeypatch.setattr(
+        monitor_snapshot_service,
+        "_fallback_priority_board_from_read_model",
+        lambda _db, *, priority_limit: {
+            "latest_trade_date": "2026-06-09",
+            "updated_at": "2026-06-09 10:01:00",
+            "data_quality": "ok",
+            "total_candidates": 1,
+            "immediate_count": 0,
+            "focus_count": 1,
+            "track_count": 0,
+            "read_path": "priority_board_read_model",
+            "items": [
+                {
+                    "symbol": "600237",
+                    "name": "新榜",
+                    "buy_signal_state": "near_entry",
+                    "buy_signal_text": "接近买点",
+                    "simple_bucket": "wait_price",
+                }
+            ],
+        },
+    )
+
+    response = monitor_snapshot_service.build_monitor_snapshot(
+        db,
+        current_user=User(id=15, username="researcher15", password_hash="x", is_active=True, roles=""),
+        priority_limit=18,
+    )
+
+    assert response.priority_board["items"][0]["buy_signal_state"] == "near_entry"
+    assert response.priority_board["items"][0]["simple_bucket"] == "wait_price"
+    assert response.priority_board["read_path"] == "priority_board_read_model"
+    assert enqueued == [{"user_id": 15, "priority_limit": 18}]
 
 
 def test_monitor_workspace_bundles_hourly_history_and_admin_runtime(monkeypatch) -> None:
@@ -315,7 +393,6 @@ def test_monitor_bff_degrades_slow_noncritical_source(monkeypatch) -> None:
         lambda: SimpleNamespace(
             bff_workspace_cache_enabled=False,
             bff_monitor_cache_ttl_seconds=0,
-            bff_paper_cache_ttl_seconds=0,
             bff_strategy_cache_ttl_seconds=0,
             bff_settings_cache_ttl_seconds=0,
         ),

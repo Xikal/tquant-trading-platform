@@ -2,7 +2,6 @@ import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import type { AuthModel } from "../features/auth/authModel";
 import type { NextRoute } from "../shared/config/routes";
-import { Button } from "../shared/ui/Button";
 import { Segmented } from "../shared/ui/Segmented";
 import { UserMenu } from "../features/trading-workspace/UserMenu";
 import { formatMarketClock } from "../shared/realtime/marketSession";
@@ -47,11 +46,6 @@ export function LegacyTopbar(props: {
         </Show>
       </div>
       <div class="legacy-topbar__right">
-        <Show when={props.currentRoute.page === "paper"}>
-          <Button variant="primary" size="sm" onClick={() => window.dispatchEvent(new CustomEvent("frontend-next:paper-refresh"))}>
-            刷新
-          </Button>
-        </Show>
         <span class="legacy-topbar__badge legacy-topbar__badge--opportunity">
           <span class="legacy-topbar__badge-label">机会</span>
           <span class="legacy-topbar__badge-count">0</span>

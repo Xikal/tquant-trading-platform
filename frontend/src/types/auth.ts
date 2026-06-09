@@ -26,8 +26,3 @@ export interface AuthMfaSetupResponse {
   issuer: string
   account_name: string
 }
-
-export interface PaperAccessResponse {
-  can_paper_trade: boolean
-  reason: string
-}

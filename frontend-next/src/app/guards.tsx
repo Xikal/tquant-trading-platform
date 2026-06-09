@@ -17,15 +17,6 @@ export function AuthGuard(props: { children: JSX.Element }) {
   );
 }
 
-export function PaperGuard(props: { children: JSX.Element }) {
-  const auth = useAuth();
-  return (
-    <Show when={auth.canPaperTrade()} fallback={<GuardPanel title="模拟盘权限不足" message="当前账号未开通 can_paper_trade，委托表单保持不可用。" />}>
-      {props.children}
-    </Show>
-  );
-}
-
 export function AdminGuard(props: { children: JSX.Element }) {
   const auth = useAuth();
   return (

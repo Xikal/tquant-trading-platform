@@ -18,7 +18,6 @@ SUPPORTED_CUTOVER_PATHS = {
     "",
     "monitor",
     "monitor/market",
-    "paper",
     "strategy-tracking",
     "analysis",
     "playbook",

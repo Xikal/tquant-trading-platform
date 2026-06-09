@@ -29,8 +29,6 @@ import { DataCenterEntryCard } from "./DataCenterEntryCard";
 import { FactorWeightSettingsCard } from "./FactorWeightSettingsCard";
 import { LatestDataStatusCard } from "./LatestDataStatusCard";
 import { QuantParameterMlCard } from "./QuantParameterMlCard";
-import { QuantParameterPaperExitCard } from "./QuantParameterPaperExitCard";
-import { QuantParameterSectorEtfCard } from "./QuantParameterSectorEtfCard";
 import { RitualSettingsCard } from "../ritual-ui";
 import { useSettingsUiStore } from "../../stores/settingsUiStore";
 import { useServerState } from "../../state/serverState";
@@ -301,7 +299,7 @@ export function SettingsPage({
         ) : null}
 
         {activeTab === "trading" ? (
-        <SettingsSection title="交易偏好" description="风控、行业过滤、模拟盘退出和 ETF 自动交易参数。">
+        <SettingsSection title="交易偏好" description="风控和行业过滤参数。">
             <SettingCard className="risk-params-card" title="风控参数" button="保存风控参数" onSave={() => void saveSection("risk")} loading={loading === "settings-risk"} saved={savedSection === "risk"} disabled={Boolean(adminTokenError || singleLossError || dailyLossError || pauseLossError || minProfitError)}>
               <div className={styles.formGrid}>
                 <NumberField label="单笔最大亏损" suffix="%" value={draft.risk_max_single_loss_pct} error={singleLossError} onChange={(event) => setDraft({ ...draft, risk_max_single_loss_pct: event.target.value })} />
@@ -324,8 +322,6 @@ export function SettingsPage({
             onQueryChange={setSectorQuery}
             onToggleSector={toggleSector}
           />
-          <QuantParameterPaperExitCard adminTokenError={adminTokenError} />
-          <QuantParameterSectorEtfCard adminTokenError={adminTokenError} />
           {isAdmin ? (
             <DataCenterEntryCard
               title="交易标的范围"

@@ -39,8 +39,8 @@ export function LoginPage({
   onRegister,
 }: LoginPageProps) {
   const loginStepText = loading
-    ? "验证成功后会自动加载您的持仓、榜单和模拟盘数据。"
-    : "输入账号和密码即可进入工作台，系统会自动恢复您的持仓、榜单和模拟盘数据。";
+    ? "验证成功后会自动加载您的持仓、榜单和策略数据。"
+    : "输入账号和密码即可进入工作台，系统会自动恢复您的持仓、榜单和策略数据。";
   const showIpEntryPersistenceWarning = isIpAddressLoginOrigin();
 
   return (

@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.routes import analysis, backtests, factor_mining, ml_signals, paper_compare, paper_performance, research, screeners
+from app.api.routes import analysis, backtests, factor_mining, ml_signals, research, screeners
 from app.core.admin_auth import require_admin_auth
 from app.core.auth import get_current_user
 from app.core.database import get_db
@@ -36,8 +36,6 @@ def _client(*, roles: str = "admin,backtest_research,backtest_optimizer", paper:
     app.include_router(ml_signals.router, prefix="/api")
     app.include_router(factor_mining.router, prefix="/api")
     app.include_router(analysis.router, prefix="/api")
-    app.include_router(paper_performance.router, prefix="/api/paper")
-    app.include_router(paper_compare.router, prefix="/api")
     app.dependency_overrides[get_db] = _db
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[require_admin_auth] = lambda: None
@@ -250,21 +248,6 @@ def test_analysis_batch_openapi_has_generated_response_contract() -> None:
         for option in response_schema["anyOf"]
         if option.get("type") == "array"
     )
-
-
-def test_paper_heavy_routes_are_queued() -> None:
-    client, factory = _client()
-    with factory() as db:
-        db.add(BacktestRun(id=11, owner_user_id=1, status="succeeded", strategy_keys="first_board"))
-        db.commit()
-
-    smart_t = client.get("/api/paper/performance/smart-t-backtest?sample_limit=150")
-    comparison = client.post("/api/paper/backtest-comparison", json={"backtest_run_id": 11})
-
-    assert smart_t.status_code == 202
-    assert comparison.status_code == 202
-    assert smart_t.json()["task_type"] == "paper_smart_t_backtest"
-    assert comparison.json()["task_type"] == "paper_backtest_comparison"
 
 
 def _bar(index: int) -> dict:

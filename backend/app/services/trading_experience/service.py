@@ -6,17 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.services.shared.feature_flags import feature_enabled
-from app.services.trading_experience import holding_discipline, limit_up_followthrough, relative_strength, review_pool, review_workspace, t_trade_attribution, trade_journal, volume_position_tags
+from app.services.trading_experience import limit_up_followthrough, relative_strength, review_pool, review_workspace, trade_journal, volume_position_tags
 from app.services.trading_experience.config import ENGINE_VERSION, TRADING_EXPERIENCE_FLAGS
 from app.services.trading_experience.guards import validate_observation_payload
 from app.services.trading_experience.schemas import (
     BoardFilter,
-    HoldingDisciplineResponse,
     LimitUpFollowthroughResponse,
     RelativeStrengthResponse,
     ReviewPoolResponse,
     ReviewWorkspaceResponse,
-    TTradeAttributionResponse,
     TradeJournalEntryCreate,
     TradeJournalEntryUpdate,
     TradeJournalResponse,
@@ -29,7 +27,6 @@ WORKER_TASK_TYPES = [
     "trading_experience_tag_materialization",
     "trading_experience_relative_strength_refresh",
     "trading_experience_limit_up_backtest",
-    "trading_experience_t_attribution_refresh",
 ]
 
 
@@ -144,12 +141,6 @@ class TradingExperienceService:
         items = relative_strength.build_board(self.db, trade_date=trade_date, limit=limit)
         return self._validated(RelativeStrengthResponse(enabled=True, items=items, total=len(items), data_quality="ok" if items else "insufficient", as_of=datetime.now(), engine_version=ENGINE_VERSION, source="daily_bar_snapshots", research_only=True))
 
-    def holding_discipline(self, *, account_id: int | None, user_id: int | None = None) -> HoldingDisciplineResponse:
-        if not self._enabled("holding_discipline_assistant_enabled"):
-            return self._validated(HoldingDisciplineResponse(enabled=False, account_id=account_id, items=[], total=0, data_quality="blocked", as_of=datetime.now(), engine_version=ENGINE_VERSION, source="feature_flag", research_only=True))
-        resolved_account_id, items = holding_discipline.build_hints(self.db, account_id=account_id, user_id=user_id)
-        return self._validated(HoldingDisciplineResponse(enabled=True, account_id=resolved_account_id, items=items, total=len(items), data_quality="ok" if items else "insufficient", as_of=datetime.now(), engine_version=ENGINE_VERSION, source="paper_positions", research_only=True))
-
     def limit_up_followthrough(self, *, trade_date: date | None, limit: int) -> LimitUpFollowthroughResponse:
         if not self._enabled("limit_up_followthrough_enabled"):
             return self._validated(LimitUpFollowthroughResponse(enabled=False, items=[], total=0, data_quality="blocked", as_of=datetime.now(), engine_version=ENGINE_VERSION, source="feature_flag", research_only=True))
@@ -173,13 +164,6 @@ class TradingExperienceService:
                 backtest_window_months=int((report or {}).get("window_months") or 24),
             )
         )
-
-    def t_trade_attribution(self, *, account_id: int | None, days: int, user_id: int | None = None) -> TTradeAttributionResponse:
-        if not self._enabled("t_trade_discipline_enabled"):
-            return self._validated(TTradeAttributionResponse(enabled=False, account_id=account_id, items=[], total=0, data_quality="blocked", as_of=datetime.now(), engine_version=ENGINE_VERSION, source="feature_flag", research_only=True))
-        resolved_account_id, items = t_trade_attribution.build_attribution(self.db, account_id=account_id, user_id=user_id, days=days)
-        quality = "ok" if items and all(item.data_quality == "ok" for item in items) else "no_data"
-        return self._validated(TTradeAttributionResponse(enabled=True, account_id=resolved_account_id, items=items, total=len(items), data_quality=quality, as_of=datetime.now(), engine_version=ENGINE_VERSION, source="paper_trades", research_only=True))
 
     def flags(self) -> dict[str, bool]:
         settings = get_settings()

@@ -297,7 +297,7 @@ class MLSignalService:
         )
 
     def online_learning_status(self, min_samples: int = 100) -> MLSignalOnlineLearningStatusResponse:
-        """Return the operational state of the paper-trade online learning loop."""
+        """Return the read-only state of historical paper-sample online learning data."""
 
         paper_sample_count = int(
             self.db.execute(
@@ -332,7 +332,7 @@ class MLSignalService:
         latest_task = (
             self.db.execute(
                 select(RuntimeTask)
-                .where(RuntimeTask.task_type.in_(("ml_signal_incremental_train", "strategy_self_evolution")))
+                .where(RuntimeTask.task_type == "ml_signal_incremental_train")
                 .order_by(RuntimeTask.id.desc())
                 .limit(1)
             )
@@ -340,11 +340,11 @@ class MLSignalService:
         )
         warnings: list[str] = []
         if paper_sample_count < min_samples:
-            warnings.append(f"paper 样本不足：当前 {paper_sample_count}，最低需要 {min_samples}。")
+            warnings.append(f"历史模拟样本不足：当前 {paper_sample_count}，最低需要 {min_samples}。")
         if positive_count == 0 or negative_count == 0:
             warnings.append("近期闭环样本正负类别不完整，增量训练会被生产门槛拦截。")
         if latest_task is None:
-            warnings.append("尚未发现每周增量训练任务记录，等待调度周期或手动触发。")
+            warnings.append("自动增量训练周任务已停用；如需研究复核，请由管理员手动触发。")
         drift = feature_drift_summary(recent_samples)
         warnings.extend(drift.get("alerts", [])[:3])
 

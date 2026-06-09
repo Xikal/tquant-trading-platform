@@ -74,7 +74,7 @@ function metricRow(label: string, value: unknown, kind?: "pct"): PromotionMetric
 function promotionTierText(value: string): string {
   const normalized = value.trim();
   if (normalized === "research" || normalized === "research_only") return "研究层";
-  if (normalized === "paper_small") return "小仓模拟";
+  if (normalized === "paper_small") return "小仓观察";
   if (normalized === "candidate_production") return "可进入生产候选";
   if (normalized === "production") return "生产层";
   return normalized || "--";
@@ -83,7 +83,7 @@ function promotionTierText(value: string): string {
 function promotionRecommendationText(value: string): string {
   const normalized = value.trim();
   if (normalized === "stay_research") return "继续研究验证";
-  if (normalized === "promote_to_paper_small") return "晋级小仓模拟候选";
+  if (normalized === "promote_to_paper_small") return "晋级小仓观察候选";
   if (normalized === "promote_to_candidate_production") return "晋级生产候选";
   if (normalized === "keep_current") return "维持当前层级";
   return normalized || "--";

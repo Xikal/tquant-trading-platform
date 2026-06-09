@@ -36,7 +36,6 @@ def _patch_base(monkeypatch, *, expected: str = "2026-05-18") -> None:
     monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: expected)
     monkeypatch.setattr(close_refresh, "RuntimeTaskQueue", _FakeQueue)
     monkeypatch.setattr(close_refresh, "_market_review_exists", lambda *_args, **_kwargs: False)
-    monkeypatch.setattr(close_refresh, "_paper_review_count", lambda *_args, **_kwargs: 0)
     monkeypatch.setattr(close_refresh, "_daily_bar_sla_exists", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(close_refresh, "_succeeded_task_exists", lambda *_args, **_kwargs: False)
     monkeypatch.setattr(
@@ -256,8 +255,6 @@ def test_after_close_enqueues_review_reports_after_review_time(monkeypatch) -> N
     assert review_tasks == [
         ("market_review_report", "midday"),
         ("market_review_report", "close"),
-        ("paper_review_report", "midday"),
-        ("paper_review_report", "close"),
     ]
 
 
@@ -266,7 +263,6 @@ def test_after_close_followups_skip_reports_that_already_exist(monkeypatch) -> N
     _FakeQueue.last_payload = None
     _FakeQueue.payloads = []
     monkeypatch.setattr(close_refresh, "_market_review_exists", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(close_refresh, "_paper_review_count", lambda *_args, **_kwargs: 2)
     monkeypatch.setattr(close_refresh, "_daily_bar_sla_exists", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(close_refresh, "_succeeded_task_exists", lambda *_args, **_kwargs: True)
 
@@ -278,7 +274,7 @@ def test_after_close_followups_skip_reports_that_already_exist(monkeypatch) -> N
     )
 
     assert [item["action"] for item in result["market_review"]] == ["exists", "exists"]
-    assert [item["action"] for item in result["paper_review"]] == ["exists", "exists"]
+    assert "paper_review" not in result
     assert result["data_quality_sla"]["action"] == "exists"
     assert result["low_buy_close_review"]["action"] == "succeeded_task_exists"
     assert _FakeQueue.payloads == []
@@ -318,8 +314,6 @@ def test_after_close_followups_catch_up_previous_trade_date_reviews(monkeypatch)
     assert review_tasks == [
         ("market_review_report", "midday"),
         ("market_review_report", "close"),
-        ("paper_review_report", "midday"),
-        ("paper_review_report", "close"),
     ]
 
 

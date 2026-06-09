@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated, Any, List, Union
 
 from dotenv import dotenv_values
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -26,6 +26,12 @@ def _load_file_overrides() -> dict[str, str]:
             if value is None or key in os.environ:
                 continue
             merged[key.lower()] = value
+    if (
+        "paper_perf_archive_time" in merged
+        and "market_close_review_time" not in merged
+        and "MARKET_CLOSE_REVIEW_TIME" not in os.environ
+    ):
+        merged["market_close_review_time"] = merged["paper_perf_archive_time"]
     return merged
 
 
@@ -62,7 +68,6 @@ class AppSettings(BaseSettings):
     runtime_daily_bar_refresh_interval_seconds: int = 300
     runtime_latest_data_watchdog_interval_seconds: int = 300
     runtime_market_review_interval_seconds: int = 300
-    runtime_paper_perf_archive_interval_seconds: int = 300
     runtime_agent_daily_report_interval_seconds: int = 300
     runtime_worker_poll_interval_seconds: float = 5.0
     runtime_low_priority_tasks_paused: bool = False
@@ -72,12 +77,11 @@ class AppSettings(BaseSettings):
         "analytics_export_backtest_runs,analytics_export_backtest_trades,"
         "analytics_export_backtest_daily_snapshots,"
         "analytics_export_analysis_logs,analytics_export_market_review_reports,"
-        "analytics_export_paper_review_reports,"
         "strategy_24m_duckdb_report,decision_context_24m_report,portfolio_execution_24m_report,"
         "backtest_all_strategies_24m,data_backfill_24m,data_quality_backfill,data_repair_run,"
         "low_buy_execution_backtest,legacy_research_backtest,etf_t0_minute_backtest,"
         "etf_t0_research_report,backtest_portfolio_optimization,backtest_position_policy_research,"
-        "paper_smart_t_backtest,paper_backtest_comparison,trading_experience_limit_up_backtest,"
+        "trading_experience_limit_up_backtest,"
         "ml_signal_build_samples,ml_signal_train,ml_signal_incremental_train,"
         "factor_mining_iterate,factor_mining_evaluate,factor_mining_monthly"
     )
@@ -142,7 +146,6 @@ class AppSettings(BaseSettings):
     bff_workspace_cache_enabled: bool = True
     monitor_bff_aggregate_enabled: bool = True
     bff_monitor_cache_ttl_seconds: int = 5
-    bff_paper_cache_ttl_seconds: int = 3
     bff_strategy_cache_ttl_seconds: int = 30
     bff_settings_cache_ttl_seconds: int = 30
     monitor_bff_source_budget_enabled: bool = True
@@ -243,11 +246,6 @@ class AppSettings(BaseSettings):
     ml_signal_max_cv_auc_std: float = 0.06
     enable_deep_rl: bool = False
     enable_deep_rl_training: bool = False
-    paper_auto_trading_enabled: bool = False
-    paper_auto_trading_interval: int = 120
-    paper_auto_trading_max_orders: int = 5
-    paper_auto_trading_dry_run: bool = False
-    paper_auto_trading_min_score: int = 75
     paper_exit_model_enabled: bool = True
     paper_exit_model_artifact_path: str = ""
     paper_exit_model_min_confidence: float = 0.55
@@ -273,9 +271,15 @@ class AppSettings(BaseSettings):
         "core_midcap_vwap_ma5_retrace"
     )
     market_review_enabled: bool = True
-    paper_perf_archive_enabled: bool = True
-    paper_perf_archive_time: str = "15:05"
-    paper_perf_ai_report_enabled: bool = True
+    market_close_review_time: str = Field(
+        default="15:05",
+        validation_alias=AliasChoices(
+            "market_close_review_time",
+            "MARKET_CLOSE_REVIEW_TIME",
+            "paper_perf_archive_time",
+            "PAPER_PERF_ARCHIVE_TIME",
+        ),
+    )
     strategy_validation_monthly_enabled: bool = True
     analytics_24m_report_schedule_enabled: bool = False
     analytics_24m_report_interval_hours: int = 24

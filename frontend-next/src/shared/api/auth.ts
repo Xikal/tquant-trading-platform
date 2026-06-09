@@ -8,7 +8,6 @@ import type {
   AuthRefreshRequest,
   AuthRegisterRequest,
   AuthTokenResponse,
-  PaperAccessResponse,
 } from "./types";
 
 const ACCESS_TOKEN_KEY = "tquant:auth:access_token";
@@ -121,7 +120,6 @@ export function applyAuthTokenResponse(response: AuthTokenResponse, remember = t
 
 export const authApi = {
   me: (init: RequestJsonOptions = {}) => requestOperation<AuthMeResponse>("authMe", {}, init),
-  paperAccess: () => requestOperation<PaperAccessResponse>("authPaperAccess"),
   login: (payload: AuthLoginRequest, remember = true) =>
     requestOperation<AuthTokenResponse>("authLogin", {}, { method: "POST", body: JSON.stringify(payload) }).then((response) =>
       applyAuthTokenResponse(response, remember),

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.entities import PaperAccount, PaperTrade, UserFeishuBinding
+from app.models.entities import UserFeishuBinding
 from app.services.agent_context_service import AgentContextService
 from app.services.agent_report_service import AgentReportService
 from app.services.agent_workflow_job_service import AgentWorkflowJobService, WorkflowJobView
@@ -26,26 +25,11 @@ class FeishuAgentBridge:
         if user_id is None and command in {"持仓", "成交", "绩效", "风控"}:
             return text_card("需要绑定账户", ["当前飞书用户尚未绑定平台账号，请先在系统配置中完成绑定。"])
         if command == "持仓":
-            portfolio = self.context.paper_portfolio(db, user_id=user_id)
-            fields = [
-                ("总资产", f"{portfolio.total_assets:.2f}"),
-                ("可用资金", f"{portfolio.cash_available:.2f}"),
-                ("持仓数", str(len(portfolio.positions))),
-            ]
-            fields.extend((item.symbol, f"{item.name or item.symbol} · {item.quantity}股") for item in portfolio.positions[:5])
-            return interactive_card("模拟盘持仓", fields)
+            return _paper_feature_removed_card()
         if command == "成交":
-            return _latest_trade_card(db, user_id)
+            return _paper_feature_removed_card()
         if command == "绩效":
-            portfolio = self.context.paper_portfolio(db, user_id=user_id)
-            return interactive_card(
-                "模拟盘绩效",
-                [
-                    ("总收益率", f"{portfolio.total_return_pct:.2f}%"),
-                    ("胜率", f"{portfolio.win_rate_pct:.2f}%"),
-                    ("净胜率", f"{portfolio.net_win_rate_pct:.2f}%"),
-                ],
-            )
+            return _paper_feature_removed_card()
         if command == "策略":
             board = self.context.priority_board(db, limit=5)
             top_signal = board.items[0] if board.items else None
@@ -73,13 +57,11 @@ class FeishuAgentBridge:
                 ],
             )
         if command == "风控":
-            portfolio = self.context.paper_portfolio(db, user_id=user_id)
             return text_card(
                 "风控摘要",
                 [
-                    f"持仓市值：{portfolio.market_value:.2f}",
-                    f"收益因子：{portfolio.profit_factor if portfolio.profit_factor is not None else '--'}",
-                    "详细熔断状态请在 Web 模拟盘查看。",
+                    "模拟盘功能已下线，飞书侧不再读取模拟账户。",
+                    "请使用 Web 端实时行动、生产优先榜和自选监控查看当前风险状态。",
                 ],
             )
         if command == "日报":
@@ -178,28 +160,5 @@ def _resolve_user_id(db: Session, open_id: str) -> int | None:
     return row.user_id if row else None
 
 
-def _latest_trade_card(db: Session, user_id: int | None) -> dict:
-    account = (
-        db.execute(select(PaperAccount).where(PaperAccount.user_id == user_id).order_by(PaperAccount.id.asc()))
-        .scalars()
-        .first()
-    )
-    if account is None:
-        return text_card("模拟成交", ["暂无模拟账户。"])
-    rows = (
-        db.execute(
-            select(PaperTrade)
-            .where(PaperTrade.account_id == account.id)
-            .order_by(PaperTrade.trade_time.desc())
-            .limit(5)
-        )
-        .scalars()
-        .all()
-    )
-    if not rows:
-        return text_card("模拟成交", ["暂无成交记录。"])
-    lines = [
-        f"{row.symbol} {'买入' if row.side == 'buy' else '卖出'} {row.quantity}股 @ {float(row.price or 0):.3f}"
-        for row in rows
-    ]
-    return text_card("最近模拟成交", lines)
+def _paper_feature_removed_card() -> dict:
+    return text_card("模拟盘已下线", ["当前入口不再提供模拟盘账户、成交和绩效数据。"])

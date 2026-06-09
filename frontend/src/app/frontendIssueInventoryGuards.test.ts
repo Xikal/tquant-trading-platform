@@ -20,10 +20,14 @@ describe("frontend issue inventory guards", () => {
     expect(readProjectFile("src/state/serverQueries/queryKeys.ts")).not.toContain("factorMining");
   });
 
-  it("keeps visible metric labels plain-language in paper and strategy tracking surfaces", () => {
+  it("keeps removed paper UI out of the frontend bundle", () => {
+    expect(existsSync(projectPath("src/features/paper"))).toBe(false);
+    expect(existsSync(projectPath("src/state/serverQueries/paper.ts"))).toBe(false);
+    expect(existsSync(projectPath("src/stores/paperTradingStore.ts"))).toBe(false);
+  });
+
+  it("keeps visible metric labels plain-language in strategy tracking surfaces", () => {
     const files = [
-      "src/features/paper/PaperTradingPerformance.tsx",
-      "src/features/paper/PortfolioExecutionPanel.tsx",
       "src/features/strategy-tracking/DriftMonitorPanel.tsx",
       "src/features/strategy-tracking/PromotionReviewPanel.tsx",
     ];

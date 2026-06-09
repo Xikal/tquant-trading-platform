@@ -96,7 +96,7 @@ export function SectorFilterCard({
       saved={saved}
       disabled={!sectorExclusions || !sectorDirty}
     >
-      <p className="hint">选择不想参与的板块后，生产优先榜、选股宝典、App 选股和模拟盘自动买入都会过滤这些板块。已有持仓仍会保留风控监控。</p>
+      <p className="hint">选择不想参与的板块后，生产优先榜、选股宝典和 App 选股都会过滤这些板块。已有持仓仍会保留风控监控。</p>
       <div style={SECTOR_FILTER_SUMMARY_STYLE}>
         <InfoPill label="可选板块" value={sectorExclusions ? `${sectorExclusions.available_sectors.length} 个` : "--"} />
         <InfoPill label="已排除" value={`${sectorDraft.length} 个`} />

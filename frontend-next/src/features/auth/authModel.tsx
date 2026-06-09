@@ -22,7 +22,6 @@ export interface AuthModel {
   user: () => AuthUser | null;
   error: () => string;
   isAdmin: () => boolean;
-  canPaperTrade: () => boolean;
   restore: () => Promise<void>;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
@@ -130,7 +129,6 @@ export function AuthProvider(props: { children: JSX.Element }) {
     user,
     error,
     isAdmin: () => user()?.roles?.includes("admin") ?? false,
-    canPaperTrade: () => user()?.can_paper_trade ?? false,
     restore,
     login: async (payload) => {
       const result = await authApi.login({

@@ -37,30 +37,6 @@ test("/next/analysis runs symbol and batch analysis without trading writes", asy
   expect(writes()).toEqual(["POST /api/analyze", "POST /api/analyze/batch"]);
 });
 
-test("/next/analysis opens a paper shadow order draft from the analyzed result", async ({ page }) => {
-  await installE2eAuthState(page);
-  const writes = collectWrites(page);
-  await installAnalysisRoutes(page);
-  await page.route("**/api/bff/v1/workspace/paper", (route) => route.fulfill({ status: 200, json: paperWorkspaceFixture }));
-
-  await page.goto("/next/analysis");
-  await page.getByLabel("分析代码").fill("600000");
-  await page.getByTestId("analysis-control-start").click();
-  await expect(page.getByText("600000 分析完成")).toBeVisible();
-  await page.getByTestId("analysis-open-paper").click();
-
-  await expect(page).toHaveURL(/\/next\/paper.*source=analysis/);
-  await expect(page.getByRole("dialog", { name: "模拟委托" })).toBeVisible();
-  await expect(page.getByLabel("代码")).toHaveValue("600000");
-  await expect(page.getByLabel("名称")).toHaveValue("浦发银行");
-  await expect(page.getByLabel("数量")).toHaveValue("1000");
-  await expect(page.getByLabel("价格")).toHaveValue("8.72");
-  await expect(page.getByLabel("策略")).toHaveValue("auto");
-  await expect(page.getByLabel("理由")).toHaveValue("接近支撑位");
-  await expect(page.getByText(/金额/)).toBeVisible();
-  expect(writes()).toEqual(["POST /api/analyze"]);
-});
-
 test("/next/playbook reads low-buy workflow and blocks lifecycle writes", async ({ page }) => {
   await installE2eAuthState(page);
   const writes = collectWrites(page);
@@ -293,33 +269,3 @@ function routeSymbol(url: string): string {
   const pathname = new URL(url).pathname;
   return decodeURIComponent(pathname.split("/").at(-1) ?? "000001");
 }
-
-const paperWorkspaceFixture = {
-  api_version: "v1",
-  schema_version: "v15",
-  generated_at: "2026-06-06 09:45:00",
-  account: {
-    id: 1,
-    name: "默认模拟账户",
-    cash_available: 88000,
-    frozen_cash: 0,
-    initial_cash: 100000,
-    market_value: 12000,
-    status: "active",
-    today_pnl: 80,
-    total_assets: 100220,
-    total_return_pct: 0.22,
-  },
-  positions: [],
-  orders: [],
-  trades: [],
-  stock_pnl: { summary: {}, items: [] },
-  performance: {},
-  strategy_performance: [],
-  market_performance: [],
-  tag_performance: [],
-  risk_events: [],
-  auto_trading_status: { running: false, engine_running: false, trading_time: true },
-  auto_trading_runs: [],
-  partial_errors: [],
-};

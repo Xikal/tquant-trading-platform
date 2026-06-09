@@ -397,8 +397,8 @@ def _inventory_section() -> dict[str, Any]:
         "implemented_strategy_groups": [
             {"key": "low_buy_playbooks", "title": "低吸/选股策略", "count": len(PLAYBOOKS), "source": "app.services.low_buy.shared.PLAYBOOKS"},
             {"key": "etf_t0", "title": "ETF T0 分钟级做T", "count": len([profile for profile in list_etf_profiles() if profile.same_day_sell_allowed]), "source": "app.services.etf.t0_backtest"},
-            {"key": "sector_etf_t0", "title": "行业 ETF 替代做T", "count": 1, "source": "app.services.sector_etf_t0 + app.services.paper.scheduler_etf"},
-            {"key": "smart_t", "title": "个股底仓 SmartT 做T", "count": 1, "source": "app.services.paper.smart_t_backtest"},
+            {"key": "sector_etf_t0", "title": "行业 ETF 替代做T", "count": 1, "source": "app.services.sector_etf_t0"},
+            {"key": "smart_t", "title": "个股底仓 SmartT 做T", "count": 1, "source": "legacy research module (paper runtime disabled)"},
         ],
         "backtest_scripts": [
             "backend/scripts/low_buy_market_backtest.py",
@@ -409,10 +409,9 @@ def _inventory_section() -> dict[str, Any]:
             "backend/scripts/strategy_24m_backtest_report.py",
             "backend/app/services/etf/t0_backtest.py",
             "backend/app/services/sector_etf_t0.py",
-            "backend/app/services/paper/smart_t_backtest.py",
         ],
-        "backtest_api": ["/api/backtests", "/api/backtests/etf-t0-minute", "/api/backtests/etf-t0-research", "/api/backtests/etf-t0-oos/*", "/api/paper/performance/smart-t-backtest"],
-        "data_sources": ["daily_bar_snapshots", "minute_bar_snapshots", "low_buy_result_snapshots", "market_model_observations", "paper_orders", "paper_trades", "ETF universe runtime/static profiles"],
+        "backtest_api": ["/api/backtests", "/api/backtests/etf-t0-minute", "/api/backtests/etf-t0-research", "/api/backtests/etf-t0-oos/*"],
+        "data_sources": ["daily_bar_snapshots", "minute_bar_snapshots", "low_buy_result_snapshots", "market_model_observations", "ETF universe runtime/static profiles"],
         "existing_report_locations": ["backend/data/reports/", "research/reports/", "docs/reports/"],
     }
 
@@ -479,7 +478,7 @@ def _execution_constraints() -> list[str]:
         "低吸个股回测启用 A 股 T+1 退出约束：入场当日不触发卖出型止盈/止损，开盘低于止损视为不可安全持有的风险退出。",
         "低吸回测按 ROUND_TRIP_COST_BPS=16bps 扣除往返成本。",
         "ETF T0 回测必须用窗口内分钟线、ETF 专用费用模型、滑点和同日回转约束；短窗口分钟线不能视为 24 个月验收。",
-        "行业 ETF 替代做T sector_etf_t0 单独检查影子观察与模拟盘成交；本地分钟线不足时不能完成 T0 主策略验收。",
+        "行业 ETF 替代做T sector_etf_t0 单独检查影子观察；本地分钟线不足时不能完成 T0 主策略验收。",
         "前排票过滤仅作为研究/影子观察变体，默认不改变生产优先榜；所有对比使用相同信号日候选，避免后验选股。",
         "生产收益排行仅使用 buy_now / soft_buy_now；near_entry 单独展示为观察提前量，不进入生产排行。",
         "真实组合回测新增最大持仓 5/10 两档，持仓期间占用资金，同票持有中禁止重复买入。",

@@ -28,7 +28,7 @@ from pathlib import Path
 with Path("docker-compose.mysql.yml").open() as handle:
     payload = yaml.safe_load(handle)
 services = payload.get("services", {})
-required = {"app", "runtime-worker", "backtest-worker", "mysql", "redis", "go-bff-gateway"}
+required = {"app", "runtime-worker", "mysql", "redis", "go-bff-gateway"}
 missing = sorted(required - set(services))
 if missing:
     raise SystemExit(f"docker-compose.mysql.yml missing services: {missing}")

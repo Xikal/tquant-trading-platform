@@ -28,7 +28,6 @@ const PAGE_COMMANDS: CommandItem[] = [
   { type: "page", label: "量化分析", hint: "打开单票做T分析", page: "analysis" },
   { type: "page", label: "选股宝典", hint: "打开低吸策略候选", page: "playbook" },
   { type: "page", label: "策略跟踪", hint: "打开策略跟踪页面", page: "strategy-tracking" },
-  { type: "page", label: "模拟盘", hint: pageResponsibilityHint("paper", "打开模拟交易账户"), page: "paper" },
   { type: "page", label: "数据", hint: "打开数据页面", page: "data" },
   { type: "page", label: "系统配置", hint: "打开运行配置与治理", page: "settings" },
 ];
@@ -187,7 +186,7 @@ export function CommandPalette({
         <footer style={PALETTE_FOOTER_STYLE}>
           <span>Enter 执行</span>
           <span>Esc 关闭</span>
-          <span>Cmd/Ctrl+1~8 切换页面</span>
+          <span>Cmd/Ctrl+1~6 切换页面</span>
         </footer>
       </section>
     </div>

@@ -29,25 +29,6 @@ import type {
   SectorEtfT0Response,
   IntradayAnomalyResponse,
   MonitorSnapshot,
-  PaperAccount,
-  PaperGroupedPerformance,
-  PaperOrder,
-  PaperOrderCreate,
-  PaperAccessResponse,
-  PaperAutoTradingStatus,
-  PaperAgentRun,
-  PaperPerformance,
-  PaperPerformanceDashboard,
-  PaperWorkspaceBffResponse,
-  PaperLedgerRepairResponse,
-  PaperSectorEtfT0Performance,
-  PaperStrategyMarketPerformance,
-  PaperPositionsResponse,
-  PaperStockPnlResponse,
-  PaperTagPerformance,
-  PaperTradeTag,
-  PaperTradeTagCreate,
-  PaperTradesResponse,
   RuntimeStatus,
   FactorWeightsResponse,
   SettingsWorkspaceBffResponse,
@@ -73,11 +54,9 @@ import type {
   StrategyPromotionReview,
   StrategyTrackingReviewResponse,
   StrategyTrackingSnapshotResponse,
-  HoldingDisciplineResponse,
   LimitUpFollowthroughResponse,
   RelativeStrengthResponse,
   ReviewPoolResponse,
-  TTradeAttributionResponse,
   TradeJournalEntry,
   TradeJournalEntryCreate,
   TradeJournalResponse,
@@ -174,7 +153,6 @@ export const api = {
       `/bff/v1/workspace/monitor?priority_limit=${priorityLimit}&sector_limit=8&per_sector_limit=8&hedge_limit=4&view=${view}`,
       10000
     ),
-  getPaperAccess: () => request<PaperAccessResponse>("/auth/paper-access"),
   analyze: (payload: {
     symbol: string;
     prefer_strategy: "auto" | "positive_t" | "negative_t";
@@ -384,70 +362,8 @@ export const api = {
     requestCached<VolumePositionTagResponse>(`/trading-experience/volume-position-tags/${encodeURIComponent(symbol)}`, 12000),
   getTradingExperienceRelativeStrength: (limit = 30) =>
     requestCached<RelativeStrengthResponse>(`/trading-experience/relative-strength?limit=${limit}`, 12000),
-  getHoldingDiscipline: (accountId?: number | null) =>
-    requestCached<HoldingDisciplineResponse>(
-      `/trading-experience/holding-discipline${accountId ? `?account_id=${accountId}` : ""}`,
-      12000,
-    ),
   getLimitUpFollowthrough: (limit = 30) =>
     requestCached<LimitUpFollowthroughResponse>(`/trading-experience/limit-up-followthrough?limit=${limit}`, 12000),
-  getTTradeAttribution: (accountId?: number | null, days = 30) => {
-    const query = new URLSearchParams({ days: String(days) });
-    if (accountId) query.set("account_id", String(accountId));
-    return requestCached<TTradeAttributionResponse>(`/trading-experience/t-trade-attribution?${query.toString()}`, 12000);
-  },
-  getPaperAccount: () => request<PaperAccount>("/paper/account"),
-  getPaperWorkspaceBff: () =>
-    request<PaperWorkspaceBffResponse>("/bff/v1/workspace/paper?order_limit=80&trade_limit=300&run_limit=20"),
-  pausePaperAccount: () => request<PaperAccount>("/paper/account/pause", { method: "POST" }),
-  resumePaperAccount: () => request<PaperAccount>("/paper/account/resume", { method: "POST" }),
-  getPaperPositions: () => request<PaperPositionsResponse>("/paper/positions"),
-  refreshPaperPositions: () =>
-    request<PaperPositionsResponse>("/paper/positions/refresh", { method: "POST" }),
-  getPaperOrders: (limit = 50) => request<PaperOrder[]>(`/paper/orders?limit=${limit}`),
-  getPaperTrades: (limit = 50) => request<PaperTradesResponse>(`/paper/trades?limit=${limit}`),
-  getPaperStockPnl: () => request<PaperStockPnlResponse>("/paper/performance/stock-pnl"),
-  reconcilePaperAccount: (payload: { account_id?: number; apply: boolean }) =>
-    request<PaperLedgerRepairResponse>("/paper/account/reconcile", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  getPaperTradeTags: (tradeId: number) => request<PaperTradeTag[]>(`/paper/trades/${tradeId}/tags`),
-  getPaperTradeTagsBatch: (tradeIds: number[]) =>
-    request<{ items: Record<string, PaperTradeTag[]> }>(
-      `/paper/trades/tags?trade_ids=${encodeURIComponent(tradeIds.join(","))}`,
-    ),
-  addPaperTradeTag: (tradeId: number, payload: PaperTradeTagCreate) =>
-    request<PaperTradeTag>(`/paper/trades/${tradeId}/tags`, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }),
-  deletePaperTradeTag: (tradeId: number, tagId: number) =>
-    request<{ message: string; tag_id: number }>(`/paper/trades/${tradeId}/tags/${tagId}`, { method: "DELETE" }),
-  getPaperPerformance: () => request<PaperPerformance>("/paper/performance"),
-  getPaperPerformanceByStrategy: () => request<PaperGroupedPerformance[]>("/paper/performance/by-strategy"),
-  getPaperPerformanceByMarketState: () => request<PaperGroupedPerformance[]>("/paper/performance/by-market-state"),
-  getPaperPerformanceByStrategyMarketState: () =>
-    request<PaperStrategyMarketPerformance[]>("/paper/performance/by-strategy-market-state"),
-  getPaperPerformanceByTag: () => request<PaperTagPerformance[]>("/paper/performance/by-tag"),
-  getPaperPerformanceDashboard: (days = 30) =>
-    request<PaperPerformanceDashboard>(`/paper/performance/dashboard?days=${days}`),
-  getPaperSectorEtfT0Performance: () =>
-    request<PaperSectorEtfT0Performance>("/paper/performance/sector-etf-t0"),
-  archivePaperPerformance: () =>
-    request<{ account_id: number; date: string; strategies_saved: number; market_states_saved: number; report_saved: boolean }>(
-      "/paper/performance/archive",
-      { method: "POST" }
-    ),
-  evaluatePaperRiskEvents: () => request<RiskEventItem[]>("/paper/risk/evaluate", { method: "POST" }),
-  getPaperRiskEvents: () => request<RiskEventItem[]>("/paper/risk/events"),
-  getPaperAutoTradingStatus: () => request<PaperAutoTradingStatus>("/paper/auto-trading/status"),
-  getPaperAutoTradingRuns: (limit = 20) => request<PaperAgentRun[]>(`/paper/auto-trading/runs?limit=${limit}`),
-  createPaperOrder: (payload: PaperOrderCreate) =>
-    request<PaperOrder>("/paper/orders", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    }),
 };
 
 function strategyTrackingQuery(params: StrategyTrackingParams): string {

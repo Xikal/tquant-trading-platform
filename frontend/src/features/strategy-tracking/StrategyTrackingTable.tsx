@@ -282,7 +282,7 @@ function laneTone(lane?: string): string {
 }
 
 function laneRoleText(item: StrategyTrackingItem): string {
-  if (item.display_lane === "front_row_weighted") return "模拟验证中 · 未接生产";
+  if (item.display_lane === "front_row_weighted") return "影子验证中 · 未接生产";
   if (item.display_lane === "front_row_only") return "仅观察 · 不参与生产排序";
   return "旧策略排序 · 保留具体策略名";
 }

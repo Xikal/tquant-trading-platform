@@ -83,7 +83,7 @@ async function requestJson(page, path, options = {}) {
   await page.getByText("实时监控").waitFor({ timeout: 15000 });
   await page.screenshot({ path: path.join(outDir, "monitor.png"), fullPage: true });
 
-  const tabs = ["量化分析", "选股宝典", "策略工作台", "模拟盘", "绩效"];
+  const tabs = ["量化分析", "选股宝典", "策略工作台"];
   for (const tab of tabs) {
     await page.getByText(tab).first().click();
     await page.waitForTimeout(700);

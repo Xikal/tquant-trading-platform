@@ -588,7 +588,6 @@ function isCutoverRootRedirect(value: string): boolean {
   return [
     "/monitor",
     "/monitor/market",
-    "/paper",
     "/strategy-tracking",
     "/analysis",
     "/playbook",
