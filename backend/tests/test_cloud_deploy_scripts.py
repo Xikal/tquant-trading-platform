@@ -491,6 +491,7 @@ def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
     assert ".runtime/frontend-next-dist-backup-$TS/assets" in hot_branch
     assert 'tquant-app-mysql:/app/frontend-next/dist/assets "$WORK_DIR/container-assets"' in hot_branch
     assert 'cp -a "$WORK_DIR/container-assets/." frontend-next/dist/assets/' in hot_branch
+    assert 'sudo rm -rf "$WORK_DIR"' in hot_branch
     assert "elif sudo docker inspect tquant-app-mysql" not in hot_branch
     assert hot_branch.index('echo "frontend_next_hot:separated_frontend_web:$frontend_web_compose"') < hot_branch.index(
         'echo "frontend_next_hot:monolith_compat"'

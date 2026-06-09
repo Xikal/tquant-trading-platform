@@ -996,7 +996,8 @@ if test "$updated" != "1"; then
   exit 1
 fi
 echo "frontend_next_hot:updated"
-rm -rf "$WORK_DIR" "$REMOTE_PACKAGE"
+sudo rm -rf "$WORK_DIR"
+rm -f "$REMOTE_PACKAGE"
 REMOTE
     then
       return 1
