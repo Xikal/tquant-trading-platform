@@ -113,6 +113,12 @@ const loginRoute = createRoute({
   component: routeBoundaryComponent(LoginPage, "登录页"),
 });
 
+const nextLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "next/login",
+  component: routeBoundaryComponent(LoginPage, "登录页"),
+});
+
 const nextRootRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "next",
@@ -155,6 +161,7 @@ const performanceCompatRoute = createRoute({ getParentRoute: () => nextRootRoute
 export const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  nextLoginRoute,
   monitorLevel1CutoverRoute,
   monitorMarketCutoverRoute,
   paperCutoverRoute,

@@ -3,13 +3,14 @@ import { Navigate, useLocation } from "@tanstack/solid-router";
 import { Panel } from "../shared/ui/Panel";
 import { Button } from "../shared/ui/Button";
 import { useAuth } from "../features/auth/authModel";
+import { AUTH_LOGIN_ROUTE } from "./authRoutes";
 
 export function AuthGuard(props: { children: JSX.Element }) {
   const auth = useAuth();
   const location = useLocation();
   return (
     <Show when={auth.status() !== "restoring"} fallback={<GuardPanel title="正在恢复会话" message="正在校验本地登录状态。" />}>
-      <Show when={auth.status() === "authenticated"} fallback={<Navigate to="/login" search={{ redirect: location().href }} />}>
+      <Show when={auth.status() === "authenticated"} fallback={<Navigate to={AUTH_LOGIN_ROUTE} search={{ redirect: location().href }} />}>
         {props.children}
       </Show>
     </Show>

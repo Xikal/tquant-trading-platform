@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { createRouter } from "@tanstack/solid-router";
 import { compatibilityRoutes, nextRoutes } from "../shared/config/routes";
 import { routeHasParityTarget } from "../shared/testing/legacyParity";
+import { AUTH_LOGIN_ROUTE } from "./authRoutes";
+import { routeTree } from "./routeTree";
 
 describe("frontend-next route inventory", () => {
   it("maps every target page under /next/* to a legacy parity route", () => {
@@ -51,5 +54,12 @@ describe("frontend-next route inventory", () => {
       "/data",
       "/settings",
     ]);
+  });
+
+  it("keeps the production login entry under /next to avoid the legacy frontend shell", () => {
+    const router = createRouter({ routeTree });
+    expect(AUTH_LOGIN_ROUTE).toBe("/next/login");
+    expect(router.routesByPath[AUTH_LOGIN_ROUTE]).toBeDefined();
+    expect(router.routesByPath["/login"]).toBeDefined();
   });
 });

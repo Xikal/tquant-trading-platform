@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/solid-router";
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import type { AuthModel } from "../auth/authModel";
 import { Button } from "../../shared/ui/Button";
+import { AUTH_LOGIN_ROUTE } from "../../app/authRoutes";
 
 export function UserMenu(props: { auth: AuthModel }) {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export function UserMenu(props: { auth: AuthModel }) {
   async function logout() {
     setOpen(false);
     await props.auth.logout();
-    await navigate({ to: "/login" });
+    await navigate({ to: AUTH_LOGIN_ROUTE });
   }
 
   return (
