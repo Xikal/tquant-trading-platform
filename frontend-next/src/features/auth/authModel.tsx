@@ -43,6 +43,8 @@ export interface RegisterPayload {
   remember?: boolean;
 }
 
+export type AuthRefreshAttempt = "refreshed" | "unavailable" | "invalid" | "failed";
+
 const AuthContext = createContext<AuthModel>();
 
 export function AuthProvider(props: { children: JSX.Element }) {
@@ -65,10 +67,13 @@ export function AuthProvider(props: { children: JSX.Element }) {
       setStatus("authenticated");
       setError("");
     } catch (firstError) {
-      const refreshed = await tryRefresh();
-      if (refreshed) return;
-      setAuthAccessToken("");
-      clearAuthRefreshSession();
+      const couldAttemptRefresh = canAttemptAuthRefresh();
+      const refreshAttempt = await tryRefresh();
+      if (refreshAttempt === "refreshed") return;
+      if (shouldClearStoredAuthAfterRestore(firstError, refreshAttempt, couldAttemptRefresh)) {
+        setAuthAccessToken("");
+        clearAuthRefreshSession();
+      }
       setUser(null);
       setStatus("anonymous");
       if (firstError instanceof ApiError && firstError.status === 401) {
@@ -79,15 +84,16 @@ export function AuthProvider(props: { children: JSX.Element }) {
     }
   }
 
-  async function tryRefresh() {
+  async function tryRefresh(): Promise<AuthRefreshAttempt> {
     const refreshToken = getAuthRefreshToken();
-    if (!canAttemptAuthRefresh()) return false;
+    if (!canAttemptAuthRefresh()) return "unavailable";
     try {
       const result = await authApi.refresh({ refresh_token: refreshToken }, currentRefreshTokenRemembered());
       await applyToken(result, currentRefreshTokenRemembered());
-      return true;
-    } catch {
-      return false;
+      return "refreshed";
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return "invalid";
+      return "failed";
     }
   }
 
@@ -151,4 +157,9 @@ export function useAuth() {
 export function createAuthResource<T>(source: () => T) {
   const auth = useAuth();
   return createResource(() => (auth.status() === "authenticated" ? source() : undefined), (value) => value);
+}
+
+export function shouldClearStoredAuthAfterRestore(firstError: unknown, refreshAttempt: AuthRefreshAttempt, couldAttemptRefresh: boolean): boolean {
+  if (refreshAttempt === "invalid") return true;
+  return !couldAttemptRefresh && firstError instanceof ApiError && firstError.status === 401;
 }
