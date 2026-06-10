@@ -1,4 +1,5 @@
 import type { ApiFeature, ApiOperationName, OperationPathOptions } from "./operations";
+import type { StrategyVariant } from "./client";
 
 const ROOT = "frontend-next";
 
@@ -39,7 +40,8 @@ export const queryKeys = {
   kline: (symbol: string) => operationQueryKey("kline", { path: { symbol } }),
 
   lowBuyScreener: (query: OperationPathOptions["query"] = {}) => operationQueryKey("lowBuyScreener", { query }),
-  lowBuyPriorityBoard: (limit = 12) => operationQueryKey("lowBuyPriorityBoard", { query: { limit } }),
+  lowBuyPriorityBoard: (limit = 12, strategyVariant: StrategyVariant = "baseline", refresh: "cache" | "async" | "sync" = "cache") =>
+    operationQueryKey("lowBuyPriorityBoard", { query: { limit, strategy_variant: strategyVariant, refresh } }),
   lowBuyQuotes: (symbols: string[] = [], strategy?: string) => operationQueryKey("lowBuyQuotes", { query: { symbols, strategy } }),
   lowBuyStrategies: operationQueryKey("lowBuyStrategies"),
   strategiesMeta: operationQueryKey("strategiesMeta"),

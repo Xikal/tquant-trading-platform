@@ -15,24 +15,7 @@ rm -f "$PREFLIGHT_DB_PATH" "$PREFLIGHT_DB_PATH-shm" "$PREFLIGHT_DB_PATH-wal" "$P
 
 ./scripts/version_sync.py --check >/dev/null
 
-cd "$ROOT_DIR/frontend"
-read -r VERSION_NAME VERSION_CODE < <(python3 - <<'PY' "$ROOT_DIR/VERSION.json"
-import json
-import sys
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-print(data.get("version", "1.0.0"), int(data.get("build_number", 1)))
-PY
-)
-VITE_NATIVE_VERSION_CODE="${VITE_NATIVE_VERSION_CODE:-$VERSION_CODE}" \
-VITE_NATIVE_VERSION_NAME="${VITE_NATIVE_VERSION_NAME:-$VERSION_NAME}" \
-VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://tquant.example.invalid/api}" \
-npm run build:native >/dev/null
-npx cap sync android >/dev/null
-cd "$ROOT_DIR"
-python3 ./scripts/harden_native_release_config.py >/dev/null
-./scripts/native_release_check.py >/dev/null
-
-cd "$ROOT_DIR/frontend"
+cd "$ROOT_DIR/frontend-next"
 npm run build >/dev/null
 
 cd "$ROOT_DIR/backend"
@@ -106,7 +89,7 @@ assert "assets/index-" in html, "built frontend assets not linked"
 assert isinstance(settings.get("data_source"), str), "settings API unavailable in single-port mode"
 assert ready.get("status") == "ok", f"readyz not ok: {ready}"
 assert ready.get("checks", {}).get("database") is True, "database readiness check failed"
-assert ready.get("checks", {}).get("frontend_dist") is True, "frontend readiness check failed"
+assert ready.get("checks", {}).get("frontend_next_dist") is True, "frontend-next readiness check failed"
 print("prod-preflight:ok")
 PY
 

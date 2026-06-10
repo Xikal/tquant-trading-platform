@@ -22,12 +22,20 @@ def test_frontend_next_only_routes_to_frontend_next() -> None:
     assert result.requires_migration is False
 
 
-def test_frontend_legacy_only_routes_to_frontend_legacy() -> None:
+def test_retired_frontend_changes_do_not_trigger_deploy() -> None:
     result = resolve_deploy_scope(["frontend/src/features/paper/PaperTradingPage.tsx"])
 
-    assert result.scope == "frontend-legacy"
-    assert result.requires_legacy_frontend_build is True
+    assert result.scope == "verify-only"
+    assert result.units == ()
     assert result.requires_frontend_next_build is False
+
+
+def test_retired_frontend_explicit_scope_is_blocked() -> None:
+    result = resolve_deploy_scope([], explicit_scope="frontend-legacy")
+
+    assert result.scope == "blocked"
+    assert result.blocked is True
+    assert "retired" in result.reason
 
 
 def test_backend_api_only_routes_to_backend_api() -> None:

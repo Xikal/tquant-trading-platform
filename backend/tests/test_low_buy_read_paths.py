@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import threading
 import unittest
@@ -13,6 +14,7 @@ from app.models.entities import LowBuyResultSnapshot, LowBuyScanSnapshot
 from app.models.schemas import (
     LowBuyCandidateOut,
     LowBuyHistorySectionOut,
+    LowBuyPortfolioRiskOut,
     LowBuyScreenerResponse,
     LowBuyStrategyPerformanceOut,
 )
@@ -21,7 +23,9 @@ from app.services.low_buy.history import LowBuyHistoryMixin
 from app.services.low_buy.mobile import LowBuyMobileReadMixin
 from app.services.low_buy.performance import LowBuyPerformanceMixin
 from app.services.low_buy.pool import LowBuyPoolMixin
+from app.services.low_buy.priority_board import LowBuyPriorityBoardMixin
 from app.services.low_buy.priority_snapshot import build_priority_base_snapshot
+from app.services.low_buy.priority_types import PriorityBaseSnapshot, PriorityCandidate, StrategyHit
 from app.services.low_buy.results import LowBuyResultStoreMixin
 from app.services.low_buy.screening_read import screen_read_path
 from app.services.low_buy.shared import (
@@ -29,6 +33,12 @@ from app.services.low_buy.shared import (
     LOW_BUY_RESULT_VERSION,
     normalize_low_buy_strategy,
 )
+from backend.tests.support.export_time import export_window_date
+
+
+EXPECTED_UNPUBLISHED_TRADE_DATE = export_window_date(-3).isoformat()
+INTERMEDIATE_TRADE_DATE = export_window_date(-7).isoformat()
+STALE_MATERIALIZED_TRADE_DATE = export_window_date(-10).isoformat()
 
 
 def _candidate(**overrides) -> LowBuyCandidateOut:
@@ -159,6 +169,44 @@ def _current_filters() -> dict:
     }
 
 
+def _priority_candidates(count: int) -> list[PriorityCandidate]:
+    rows: list[PriorityCandidate] = []
+    for index in range(1, count + 1):
+        symbol = f"{index:06d}"
+        candidate = _candidate(
+            symbol=symbol,
+            name=f"测试{index}",
+            strategy_key="first_board",
+            strategy_title="首板回调",
+            score=70.0 + index,
+            latest_price=10.0 + index / 10,
+            entry_zone_low=9.8 + index / 10,
+            entry_zone_high=10.1 + index / 10,
+            stop_loss=9.5 + index / 10,
+            sector_name="银行" if index % 2 else "证券",
+            buy_signal_state="soft_buy_now",
+            recommendation_days=index % 4 + 1,
+            recommendation_start_date="2026-04-22",
+        )
+        rows.append(
+            PriorityCandidate(
+                symbol=symbol,
+                hits=[
+                    StrategyHit(
+                        strategy_key="first_board",
+                        strategy_title="首板回调",
+                        family_key="front_row",
+                        candidate=candidate,
+                        strategy_weight_score=80.0,
+                        context_bonus=0.0,
+                        performance=_performance(),
+                    )
+                ],
+            )
+        )
+    return rows
+
+
 class _HistoryLoaderService(LowBuyHistoryMixin, LowBuyResultStoreMixin, LowBuyPoolMixin, LowBuyCandidateMixin):
     _full_cache_setting_prefix = "test_low_buy_full_cache"
     _screen_cache = {}
@@ -252,6 +300,130 @@ class _PrioritySnapshotQueryBudgetService(_PrioritySnapshotTargetService):
         return None
 
 
+class _PriorityBoardMarketDataStub:
+    @staticmethod
+    def get_quotes_batch(symbols, **_kwargs):  # noqa: ANN001
+        return {symbol: type("_Quote", (), {"last_price": 0.0})() for symbol in symbols}
+
+    @staticmethod
+    def get_intraday_bars_batch(**_kwargs):  # noqa: ANN001
+        return {}
+
+
+class _PriorityBoardHotReadService(LowBuyPriorityBoardMixin):
+    def __init__(self, rows: list[PriorityCandidate]) -> None:
+        self.rows = rows
+        self.market_data = _PriorityBoardMarketDataStub()
+        self._priority_base_cache = {}
+        self._priority_response_cache = {}
+        self._priority_base_cache_ttl = 120.0
+        self._priority_response_cache_ttl = 30.0
+
+    @staticmethod
+    def _resolve_latest_completed_trade_date(trade_dates: list[str]) -> str:
+        return trade_dates[-1] if trade_dates else ""
+
+    @staticmethod
+    def _load_cached_strategy_performance(*_args, **_kwargs):  # noqa: ANN001
+        return _performance()
+
+    @staticmethod
+    def _load_strategy_performance_snapshot(*_args, **_kwargs):  # noqa: ANN001
+        return _performance()
+
+    @staticmethod
+    def _build_strategy_performance_snapshot(*_args, **_kwargs):  # noqa: ANN001
+        return _performance()
+
+    @staticmethod
+    def _ensure_recent_strategy_performance_snapshot(*_args, **_kwargs):  # noqa: ANN001
+        return _performance()
+
+    @staticmethod
+    def _get_priority_response_cache(*_args, **_kwargs):  # noqa: ANN001
+        return None
+
+    @staticmethod
+    def _set_priority_response_cache(*_args, **_kwargs):  # noqa: ANN001
+        return None
+
+    @staticmethod
+    def _get_priority_read_model(*_args, **_kwargs):  # noqa: ANN001
+        return None
+
+    @staticmethod
+    def _set_priority_read_model(*_args, **_kwargs):  # noqa: ANN001
+        return None
+
+    def _load_priority_base_snapshot(self, db, limit: int):  # noqa: ARG002
+        return PriorityBaseSnapshot(
+            latest_trade_date="2026-04-25",
+            latest_available_trade_date="2026-04-25",
+            updated_at="2026-04-25 15:00:00",
+            candidates=self.rows,
+            market_context=self._market_context(),
+            expected_trade_date="2026-04-25",
+        )
+
+    @staticmethod
+    def _refresh_priority_candidates(rows: list[PriorityCandidate]) -> list[PriorityCandidate]:
+        return rows
+
+    @staticmethod
+    def _attach_priority_recommendation_durations(*, db, rows, latest_trade_date):  # noqa: ANN001, ARG004
+        return rows
+
+    @staticmethod
+    def _primary_candidates_for_portfolio(*_args, **_kwargs):  # noqa: ANN001
+        return []
+
+    @staticmethod
+    def _build_market_context(db, latest_trade_date: str):  # noqa: ANN001, ARG004
+        return _PriorityBoardHotReadService._market_context()
+
+    @staticmethod
+    def _market_context():
+        from app.services.low_buy.priority_types import PriorityMarketContext
+
+        return PriorityMarketContext(
+            market_state="repair",
+            market_bonus=0.0,
+            market_state_strength=0.0,
+            regime_confidence=0.0,
+            state_persistence_days=1,
+            transition_risk=0.0,
+            market_state_label="repair",
+            market_state_description="修复",
+            breadth_ready=True,
+            emotion_ready=True,
+            stock_up_ratio=0.55,
+            stock_median_change=0.0,
+            style_divergence=0.0,
+            hot_turnover=0.0,
+            hot_overlap_ratio=0.0,
+            limit_down_count=0,
+            limit_up_count=0,
+            board_height=0,
+            previous_board_height=0,
+            promotion_ratio=0.0,
+            broken_board_ratio=0.0,
+            promotion_break_gap=0.0,
+            promotion_break_pressure=0.0,
+            high_flyer_retreat_ratio=0.0,
+            high_flyer_gap_speed=0.0,
+            distribution_pressure=0.0,
+            emotion_temperature="neutral",
+            emotion_temperature_text="中性",
+            emotion_temperature_score=0.0,
+            hot_industries=[],
+            hot_industry_source="historical_cache",
+            hot_industry_source_text="测试",
+            mainline_lifecycle_state="repair",
+            mainline_lifecycle_text="主线阶段：测试",
+            industry_ranks={},
+        )
+
+
 class _RepairingResultService(LowBuyResultStoreMixin):
     def __init__(self, repaired_payload: LowBuyScreenerResponse) -> None:
         self.repaired_payload = repaired_payload
@@ -285,7 +457,7 @@ class _ScreenReadFallbackService:
 
     @staticmethod
     def _get_recent_trade_dates(count: int) -> list[str]:  # noqa: ARG004
-        return ["2026-05-29", "2026-06-01", "2026-06-05"]
+        return [STALE_MATERIALIZED_TRADE_DATE, INTERMEDIATE_TRADE_DATE, EXPECTED_UNPUBLISHED_TRADE_DATE]
 
     def _load_cached_full_result(self, db, strategy: str, latest_trade_date: str, limit: int, include_history: bool):  # noqa: ARG002
         self.loaded_cached_dates.append(latest_trade_date)
@@ -601,12 +773,76 @@ class LowBuyReadPathTests(unittest.TestCase):
         self.assertEqual(service.loaded, [])
         self.assertLessEqual(len(statements), 3)
 
+    def test_priority_board_hot_read_query_budget_does_not_scale_with_candidates(self) -> None:
+        small_count, small_response = self._measure_priority_board_hot_read(candidate_count=5)
+        large_count, large_response = self._measure_priority_board_hot_read(candidate_count=20)
+
+        self.assertEqual([item.symbol for item in large_response.items[:3]], ["000020", "000019", "000018"])
+        self.assertLessEqual(large_count, small_count + 2)
+        self.assertLessEqual(large_count, 6)
+        self.assertEqual(large_response.total_candidates, 20)
+        self.assertTrue(all(item.strategy_engine_shadow["shadow_only"] for item in large_response.items))
+        self.assertTrue(all(item.strategy_engine_shadow["replacement_enabled"] is False for item in large_response.items))
+        self.assertTrue(all(item.production_sort_replaced is False for item in large_response.items))
+
+    def test_priority_board_hot_read_golden_output_keeps_order_and_strategy_guards(self) -> None:
+        _query_count, response = self._measure_priority_board_hot_read(candidate_count=20)
+        golden = [
+            {
+                "symbol": item.symbol,
+                "strategy_key": item.strategy_key,
+                "buy_signal_state": item.buy_signal_state,
+                "priority_score": item.priority_score,
+                "production_score": item.production_score,
+                "display_lane": item.display_lane,
+                "production_sort_replaced": item.production_sort_replaced,
+                "shadow_only": item.strategy_engine_shadow["shadow_only"],
+                "replacement_enabled": item.strategy_engine_shadow["replacement_enabled"],
+            }
+            for item in response.items[:5]
+        ]
+        digest = hashlib.sha256(json.dumps(golden, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+        self.assertEqual(digest, "5d981f6e5ddaa9289c20fddc2ee1a0ed98442655421f002415947d7696f3ac1d")
+
+    def _measure_priority_board_hot_read(self, *, candidate_count: int):
+        service = _PriorityBoardHotReadService(_priority_candidates(candidate_count))
+        statements: list[str] = []
+
+        with self.Session() as db:
+            bind = db.get_bind()
+
+            @event.listens_for(bind, "before_cursor_execute")
+            def _count_sql(_conn, _cursor, statement, _parameters, _context, _executemany):  # noqa: ANN001
+                tracked_tables = (
+                    "low_buy_scan_snapshots",
+                    "low_buy_result_snapshots",
+                    "low_buy_strategy_performance_snapshots",
+                    "low_buy_trade_lifecycle_snapshots",
+                    "strategy_tier_overrides",
+                    "watchlist",
+                    "system_settings",
+                )
+                if any(table in statement for table in tracked_tables):
+                    statements.append(statement)
+
+            try:
+                with patch(
+                    "app.services.low_buy.priority_board.enrich_priority_candidates_with_leader_strength",
+                    lambda *, db, rows: rows,
+                ):
+                    response = service.priority_board(db=db, limit=candidate_count, refresh_mode="sync")
+            finally:
+                event.remove(bind, "before_cursor_execute", _count_sql)
+
+        return len(statements), response
+
     def test_screen_read_path_returns_stale_materialized_snapshot_when_latest_unpublished(self) -> None:
         fallback = _payload(_candidate(strategy_key="first_board", strategy_title="首板回调")).model_copy(
             update={
                 "strategy_key": "first_board",
                 "strategy_title": "首板回调",
-                "latest_trade_date": "2026-05-29",
+                "latest_trade_date": STALE_MATERIALIZED_TRADE_DATE,
                 "requested_mode": "full",
                 "response_mode": "full",
                 "full_scan_ready": True,
@@ -615,7 +851,7 @@ class LowBuyReadPathTests(unittest.TestCase):
         )
         service = _ScreenReadFallbackService(fallback)
 
-        with patch("app.services.low_buy.screening_read.expected_low_buy_trade_date", lambda _db: "2026-06-05"), \
+        with patch("app.services.low_buy.screening_read.expected_low_buy_trade_date", lambda _db: EXPECTED_UNPUBLISHED_TRADE_DATE), \
                 patch("app.services.low_buy.screening_read.published_low_buy_trade_date", lambda _db: ""):
             with self.Session() as db:
                 response = screen_read_path(
@@ -627,12 +863,12 @@ class LowBuyReadPathTests(unittest.TestCase):
                     scan_mode="quick",
                 )
 
-        self.assertEqual(service.loaded_cached_dates, ["2026-06-05"])
-        self.assertEqual(service.loaded_fallback_dates, ["2026-06-05"])
-        self.assertEqual(response.latest_trade_date, "2026-05-29")
+        self.assertEqual(service.loaded_cached_dates, [EXPECTED_UNPUBLISHED_TRADE_DATE])
+        self.assertEqual(service.loaded_fallback_dates, [EXPECTED_UNPUBLISHED_TRADE_DATE])
+        self.assertEqual(response.latest_trade_date, STALE_MATERIALIZED_TRADE_DATE)
         self.assertTrue(response.stale)
-        self.assertIn("2026-05-29", response.stale_reason)
-        self.assertIn("2026-06-05", response.stale_reason)
+        self.assertIn(STALE_MATERIALIZED_TRADE_DATE, response.stale_reason)
+        self.assertIn(EXPECTED_UNPUBLISHED_TRADE_DATE, response.stale_reason)
         self.assertIn("仅供复盘", response.snapshot_warning)
 
     def test_load_latest_materialized_full_result_on_or_before_ignores_newer_incomplete_date(self) -> None:

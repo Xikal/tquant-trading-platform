@@ -82,6 +82,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
+        RUST_BASE_IMAGE: ${RUST_BASE_IMAGE:-docker.m.daocloud.io/library/rust:1.95-bookworm}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
         INSTALL_ANALYTICS: "0"
         DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
         DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
@@ -180,6 +183,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
+        RUST_BASE_IMAGE: ${RUST_BASE_IMAGE:-docker.m.daocloud.io/library/rust:1.95-bookworm}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
         INSTALL_ANALYTICS: "${BACKTEST_WORKER_INSTALL_ANALYTICS:-1}"
         DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
         DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
@@ -274,6 +280,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
+        RUST_BASE_IMAGE: ${RUST_BASE_IMAGE:-docker.m.daocloud.io/library/rust:1.95-bookworm}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
         INSTALL_ANALYTICS: "0"
         DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
         DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
@@ -386,6 +395,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
+        RUST_BASE_IMAGE: ${RUST_BASE_IMAGE:-docker.m.daocloud.io/library/rust:1.95-bookworm}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
         INSTALL_ANALYTICS: "1"
         DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
         DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
@@ -439,6 +451,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        NODE_BASE_IMAGE: ${NODE_BASE_IMAGE:-docker.m.daocloud.io/library/node:20-bookworm-slim}
+        RUST_BASE_IMAGE: ${RUST_BASE_IMAGE:-docker.m.daocloud.io/library/rust:1.95-bookworm}
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-docker.m.daocloud.io/library/python:3.11-slim}
         DEBIAN_APT_MIRROR: ${DEBIAN_APT_MIRROR:-}
         DEBIAN_APT_SECURITY_MIRROR: ${DEBIAN_APT_SECURITY_MIRROR:-}
     image: tquant-web:mysql

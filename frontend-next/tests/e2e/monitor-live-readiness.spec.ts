@@ -19,8 +19,9 @@ test("monitor readiness keeps production board order and local watchlist edits n
   await expect(rows.nth(0)).toContainText("接近买点，等待承接确认");
   await expect(rows.nth(0).getByRole("button", { name: /详情/ })).toBeVisible();
 
-  await page.getByRole("button", { name: "前排加权" }).click();
+  await page.getByRole("button", { name: "观察池" }).click();
   await expect(page.getByText("浦发银行").first()).toBeVisible();
+  await page.getByRole("button", { name: "全部候选" }).click();
   await page.getByRole("button", { name: "解读榜单" }).click();
   await expect(page.getByRole("status")).toContainText("榜单研判解析载入中");
 

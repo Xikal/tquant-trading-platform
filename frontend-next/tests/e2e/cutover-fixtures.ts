@@ -99,7 +99,30 @@ export async function installDataSettingsFixtures(page: Page, status = 200) {
   const maybeError = (payload: unknown) => (status >= 400 ? { status, json: { detail: "cutover readiness fixture error" } } : { status: 200, json: payload });
   await page.route("**/api/data-quality/coverage", (route) => route.fulfill(maybeError({ missing_dates: ["2026-06-05"], missing_symbols: [{ symbol: "000001", name: "平安银行", missing_days: 1 }] })));
   await page.route("**/api/data-quality/sla", (route) => route.fulfill(maybeError({ items: [{ dataset_key: "daily_bars", status: "ok", coverage_pct: 0.98 }] })));
-  await page.route("**/api/runtime-tasks**", (route) => route.fulfill(maybeError({ items: [{ id: 501, task_type: "data_backfill", status: "queued" }] })));
+  await page.route("**/api/runtime-tasks**", (route) => {
+    if (new URL(route.request().url()).pathname.endsWith("/summary")) {
+      return route.fulfill(maybeError({
+        queued: 3,
+        running: 1,
+        failed: 0,
+        retrying: 0,
+        succeeded_recent: 12,
+        longest_wait_seconds: 22,
+        running_count: 1,
+        low_priority_tasks_paused: true,
+        paused_task_types: ["analytics_export_strategy_tracking_snapshots", "strategy_24m_duckdb_report"],
+        paused_queued: 2,
+        claimable_queued: 1,
+        status_counts: [{ status: "queued", count: 3 }, { status: "running", count: 1 }],
+        task_type_counts: [{ task_type: "data_backfill", count: 1 }],
+        paused_task_type_counts: [
+          { task_type: "analytics_export_strategy_tracking_snapshots", count: 1 },
+          { task_type: "strategy_24m_duckdb_report", count: 1 },
+        ],
+      }));
+    }
+    return route.fulfill(maybeError({ items: [{ id: 501, task_type: "data_backfill", status: "queued" }] }));
+  });
   await page.route("**/api/admin/metrics", (route) => route.fulfill(maybeError({ status: "ok", worker_count: 1, failed_count: 0 })));
   await page.route("**/api/admin/tasks", (route) => route.fulfill(maybeError({ workers: [{ worker_id: "runtime-worker-1", status: "running" }], tasks: [] })));
   await page.route("**/api/settings/runtime", (route) => route.fulfill(maybeError({ settings_consistency_status: "ok", data_source: "akshare_eastmoney", database_backend: "sqlite", llm_configured: true })));

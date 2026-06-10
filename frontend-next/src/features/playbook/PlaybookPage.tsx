@@ -13,8 +13,12 @@ import {
   candidateFamilies,
   DEFAULT_PLAYBOOK_STRATEGY,
   detailRows,
-  loadPlaybookDataset,
+  loadPlaybookConfig,
+  loadPlaybookDeepScreener,
+  loadPlaybookFastDataset,
+  mergePlaybookConfig,
   mergePlaybookQuotes,
+  mergePlaybookScreener,
   performanceSummary,
   playbookTradeDate,
   quoteStatus,
@@ -39,18 +43,32 @@ export function PlaybookPage() {
   const [activeLane, setActiveLane] = createSignal<StockLane>("buyable");
   const [detailOpen, setDetailOpen] = createSignal(false);
   const query = createQuery(() => ({
-    queryKey: queryKeys.lowBuyScreener({ strategy: strategy(), limit: 36, scan_limit: 36, include_history: true }),
-    queryFn: ({ signal }) => loadPlaybookDataset(strategy(), { signal }, { includeQuotes: false }),
+    queryKey: queryKeys.lowBuyPriorityBoard(30, "baseline", "cache"),
+    queryFn: ({ signal }) => loadPlaybookFastDataset({ signal }),
   }));
-  const baseDataset = () => query.data ?? null;
+  const configQuery = createQuery(() => ({
+    queryKey: ["frontend-next", "playbook", "config"],
+    queryFn: ({ signal }) => loadPlaybookConfig({ signal }),
+  }));
+  const deepScreenerQuery = createQuery(() => ({
+    queryKey: queryKeys.lowBuyScreener({ strategy: strategy(), limit: 36, scan_limit: 36, scan_mode: "full", include_history: true }),
+    queryFn: ({ signal }) => loadPlaybookDeepScreener(strategy(), { signal }),
+    enabled: query.isSuccess,
+  }));
+  const fastDataset = () => (query.isSuccess ? query.data : null);
+  const baseDataset = () => {
+    const withConfig = mergePlaybookConfig(fastDataset(), configQuery.isSuccess ? configQuery.data : undefined);
+    return mergePlaybookScreener(withConfig, deepScreenerQuery.isSuccess ? deepScreenerQuery.data : undefined);
+  };
   const quoteSymbols = createMemo(() => candidateFamilies(baseDataset()).flatMap((family) => family.items.map((item) => item.symbol)).slice(0, 20));
   const liveQuotesQuery = createQuery(() => ({
     queryKey: queryKeys.lowBuyQuotes(quoteSymbols(), strategy()),
     queryFn: ({ signal }) => apiClient.lowBuyQuotes(quoteSymbols(), strategy(), { signal }),
     enabled: quoteSymbols().length > 0,
   }));
-  const dataset = createMemo(() => mergePlaybookQuotes(baseDataset(), liveQuotesQuery.data));
-  const isRefreshing = createMemo(() => query.isFetching || liveQuotesQuery.isFetching);
+  const dataset = createMemo(() => mergePlaybookQuotes(baseDataset(), liveQuotesQuery.isSuccess ? liveQuotesQuery.data : undefined));
+  const isRefreshing = createMemo(() => query.isFetching || configQuery.isFetching || deepScreenerQuery.isFetching || liveQuotesQuery.isFetching);
+  const deepStatus = createMemo(() => deepScreenerQuery.isPending || deepScreenerQuery.isFetching ? "补全中" : deepScreenerQuery.error ? "已降级" : "已完成");
   const tabs = createMemo(() => strategyTabs(dataset()).map((item) => ({ key: item.key, label: item.label })));
   const activeTabs = createMemo(() => tabs().length ? tabs() : fallbackStrategyTabs);
   const families = createMemo(() => candidateFamilies(dataset()));
@@ -93,14 +111,15 @@ export function PlaybookPage() {
             <p>{strategyDescription(currentStrategyLabel())}</p>
           </div>
           <div class="playbook-hero-card__actions">
-            <button type="button" class="playbook-btn playbook-btn--primary" onClick={() => void query.refetch()} data-testid="playbook-refresh">
+            <button type="button" class="playbook-btn playbook-btn--primary" onClick={() => void refreshPlaybook()} data-testid="playbook-refresh">
               {isRefreshing() ? "刷新中" : "刷新全量"}
             </button>
           </div>
 
           <div class="playbook-param-grid">
             <ParamCard label="确认可买数量" value={String(laneCandidates(candidates(), "buyable").length)} suffix="只" />
-            <ParamCard label="全量深筛状态" value={isRefreshing() ? "刷新中" : query.error ? "异常" : "已完成"} suffix={query.error ? "!" : "100%"} tone={query.error ? "risk" : "ok"} />
+            <ParamCard label="生产榜单快照" value={query.isPending ? "加载中" : query.error ? "异常" : "已展示"} suffix={query.error ? "!" : "cache"} tone={query.error ? "risk" : "ok"} />
+            <ParamCard label="全量深筛状态" value={deepStatus()} suffix={deepScreenerQuery.error ? "缓存兜底" : "history"} tone={deepScreenerQuery.error ? "risk" : "ok"} />
             <ParamCard label="数据状态" value={quoteStatus(dataset()) === "--" ? "实时就绪" : "已对齐"} suffix={quoteStatus(dataset())} tone="ok" />
             <ParamCard label="当前交易日" value={playbookTradeDate(dataset())} suffix="后端发布" />
           </div>
@@ -122,10 +141,16 @@ export function PlaybookPage() {
 
         <Switch>
           <Match when={query.error}>
-            <div class="playbook-alert playbook-alert--error">接口暂不可用：{errorMessage(query.error)}</div>
+            <div class="playbook-alert playbook-alert--error">生产榜单快照暂不可用：{errorMessage(query.error)}</div>
           </Match>
-          <Match when={query.isPending && !query.data}>
-            <div class="playbook-alert">正在加载选股宝典数据</div>
+          <Match when={query.isPending && !query.isSuccess}>
+            <div class="playbook-alert">正在加载选股宝典生产榜单缓存</div>
+          </Match>
+          <Match when={deepScreenerQuery.error && query.isSuccess}>
+            <div class="playbook-alert">全量深筛暂未完成，当前已展示生产榜单缓存：{errorMessage(deepScreenerQuery.error)}</div>
+          </Match>
+          <Match when={(deepScreenerQuery.isPending || deepScreenerQuery.isFetching) && query.isSuccess}>
+            <div class="playbook-alert">生产榜单已展示，全量深筛和历史归因正在后台补全。</div>
           </Match>
         </Switch>
 
@@ -140,7 +165,7 @@ export function PlaybookPage() {
                 <span>当前策略</span>
                 <strong>{currentStrategyLabel()}</strong>
                 <span>加载状态</span>
-                <strong>{query.error ? "接口异常" : "已成功加载全量数据"}</strong>
+                <strong>{query.error ? "榜单异常" : deepScreenerQuery.isFetching ? "榜单已展示，深筛补全中" : "已对齐"}</strong>
               </div>
               <div class="playbook-mini-metrics">
                 <MiniMetric label="5日达标率" value={metricValue(performance(), "命中率", "样本不足")} />
@@ -362,6 +387,11 @@ export function PlaybookPage() {
     setStrategy(nextStrategy);
     setSelectedSymbol(null);
     setShadowMessage("");
+  }
+
+  async function refreshPlaybook() {
+    await query.refetch();
+    await Promise.allSettled([configQuery.refetch(), deepScreenerQuery.refetch(), liveQuotesQuery.refetch()]);
   }
 
   function currentStrategyLabel() {

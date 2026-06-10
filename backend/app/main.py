@@ -33,7 +33,6 @@ from app.services.market.local_quote_cache import local_quote_cache_metrics_snap
 from app.services.bff.workspace_cache import bff_workspace_cache_metrics_snapshot
 from app.services.bff.remote_client import remote_bff_metrics_snapshot
 from app.services.finance.rust_math import rust_math_metrics_snapshot
-from app.services.frontend_next_cutover import frontend_next_cutover_paths
 from app.services.operation_audit_middleware import OperationAuditMiddleware
 from app.services.performance.prometheus import performance_prometheus_lines
 
@@ -41,8 +40,6 @@ settings = get_settings()
 configure_logging(structured=settings.structured_logs)
 logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
-FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 FRONTEND_NEXT_DIST_DIR = PROJECT_ROOT / "frontend-next" / "dist"
 FRONTEND_NEXT_INDEX_FILE = FRONTEND_NEXT_DIST_DIR / "index.html"
 FRONTEND_NEXT_ROUTE_PREFIX = "next"
@@ -332,12 +329,14 @@ def healthz():
 
 @app.get("/readyz", response_model=ReadinessResponse)
 def readyz(response: Response):
-    frontend_next_cutover = bool(frontend_next_cutover_paths())
     serve_frontend_static = bool(settings.serve_frontend_static)
+    frontend_next_ready = (not serve_frontend_static) or FRONTEND_NEXT_INDEX_FILE.exists()
     checks = {
         "database": False,
-        "frontend_dist": (not serve_frontend_static) or FRONTEND_INDEX_FILE.exists(),
-        "frontend_next_dist": (not serve_frontend_static) or (not frontend_next_cutover) or FRONTEND_NEXT_INDEX_FILE.exists(),
+        "frontend_next_dist": frontend_next_ready,
+        # Compatibility alias for older probes. This now represents the active
+        # frontend-next static entry rather than the retired legacy frontend.
+        "frontend_dist": frontend_next_ready,
         "analytics_dependencies": False,
     }
     errors: list[str] = []
@@ -348,9 +347,7 @@ def readyz(response: Response):
     except Exception as exc:
         errors.append(f"database: {exc}")
 
-    if serve_frontend_static and not checks["frontend_dist"]:
-        errors.append("frontend_dist: missing frontend/dist/index.html")
-    if serve_frontend_static and frontend_next_cutover and not checks["frontend_next_dist"]:
+    if serve_frontend_static and not checks["frontend_next_dist"]:
         errors.append("frontend_next_dist: missing frontend-next/dist/index.html")
     analytics = analytics_dependency_status()
     checks["analytics_dependencies"] = bool(analytics.ready or not analytics.enabled)
@@ -523,11 +520,7 @@ def prometheus_metrics(_: None = Depends(require_admin_auth)) -> PlainTextRespon
 def root():
     if not settings.serve_frontend_static:
         return HealthResponse(status="ok", app=settings.app_name)
-    if _should_serve_frontend_next("/"):
-        return _serve_frontend_next("/")
-    if FRONTEND_INDEX_FILE.exists():
-        return FileResponse(FRONTEND_INDEX_FILE)
-    return HealthResponse(status="ok", app=settings.app_name)
+    return _serve_frontend_next("/")
 
 
 @app.get("/backtests", include_in_schema=False)
@@ -555,14 +548,7 @@ def _legacy_route_response(target: str, request: Request):
     )
 
 
-def _should_serve_frontend_next(full_path: str) -> bool:
-    normalized = full_path.strip("/")
-    if normalized == FRONTEND_NEXT_ROUTE_PREFIX or normalized.startswith(f"{FRONTEND_NEXT_ROUTE_PREFIX}/"):
-        return True
-    return normalized in frontend_next_cutover_paths()
-
-
-def _serve_frontend_dist(dist_dir: Path, index_file: Path, full_path: str) -> FileResponse | HealthResponse:
+def _serve_frontend_dist(dist_dir: Path, index_file: Path, full_path: str) -> FileResponse | HealthResponse | JSONResponse:
     requested = dist_dir / full_path
     try:
         resolved = requested.resolve()
@@ -572,12 +558,19 @@ def _serve_frontend_dist(dist_dir: Path, index_file: Path, full_path: str) -> Fi
         dist_root = dist_dir.resolve()
     if resolved is not None and resolved.is_file() and dist_root in resolved.parents:
         return FileResponse(resolved)
+    if _is_frontend_asset_request(full_path):
+        return JSONResponse(status_code=404, content={"detail": "Frontend asset not found"})
     if index_file.exists():
         return FileResponse(index_file)
     return HealthResponse(status="ok", app=settings.app_name)
 
 
-def _serve_frontend_next(full_path: str) -> FileResponse | HealthResponse:
+def _is_frontend_asset_request(full_path: str) -> bool:
+    normalized = full_path.strip("/")
+    return normalized.startswith("assets/") or Path(normalized).suffix != ""
+
+
+def _serve_frontend_next(full_path: str) -> FileResponse | HealthResponse | JSONResponse:
     normalized = full_path.strip("/")
     if normalized == FRONTEND_NEXT_ROUTE_PREFIX:
         relative_path = ""
@@ -595,6 +588,6 @@ def frontend_app(full_path: str):
         return JSONResponse(status_code=404, content={"detail": "API endpoint not found"})
     if not settings.serve_frontend_static:
         return JSONResponse(status_code=404, content={"detail": "Frontend static serving is disabled"})
-    if _should_serve_frontend_next(full_path):
-        return _serve_frontend_next(full_path)
-    return _serve_frontend_dist(FRONTEND_DIST_DIR, FRONTEND_INDEX_FILE, full_path)
+    if full_path.strip("/").startswith("__legacy/"):
+        return JSONResponse(status_code=404, content={"detail": "Legacy frontend assets have been retired"})
+    return _serve_frontend_next(full_path)

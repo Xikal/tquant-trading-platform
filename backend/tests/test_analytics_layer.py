@@ -39,6 +39,7 @@ from app.services.analytics.manifest import load_manifest
 from app.services.analytics.quality import check_daily_bars_24m_quality
 from app.services.analytics.report_queries import build_strategy_24m_duckdb_report
 from app.services.backtest.parquet_data_provider import DailyBarParquetDataProvider
+from backend.tests.support.export_time import EXPORT_WINDOW_END_DATE, export_window_datetime
 
 
 def _db():
@@ -213,6 +214,7 @@ def test_export_strategy_tracking_snapshots_writes_manifest_and_duckdb_readable_
             status="fresh",
             payload_json='{"items":[]}',
             metrics_json='{"total":1}',
+            generated_at=export_window_datetime(),
         )
     )
     db.commit()
@@ -220,7 +222,7 @@ def test_export_strategy_tracking_snapshots_writes_manifest_and_duckdb_readable_
     manifest = export_strategy_tracking_snapshots_parquet(
         db,
         days=7,
-        end_date=date(2026, 6, 8),
+        end_date=EXPORT_WINDOW_END_DATE,
         output_root=tmp_path,
     )
 
@@ -245,7 +247,7 @@ def test_export_strategy_tracking_snapshots_no_data_manifest_is_explicit(tmp_pat
     manifest = export_strategy_tracking_snapshots_parquet(
         db,
         days=7,
-        end_date=date(2026, 6, 8),
+        end_date=EXPORT_WINDOW_END_DATE,
         output_root=tmp_path,
     )
 
@@ -263,7 +265,7 @@ def test_export_key_level_snapshots_writes_manifest_and_parquet(tmp_path):
             scope="symbol",
             cache_key="000001",
             symbol="000001",
-            trade_date="2026-06-08",
+            trade_date=EXPORT_WINDOW_END_DATE.isoformat(),
             engine_version="akey-level-v1",
             data_quality="fresh",
             payload_json='{"support":10.2}',
@@ -271,7 +273,7 @@ def test_export_key_level_snapshots_writes_manifest_and_parquet(tmp_path):
     )
     db.commit()
 
-    manifest = export_key_level_snapshots_parquet(db, days=3, end_date=date(2026, 6, 8), output_root=tmp_path)
+    manifest = export_key_level_snapshots_parquet(db, days=3, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
 
     assert manifest["dataset_key"] == "key_level_snapshots"
     assert manifest["source"]["source_table"] == "key_level_snapshots"
@@ -293,7 +295,7 @@ def test_export_low_buy_result_snapshots_writes_manifest_and_parquet(tmp_path):
     db = _db()
     db.add(
         LowBuyResultSnapshot(
-            latest_trade_date="2026-06-08",
+            latest_trade_date=EXPORT_WINDOW_END_DATE.isoformat(),
             strategy_key="first_board",
             symbol="000001",
             name="平安银行",
@@ -304,7 +306,7 @@ def test_export_low_buy_result_snapshots_writes_manifest_and_parquet(tmp_path):
     )
     db.commit()
 
-    manifest = export_low_buy_result_snapshots_parquet(db, days=3, end_date=date(2026, 6, 8), output_root=tmp_path)
+    manifest = export_low_buy_result_snapshots_parquet(db, days=3, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
 
     assert manifest["dataset_key"] == "low_buy_result_snapshots"
     assert manifest["source"]["source_table"] == "low_buy_result_snapshots"
@@ -330,15 +332,16 @@ def test_export_backtest_runs_writes_manifest_and_duckdb_readable_parquet(tmp_pa
             status="succeeded",
             strategy_keys="first_board",
             start_date="2026-06-01",
-            end_date="2026-06-08",
+            end_date=EXPORT_WINDOW_END_DATE.isoformat(),
             initial_cash=100000,
             final_equity=103000,
             engine_version="backtest-v2",
+            created_at=export_window_datetime(),
         )
     )
     db.commit()
 
-    manifest = export_backtest_runs_parquet(db, days=30, end_date=date(2026, 6, 8), output_root=tmp_path)
+    manifest = export_backtest_runs_parquet(db, days=30, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
 
     assert manifest["dataset_key"] == "backtest_runs"
     assert manifest["source"]["source_table"] == "backtest_runs"
@@ -364,14 +367,14 @@ def test_export_backtest_trades_and_daily_snapshots_are_duckdb_readable(tmp_path
         status="succeeded",
         strategy_keys="first_board",
         start_date="2026-06-01",
-        end_date="2026-06-08",
+        end_date=EXPORT_WINDOW_END_DATE.isoformat(),
     )
     db.add(run)
     db.flush()
     db.add(
         BacktestTrade(
             run_id=run.id,
-            trade_date="2026-06-08",
+            trade_date=EXPORT_WINDOW_END_DATE.isoformat(),
             symbol="000001",
             name="平安银行",
             side="sell",
@@ -386,7 +389,7 @@ def test_export_backtest_trades_and_daily_snapshots_are_duckdb_readable(tmp_path
     db.add(
         BacktestDailySnapshot(
             run_id=run.id,
-            trade_date="2026-06-08",
+            trade_date=EXPORT_WINDOW_END_DATE.isoformat(),
             cash=50000,
             market_value=53000,
             equity=103000,
@@ -403,11 +406,11 @@ def test_export_backtest_trades_and_daily_snapshots_are_duckdb_readable(tmp_path
     )
     db.commit()
 
-    trades_manifest = export_backtest_trades_parquet(db, days=7, end_date=date(2026, 6, 8), output_root=tmp_path)
+    trades_manifest = export_backtest_trades_parquet(db, days=7, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
     snapshots_manifest = export_backtest_daily_snapshots_parquet(
         db,
         days=7,
-        end_date=date(2026, 6, 8),
+        end_date=EXPORT_WINDOW_END_DATE,
         output_root=tmp_path,
     )
 
@@ -435,7 +438,7 @@ def test_export_backtest_trades_and_daily_snapshots_are_duckdb_readable(tmp_path
 def test_export_backtest_trades_no_data_manifest_is_explicit(tmp_path):
     db = _db()
 
-    manifest = export_backtest_trades_parquet(db, days=7, end_date=date(2026, 6, 8), output_root=tmp_path)
+    manifest = export_backtest_trades_parquet(db, days=7, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
 
     assert manifest["dataset_key"] == "backtest_trades"
     assert manifest["row_count"] == 0
@@ -453,11 +456,12 @@ def test_export_analysis_and_review_reports_are_duckdb_readable(tmp_path):
             signal_score=81.0,
             risk_level="medium",
             payload_json='{"source":"analysis"}',
+            created_at=export_window_datetime(hour=10),
         )
     )
     db.add(
         MarketReviewReport(
-            report_date=date(2026, 6, 8),
+            report_date=EXPORT_WINDOW_END_DATE,
             report_slot="close",
             overall_summary="市场复盘",
             strategy_highlights='["低吸"]',
@@ -470,7 +474,7 @@ def test_export_analysis_and_review_reports_are_duckdb_readable(tmp_path):
     db.add(
         PaperReviewReport(
             account_id=1,
-            report_date=date(2026, 6, 8),
+            report_date=EXPORT_WINDOW_END_DATE,
             report_slot="close",
             overall_summary="模拟盘复盘",
             strategy_highlights='["纪律"]',
@@ -482,9 +486,9 @@ def test_export_analysis_and_review_reports_are_duckdb_readable(tmp_path):
     )
     db.commit()
 
-    analysis_manifest = export_analysis_logs_parquet(db, days=7, end_date=date(2026, 6, 8), output_root=tmp_path)
-    market_manifest = export_market_review_reports_parquet(db, days=7, end_date=date(2026, 6, 8), output_root=tmp_path)
-    paper_manifest = export_paper_review_reports_parquet(db, days=7, end_date=date(2026, 6, 8), output_root=tmp_path)
+    analysis_manifest = export_analysis_logs_parquet(db, days=7, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
+    market_manifest = export_market_review_reports_parquet(db, days=7, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
+    paper_manifest = export_paper_review_reports_parquet(db, days=7, end_date=EXPORT_WINDOW_END_DATE, output_root=tmp_path)
 
     assert analysis_manifest["dataset_key"] == "analysis_logs"
     assert analysis_manifest["row_count"] == 1

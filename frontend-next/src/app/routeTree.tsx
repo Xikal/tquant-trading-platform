@@ -1,7 +1,8 @@
 import { Navigate, Outlet, createRootRoute, createRoute } from "@tanstack/solid-router";
-import { type Component, lazy } from "solid-js";
+import { Suspense, type Component, lazy } from "solid-js";
 import { AppShell } from "./AppShell";
 import { RouteErrorBoundary } from "./ErrorBoundary";
+import { RouteLoadingFallback } from "./RouteLoading";
 import { AdminGuard, AuthGuard } from "./guards";
 
 const LoginPage = lazy(() => import("../features/auth/LoginPage").then((module) => ({ default: module.LoginPage })));
@@ -16,7 +17,9 @@ const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then
 function routeBoundaryComponent(ComponentToRender: Component, routeLabel: string): Component {
   return () => (
     <RouteErrorBoundary routeLabel={routeLabel}>
-      <ComponentToRender />
+      <Suspense fallback={<RouteLoadingFallback routeLabel={routeLabel} />}>
+        <ComponentToRender />
+      </Suspense>
     </RouteErrorBoundary>
   );
 }
@@ -25,7 +28,9 @@ function guardedRouteComponent(ComponentToRender: Component, routeLabel: string)
   return () => (
     <AuthGuard>
       <RouteErrorBoundary routeLabel={routeLabel}>
-        <ComponentToRender />
+        <Suspense fallback={<RouteLoadingFallback routeLabel={routeLabel} />}>
+          <ComponentToRender />
+        </Suspense>
       </RouteErrorBoundary>
     </AuthGuard>
   );
@@ -36,7 +41,9 @@ function adminRouteComponent(ComponentToRender: Component, routeLabel: string): 
     <AuthGuard>
       <AdminGuard>
         <RouteErrorBoundary routeLabel={routeLabel}>
-          <ComponentToRender />
+          <Suspense fallback={<RouteLoadingFallback routeLabel={routeLabel} />}>
+            <ComponentToRender />
+          </Suspense>
         </RouteErrorBoundary>
       </AdminGuard>
     </AuthGuard>
@@ -48,7 +55,9 @@ function shellGuardedRouteComponent(ComponentToRender: Component, routeLabel: st
     <AppShell>
       <AuthGuard>
         <RouteErrorBoundary routeLabel={routeLabel}>
-          <ComponentToRender />
+          <Suspense fallback={<RouteLoadingFallback routeLabel={routeLabel} />}>
+            <ComponentToRender />
+          </Suspense>
         </RouteErrorBoundary>
       </AuthGuard>
     </AppShell>
@@ -61,7 +70,9 @@ function shellAdminRouteComponent(ComponentToRender: Component, routeLabel: stri
       <AuthGuard>
         <AdminGuard>
           <RouteErrorBoundary routeLabel={routeLabel}>
-            <ComponentToRender />
+            <Suspense fallback={<RouteLoadingFallback routeLabel={routeLabel} />}>
+              <ComponentToRender />
+            </Suspense>
           </RouteErrorBoundary>
         </AdminGuard>
       </AuthGuard>
@@ -70,7 +81,11 @@ function shellAdminRouteComponent(ComponentToRender: Component, routeLabel: stri
 }
 
 const rootRoute = createRootRoute({
-  component: () => <Outlet />,
+  component: () => (
+    <Suspense fallback={<RouteLoadingFallback />}>
+      <Outlet />
+    </Suspense>
+  ),
 });
 
 const indexRoute = createRoute({
@@ -96,7 +111,9 @@ const nextRootRoute = createRoute({
   path: "next",
   component: () => (
     <AppShell>
-      <Outlet />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Outlet />
+      </Suspense>
     </AppShell>
   ),
 });

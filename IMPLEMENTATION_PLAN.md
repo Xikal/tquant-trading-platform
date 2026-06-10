@@ -1,5 +1,126 @@
 # TQuant 实施计划
 
+## 2026-06-10 平台优化收口任务
+
+需求来源：
+
+- `docs/platform-optimization-development-plan-2026-06-10.md`
+- `docs/platform-optimization-requirements-2026-06-10.md`
+
+### 执行边界
+
+- [x] 已执行 `git status --short`，当前存在 CI、旧前端退役、部署脚本、后端测试、frontend-next 等大量在途改动；本轮只触碰平台优化收口相关文件。
+- [x] 当前分支：`codex/phase4-phase5-architecture`。
+- [x] 不修改 `backend/app/services/low_buy/strategy_policy.py`。
+- [x] 不改变 `production_score`、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。
+- [x] 不部署、不切流、不执行服务器写操作、不停容器、不清 Docker cache、不改 sysctl。
+- [x] 不物理删除 `frontend/` 源码。
+
+### 本轮 TODO
+
+- [x] D1：修复 `frontend-next` data/settings e2e 断言，保留 no-write、403/503、admin guard。
+- [x] D2：固化 CI 与本地 `check:all` 串行检查。
+- [x] D3：增加日期窗口测试工具并改用显式 fixture 时间。
+- [x] D4：为 priority board 热读加查询计数与 golden 输出一致性守卫。
+- [x] D5：核对旧前端退役收尾，只做成对收尾。
+- [x] D6：评估 TanStack chunk，收益不足则记录不拆结论。
+- [x] D7：准备线上资源/性能授权包和报告模板，不执行线上写操作。
+
+### D0 基线记录
+
+- [x] 旧文案断言仍存在于 `frontend-next/tests/e2e/backtest-data-settings.spec.ts`。
+- [x] `frontend-next/tests/e2e/interaction-parity.spec.ts` 仍引用旧 data/settings heading 与 placeholder。
+- [x] `.github/workflows/ci.yml` 已包含 `pytest backend/tests`、`npm run api:check`、`npm test -- --run`、`npm run build`。
+- [x] `frontend-next/package.json` 当前缺少 `check:all`。
+- [x] `docs/engineering-conventions.md` 已有高风险全量回归要求，但尚未明确删除/瘦身/迁移/退役/重构类提交的命令清单。
+
+### D1 验证记录
+
+- [x] `cd frontend-next && npx playwright test tests/e2e/backtest-data-settings.spec.ts tests/e2e/data-settings-error-states.spec.ts tests/e2e/interaction-parity.spec.ts --project=chromium`：7 passed。
+- [x] `cd frontend-next && npm run e2e`：47 passed。
+
+### D2 验证记录
+
+- [x] 静态断言确认 `.github/workflows/ci.yml` 保留 `pytest backend/tests`、`api:check -> typecheck -> lint -> test -> build`，并新增 `monitor-workflows` / `monitor-live-readiness` 关键 e2e 门。
+- [x] `cd frontend-next && npm run check:all`：PASS；25 files / 131 tests passed，build PASS。
+- [x] 计划建议连续 3 次 `check:all`；本轮已跑 1 次，后续还需执行 D3-D7 多组后端/前端全量验收，为控制本地重复耗时未连续跑满 3 次。
+
+### D3 验证记录
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_analytics_layer.py backend/tests/test_low_buy_read_paths.py -q`：29 passed / 1 LibreSSL warning。
+- [x] `rg -n "datetime\\.utcnow\\(|datetime\\.now\\(" backend/tests/test_analytics_layer.py backend/tests/test_low_buy_read_paths.py`：无匹配。
+
+### D4 验证记录
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_low_buy_production_scoring.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_read_paths.py -q`：32 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q`：1477 passed / 1 LibreSSL warning。
+- [x] 新增 query budget 未显示随候选数线性增长，未修改 priority board 生产代码。
+
+### D5 验证记录
+
+- [x] `rg -n "frontend-legacy|frontend-hot|frontend/dist|html-root|__legacy" Dockerfile deploy scripts backend .github Makefile`：仅命中 retired scope、清理旧部署包名、旧 dist 排除和对应守卫测试；未发现需要成对修复的半套运行链路。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py backend/tests/test_cloud_deploy_scripts.py -q`：62 passed / 1 LibreSSL warning。
+- [x] 未删除 `frontend/` 源码。
+
+### D6 验证记录
+
+- [x] `cd frontend-next && npm run build && npm run chunk:profile`：PASS；`ok=true`，initial JS gzip `80326` bytes，首屏 ECharts assets `0`。
+- [x] `docs/reports/tanstack-chunk-evaluation-2026-06-10.md`：记录 TanStack chunk 收益不足，本轮不拆。
+- [x] `cd frontend-next && npm run lint && npm test -- --run && npm run build && npm run chunk:profile`：PASS；25 files / 131 tests passed，build/profile PASS。
+
+### D7 验证记录
+
+- [x] 静态断言确认 `docker-compose.mysql.yml` 包含 `APP_WORKERS=${APP_WORKERS:-1}`、`profiles: ["analytics"]`、`RUNTIME_WORKER_EMBED_SCHEDULER=${RUNTIME_WORKER_EMBED_SCHEDULER:-false}`、`mem_limit/cpus/logging`。
+- [x] `docs/reports/cloud-performance-recheck-2026-06-10.md`：已准备授权包和结果模板，明确本轮未执行线上写操作。
+- [x] `git diff -- backend/app/services/low_buy/strategy_policy.py`：无输出，未修改硬边界文件。
+
+## 2026-06-10 旧前端运行链路退役
+
+需求来源：
+
+- 用户目标：按旧前端完全移除方案执行，避免影响平台当前功能。
+
+### 执行边界
+
+- [x] 已执行 `git status --short`，当前存在既有 `frontend-next/`、后端性能、旧 `frontend/` chunk reload 等未提交改动；本轮不覆盖这些改动。
+- [x] 不修改 `strategy_policy.py`。
+- [x] 不改变生产策略语义、生产排序、`production_score`、`priority_board` 口径。
+- [x] 不物理删除 `frontend/` 源码目录：该目录当前存在未提交改动，直接删除会破坏已有工作；本轮改为从运行、构建、部署、CI 链路退役旧前端。
+- [x] 不部署、不切流。
+
+### 本轮 TODO
+
+- [x] 后端静态服务改为 `frontend-next/dist` 唯一入口，`/`、旧业务路径和 `/next/*` 均由新前端承接；`/api/*` 继续返回 API 404，不被 SPA fallback 吞掉。
+- [x] `/readyz` 改为检查 `frontend_next_dist`；`frontend_dist` 保留兼容别名，但指向当前 active frontend-next readiness。
+- [x] 设置页运行诊断与 Agent health 的前端产物检查改为 `frontend-next/dist/index.html`。
+- [x] 主 Dockerfile 与分离前端 Dockerfile 移除旧 `frontend/` build stage 和旧 dist copy。
+- [x] 分离前端 nginx 移除 `/__legacy/assets/` 和 `html-root` 依赖。
+- [x] 部署 scope 禁用 `frontend-hot` / `frontend-legacy`，`frontend/**` 改动不再触发旧前端部署。
+- [x] CI 停止构建、上传、下载旧 `frontend/dist` artifact，部署依赖仅保留 `frontend-next`。
+- [x] Makefile 的 `deploy-cloud-web` 改为部署新前端。
+- [x] 更新后端/部署脚本回归测试。
+
+### 验证记录
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py backend/tests/test_cloud_deploy_scripts.py -q`：62 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_agent_routes.py backend/tests/test_bff_monitor_workspace.py -q`：92 passed / 1 LibreSSL warning。
+- [x] `bash -n scripts/deploy_cloud_server.sh scripts/quick_cloud_deploy.sh scripts/one_click_cloud_deploy.sh scripts/prod_preflight.sh`：PASS。
+- [x] `python3 -m py_compile scripts/deploy_scope.py`：PASS。
+- [x] `cd frontend-next && npm run api:check`：PASS。
+- [x] `cd frontend-next && npm run lint`：PASS。
+- [x] `cd frontend-next && npm test -- --run`：25 files / 131 tests passed。
+- [x] `cd frontend-next && npm run build`：PASS。
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/ci.yml"); puts "yaml:ok"'`：PASS。
+- [x] `git diff --check`：PASS。
+- [x] `python3 scripts/deploy_scope.py --scope frontend-hot --format json`：blocked，提示 retired。
+- [x] `python3 scripts/deploy_scope.py frontend/src/app/WebApp.tsx --format json`：verify-only，不触发旧前端部署。
+- [x] `python3 scripts/deploy_scope.py frontend-next/src/index.tsx --format json`：frontend-next。
+
+### 剩余风险
+
+- [ ] `frontend/` 源码仍保留作归档和保护当前未提交改动；观察期通过并确认不需要回滚后，才能单独执行物理删除。
+- [ ] 历史文档仍会出现旧前端/旧 dist 描述，除当前态文档外不回写历史报告。
+
 ## 2026-06-08 frontend-next 与平台资源优化
 
 需求来源：

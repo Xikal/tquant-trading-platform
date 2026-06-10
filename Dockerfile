@@ -1,15 +1,8 @@
-FROM docker.m.daocloud.io/library/node:20-bookworm-slim AS frontend-builder
+ARG NODE_BASE_IMAGE=docker.m.daocloud.io/library/node:20-bookworm-slim
+ARG RUST_BASE_IMAGE=docker.m.daocloud.io/library/rust:1.95-bookworm
+ARG PYTHON_BASE_IMAGE=docker.m.daocloud.io/library/python:3.11-slim
 
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm ci
-
-COPY frontend/ ./
-RUN npm run build
-
-
-FROM docker.m.daocloud.io/library/node:20-bookworm-slim AS frontend-next-builder
+FROM ${NODE_BASE_IMAGE} AS frontend-next-builder
 
 WORKDIR /app/frontend-next
 
@@ -20,7 +13,7 @@ COPY frontend-next/ ./
 RUN npm run build
 
 
-FROM docker.m.daocloud.io/library/rust:1.95-bookworm AS rust-builder
+FROM ${RUST_BASE_IMAGE} AS rust-builder
 
 ARG DEBIAN_APT_MIRROR=""
 ARG DEBIAN_APT_SECURITY_MIRROR=""
@@ -44,7 +37,7 @@ COPY rust/tquant-rs/ ./
 RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --locked --strip --features extension-module -o /tmp/wheels
 
 
-FROM docker.m.daocloud.io/library/python:3.11-slim AS runtime
+FROM ${PYTHON_BASE_IMAGE} AS runtime
 
 ARG DEBIAN_APT_MIRROR=""
 ARG DEBIAN_APT_SECURITY_MIRROR=""
@@ -95,12 +88,11 @@ COPY scripts /app/scripts
 COPY docs/reports/strategy-24m-backtest-2026-05-30.json /app/docs/reports/strategy-24m-backtest-2026-05-30.json
 COPY docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json /app/docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json
 COPY docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json /app/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json
-COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 COPY --from=frontend-next-builder /app/frontend-next/dist /app/frontend-next/dist
 
 RUN adduser --disabled-password --gecos "" --home /home/tquant tquant \
     && mkdir -p /app/backend/data \
-    && chown -R tquant:tquant /app/backend /app/frontend /app/frontend-next /app/scripts /app/docs
+    && chown -R tquant:tquant /app/backend /app/frontend-next /app/scripts /app/docs
 
 USER tquant
 

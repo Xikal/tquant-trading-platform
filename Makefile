@@ -54,8 +54,8 @@ deploy-cloud:
 	./scripts/one_click_cloud_deploy.sh
 
 deploy-cloud-web:
-	cd frontend && npm run build
-	./scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required
+	cd frontend-next && npm run build
+	./scripts/one_click_cloud_deploy.sh --scope frontend-next --frontend-next-required
 
 deploy-cloud-next:
 	cd frontend-next && npm run build

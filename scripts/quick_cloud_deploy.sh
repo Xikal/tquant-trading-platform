@@ -41,7 +41,6 @@ FRONTEND_NEXT_CUTOVER_PATHS="${FRONTEND_NEXT_CUTOVER_PATHS:-}"
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 VERIFY_PUBLIC_ENTRY="${VERIFY_PUBLIC_ENTRY:-1}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
-DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_FRONTEND_NEXT_REQUIRED="${DEPLOY_FRONTEND_NEXT_REQUIRED:-0}"
 DEPLOY_CHANGED_FILES_FROM="${DEPLOY_CHANGED_FILES_FROM:-}"
 DEPLOY_COMPOSE_TOPOLOGY="${DEPLOY_COMPOSE_TOPOLOGY:-monolith}"
@@ -54,6 +53,9 @@ DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"
 DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"
 DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF="${DEPLOY_PREBUILT_ANALYTICS_IMAGE_REF:-}"
+REMOTE_NODE_BASE_IMAGE="${REMOTE_NODE_BASE_IMAGE:-}"
+REMOTE_RUST_BASE_IMAGE="${REMOTE_RUST_BASE_IMAGE:-}"
+REMOTE_PYTHON_BASE_IMAGE="${REMOTE_PYTHON_BASE_IMAGE:-}"
 DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
@@ -123,7 +125,7 @@ Options:
   --full          Run the slower local checks and latest-data acceptance.
   --fast-risk-accepted
                  Skip local compile/build checks for emergency deploys only.
-  --scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>
+  --scope <auto|frontend-next|backend-api|db-migration|worker|go|ops|all>
                  Choose deployment target. auto is the default and uses changed files.
   --changed-files-from <file>
                  Read changed files from a newline-separated file for auto scope resolution.
@@ -155,8 +157,6 @@ Options:
                  Image ref to tag as tquant-go-market-read:mysql when --prebuilt-images is enabled.
   --prebuilt-go-scan-image <ref>
                  Image ref to tag as tquant-go-scan-worker:mysql when --prebuilt-images is enabled.
-  --frontend-hot-required
-                 Fail instead of falling back when frontend-hot has no dist artifact.
   --frontend-next-required
                  Fail instead of falling back when frontend-next has no dist artifact.
   --performance-verify
@@ -249,10 +249,6 @@ while [[ $# -gt 0 ]]; do
     --go-compose-file)
       GO_COMPOSE_FILE="${2:?missing go compose file}"
       shift 2
-      ;;
-    --frontend-hot-required)
-      DEPLOY_FRONTEND_HOT_REQUIRED=1
-      shift
       ;;
     --frontend-next-required)
       DEPLOY_FRONTEND_NEXT_REQUIRED=1
@@ -379,7 +375,7 @@ export FRONTEND_NEXT_CUTOVER_PATHS
 export AUTO_INITIAL_GIT_COMMIT AUTO_INSTALL_BACKUP_CRON AUTO_CONFIGURE_HTTPS REFRESH_HTTPS_CONFIG HTTPS_REQUIRED
 export VERIFY_PUBLIC_DOMAIN VERIFY_PUBLIC_ENTRY
 export RUN_COMPILE RUN_FRONTEND_BUILD RUN_STRATEGY_TEST RUN_FULL_TESTS RUN_LATEST_DATA_ACCEPTANCE
-export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_HOT_REQUIRED DEPLOY_FRONTEND_NEXT_REQUIRED DEPLOY_CHANGED_FILES_FROM
+export DEPLOY_TARGET_SCOPE DEPLOY_FRONTEND_NEXT_REQUIRED DEPLOY_CHANGED_FILES_FROM
 export DEPLOY_COMPOSE_TOPOLOGY
 export BACKEND_API_COMPOSE_FILE FRONTEND_COMPOSE_FILE DB_MIGRATION_COMPOSE_FILE RUNTIME_COMPOSE_FILE GO_COMPOSE_FILE
 export DEPLOY_SYNC_MODE
@@ -390,6 +386,7 @@ export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF
 export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
 export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
 export DEPLOY_WITH_ANALYTICS_WORKER
+export REMOTE_NODE_BASE_IMAGE REMOTE_RUST_BASE_IMAGE REMOTE_PYTHON_BASE_IMAGE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
 export RUN_REMOTE_PREFLIGHT RUN_REMOTE_SAFE_CLEANUP REMOTE_PREFLIGHT_READ_ONLY REMOTE_MIN_FREE_GB REMOTE_MIN_SWAP_MB
@@ -690,7 +687,7 @@ REMOTE
 
 verify_remote() {
   log "verify remote service health"
-  if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-hot" || "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
+  if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
     VERIFY_WEB_IMAGE_SYNC=0
   fi
   cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
@@ -769,7 +766,7 @@ import json
 payload = json.load(open('/tmp/gupiao_readyz.json', encoding='utf-8'))
 assert payload.get('status') == 'ok', payload
 assert payload.get('checks', {}).get('database') is True, payload
-assert payload.get('checks', {}).get('frontend_dist') is True, payload
+assert payload.get('checks', {}).get('frontend_next_dist') is True, payload
 print('readyz:ok')
 PY
 AUTH_STATUS=$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24")
@@ -883,7 +880,6 @@ RUN_STRATEGY_TEST="$RUN_STRATEGY_TEST" \
 RUN_FULL_TESTS="$RUN_FULL_TESTS" \
 RUN_LATEST_DATA_ACCEPTANCE="$RUN_LATEST_DATA_ACCEPTANCE" \
 DEPLOY_TARGET_SCOPE="$DEPLOY_TARGET_SCOPE" \
-DEPLOY_FRONTEND_HOT_REQUIRED="$DEPLOY_FRONTEND_HOT_REQUIRED" \
 DEPLOY_FRONTEND_NEXT_REQUIRED="$DEPLOY_FRONTEND_NEXT_REQUIRED" \
 DEPLOY_CHANGED_FILES_FROM="$DEPLOY_CHANGED_FILES_FROM" \
 DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
@@ -893,6 +889,9 @@ DB_MIGRATION_COMPOSE_FILE="$DB_MIGRATION_COMPOSE_FILE" \
 RUNTIME_COMPOSE_FILE="$RUNTIME_COMPOSE_FILE" \
 GO_COMPOSE_FILE="$GO_COMPOSE_FILE" \
 DEPLOY_SYNC_MODE="$DEPLOY_SYNC_MODE" \
+REMOTE_NODE_BASE_IMAGE="$REMOTE_NODE_BASE_IMAGE" \
+REMOTE_RUST_BASE_IMAGE="$REMOTE_RUST_BASE_IMAGE" \
+REMOTE_PYTHON_BASE_IMAGE="$REMOTE_PYTHON_BASE_IMAGE" \
 AUTO_INITIAL_GIT_COMMIT="$AUTO_INITIAL_GIT_COMMIT" \
 AUTO_INSTALL_BACKUP_CRON="$AUTO_INSTALL_BACKUP_CRON" \
 AUTO_CONFIGURE_HTTPS="$AUTO_CONFIGURE_HTTPS" \

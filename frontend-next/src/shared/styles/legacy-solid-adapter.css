@@ -346,6 +346,39 @@ body {
   margin-top: 3px;
 }
 
+.next-route-loading {
+  display: grid;
+  gap: 10px;
+}
+
+.next-route-loading__bar {
+  position: relative;
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.next-route-loading__bar::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: #2563eb;
+  content: "";
+  animation: next-route-loading-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes next-route-loading-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
 .tq-button {
   display: inline-flex;
   align-items: center;

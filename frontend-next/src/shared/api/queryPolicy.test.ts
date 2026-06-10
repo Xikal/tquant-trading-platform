@@ -15,4 +15,13 @@ describe("frontend-next query policy", () => {
     expect(realtimeRefetchIntervalMs(queryKeys.settings)).toBe(false);
     expect(refetchOnWindowFocus(queryKeys.settings)).toBe(false);
   });
+
+  it("keeps priority-board cache keys aligned with request parameters", () => {
+    expect(queryKeys.lowBuyPriorityBoard(30, "baseline", "cache")).toEqual([
+      "frontend-next",
+      "operation",
+      "lowBuyPriorityBoard",
+      { query: { limit: 30, strategy_variant: "baseline", refresh: "cache" } },
+    ]);
+  });
 });

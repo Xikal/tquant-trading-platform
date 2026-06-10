@@ -36,12 +36,14 @@ FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="${FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED:-
 FRONTEND_NEXT_CUTOVER_PATHS="${FRONTEND_NEXT_CUTOVER_PATHS:-}"
 REMOTE_DEBIAN_APT_MIRROR="${REMOTE_DEBIAN_APT_MIRROR:-http://mirrors.tencentyun.com/debian}"
 REMOTE_DEBIAN_APT_SECURITY_MIRROR="${REMOTE_DEBIAN_APT_SECURITY_MIRROR:-http://mirrors.tencentyun.com/debian-security}"
+REMOTE_NODE_BASE_IMAGE="${REMOTE_NODE_BASE_IMAGE:-}"
+REMOTE_RUST_BASE_IMAGE="${REMOTE_RUST_BASE_IMAGE:-}"
+REMOTE_PYTHON_BASE_IMAGE="${REMOTE_PYTHON_BASE_IMAGE:-}"
 VERIFY_PUBLIC_DOMAIN="${VERIFY_PUBLIC_DOMAIN:-0}"
 BACKUP_TIME="${BACKUP_TIME:-02:20}"
 DEPLOY_TARGET_SCOPE="${DEPLOY_TARGET_SCOPE:-auto}"
 DEPLOY_CHANGED_FILES="${DEPLOY_CHANGED_FILES:-}"
 DEPLOY_CHANGED_FILES_FROM="${DEPLOY_CHANGED_FILES_FROM:-}"
-DEPLOY_FRONTEND_HOT_REQUIRED="${DEPLOY_FRONTEND_HOT_REQUIRED:-0}"
 DEPLOY_FRONTEND_NEXT_REQUIRED="${DEPLOY_FRONTEND_NEXT_REQUIRED:-0}"
 DEPLOY_SYNC_MODE="${DEPLOY_SYNC_MODE:-package-only}"
 DEPLOY_DELTA_MAX_CHANGE_RATIO="${DEPLOY_DELTA_MAX_CHANGE_RATIO:-0.35}"
@@ -61,7 +63,7 @@ RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
 RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
 LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
-DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
+DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
 DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
 DEPLOY_DELTA_CHANGED_COUNT=0
 DEPLOY_DELTA_DELETED_COUNT=0
@@ -133,28 +135,10 @@ deploy_scope_has_unit() {
   if [[ "$DEPLOY_RESOLVED_SCOPE" == "all" ]]; then
     return 0
   fi
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" && "$unit" == "frontend-legacy" ]]; then
-    return 0
-  fi
   if [[ " ${DEPLOY_RESOLVED_UNITS} " == *" $unit "* ]]; then
     return 0
   fi
   [[ "$DEPLOY_RESOLVED_SCOPE" == "$unit" ]]
-}
-
-ensure_frontend_hot_artifact() {
-  if ! deploy_scope_has_unit frontend-legacy; then
-    return 0
-  fi
-  if [[ -f "$ROOT_DIR/frontend/dist/index.html" ]]; then
-    return 0
-  fi
-  if [[ "$DEPLOY_FRONTEND_HOT_REQUIRED" == "1" ]]; then
-    log "frontend-hot scope requires frontend/dist/index.html"
-    exit 2
-  fi
-  log "frontend-hot scope requested but frontend/dist is missing; falling back to all"
-  DEPLOY_RESOLVED_SCOPE=all
 }
 
 ensure_frontend_next_artifact() {
@@ -210,10 +194,6 @@ run_local_checks() {
     PYTHONPATH="$ROOT_DIR/backend" "$ROOT_DIR/backend/.venv/bin/python" -m unittest discover \
       -s "$ROOT_DIR/backend/tests" -p 'test_*.py'
   fi
-  if [[ "$RUN_FRONTEND_BUILD" == "1" ]] && deploy_scope_has_unit frontend-legacy; then
-    log "build frontend"
-    npm --prefix "$ROOT_DIR/frontend" run build
-  fi
   if [[ "$RUN_FRONTEND_BUILD" == "1" ]] && deploy_scope_has_unit frontend-next; then
     log "build frontend-next"
     npm --prefix "$ROOT_DIR/frontend-next" run build
@@ -259,20 +239,6 @@ make_package() {
     fi
   fi
 
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ]]; then
-    local frontend_package_path
-    frontend_package_path="$(mktemp "/tmp/gupiao-frontend-hot-$(date +%Y%m%d%H%M%S)-XXXXXX")"
-    log "create frontend hot package $frontend_package_path"
-    test -f "$ROOT_DIR/frontend/dist/index.html"
-    COPYFILE_DISABLE=1 tar \
-      --no-xattrs \
-      --exclude='._*' \
-      --exclude='.DS_Store' \
-      -czf "$frontend_package_path" -C "$ROOT_DIR/frontend" dist
-    printf '%s\n' "$frontend_package_path"
-    return 0
-  fi
-
   local package_path
   package_path="$(mktemp "/tmp/gupiao-deploy-$(date +%Y%m%d%H%M%S)-XXXXXX")"
   log "create package $package_path"
@@ -290,25 +256,25 @@ make_package() {
     --exclude='backend/.env'
     --exclude='backend/__pycache__'
     --exclude='backend/.pytest_cache'
+    --exclude='backend/data'
     --exclude='backend/data/runtime.env'
     --exclude='backend/data/*.db'
     --exclude='backend/data/*.sqlite'
     --exclude='frontend/node_modules'
     --exclude='frontend/*.tsbuildinfo'
+    --exclude='frontend/dist'
     --exclude='frontend-next/node_modules'
     --exclude='frontend-next/test-results'
     --exclude='frontend-next/playwright-report'
     --exclude='frontend-next/*.tsbuildinfo'
     --exclude='rust/*/target'
+    --exclude='rust/*/dist'
     --exclude='*.pyc'
     --exclude='*.pyo'
     --exclude='*.log'
     --exclude='._*'
     --exclude='.DS_Store'
   )
-  if ! deploy_scope_has_unit frontend-legacy && ! deploy_scope_has_unit frontend-next; then
-    tar_excludes+=(--exclude='frontend/dist')
-  fi
   if ! deploy_scope_has_unit frontend-next; then
     tar_excludes+=(--exclude='frontend-next/dist')
   fi
@@ -322,9 +288,6 @@ make_package() {
 
 fetch_remote_deploy_manifest() {
   local output_path="$1"
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" ]]; then
-    return 1
-  fi
   cloud_ssh "set -euo pipefail
 if test -f '$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json'; then
   cat '$CLOUD_PROJECT_DIR/.runtime/deploy-manifest.json'
@@ -365,13 +328,11 @@ prepare_deploy_package() {
   DEPLOY_DELTA_FULL_BYTES=0
   DEPLOY_DELTA_FALLBACK_REASON=""
 
-  if [[ "$DEPLOY_SYNC_MODE" != "delta-package" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]] || deploy_scope_has_unit frontend-next || deploy_scope_has_unit frontend-legacy; then
+  if [[ "$DEPLOY_SYNC_MODE" != "delta-package" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]] || deploy_scope_has_unit frontend-next; then
     DEPLOY_PACKAGE_PATH="$(make_package | tail -n 1)"
     DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
     DEPLOY_DELTA_FULL_BYTES="$(file_size_bytes "$DEPLOY_PACKAGE_PATH")"
-    if [[ "$DEPLOY_SYNC_MODE" == "delta-package" && ( "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ) ]]; then
-      DEPLOY_DELTA_FALLBACK_REASON="frontend_hot_uses_hot_package"
-    elif [[ "$DEPLOY_SYNC_MODE" == "delta-package" && ( "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" || "$DEPLOY_RESOLVED_SCOPE" == *"frontend-next"* ) ]]; then
+    if [[ "$DEPLOY_SYNC_MODE" == "delta-package" && ( "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" || "$DEPLOY_RESOLVED_SCOPE" == *"frontend-next"* ) ]]; then
       DEPLOY_DELTA_FALLBACK_REASON="frontend_next_uses_hot_package"
     fi
     return 0
@@ -447,6 +408,9 @@ remote_deploy_from_git() {
     FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
+    REMOTE_NODE_BASE_IMAGE="$REMOTE_NODE_BASE_IMAGE" \
+    REMOTE_RUST_BASE_IMAGE="$REMOTE_RUST_BASE_IMAGE" \
+    REMOTE_PYTHON_BASE_IMAGE="$REMOTE_PYTHON_BASE_IMAGE" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
     DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
     HTTPS_REQUIRED="$HTTPS_REQUIRED" \
@@ -463,7 +427,7 @@ remote_deploy_from_git() {
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 
 require_release_paths() {
@@ -679,10 +643,7 @@ echo "deploy_scope:$DEPLOY_SCOPE"
 DEPLOY_UNITS=" $DEPLOY_SCOPE "
 case "$DEPLOY_SCOPE" in
   all)
-    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next frontend-legacy ops "
-    ;;
-  frontend-hot)
-    DEPLOY_UNITS=" frontend-legacy "
+    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next ops "
     ;;
   *)
     DEPLOY_UNITS=" $(printf '%s' "$DEPLOY_SCOPE" | tr ',' ' ') "
@@ -801,6 +762,15 @@ if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
 fi
 if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
   upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
+fi
+if test -n "$REMOTE_NODE_BASE_IMAGE"; then
+  upsert_env_value NODE_BASE_IMAGE "$REMOTE_NODE_BASE_IMAGE"
+fi
+if test -n "$REMOTE_RUST_BASE_IMAGE"; then
+  upsert_env_value RUST_BASE_IMAGE "$REMOTE_RUST_BASE_IMAGE"
+fi
+if test -n "$REMOTE_PYTHON_BASE_IMAGE"; then
+  upsert_env_value PYTHON_BASE_IMAGE "$REMOTE_PYTHON_BASE_IMAGE"
 fi
 
 if has_unit db-migration && test "$DEPLOY_SCOPE" != all; then
@@ -1059,53 +1029,6 @@ REMOTE
     return 0
   fi
 
-  if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot" || "$DEPLOY_RESOLVED_SCOPE" == "frontend-legacy" ]]; then
-    log "upload frontend hot package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
-    local upload_start
-    upload_start="$(date +%s)"
-    if ! cloud_scp_to "$package_path" "$remote_package"; then
-      return 1
-    fi
-    upload_seconds=$(( $(date +%s) - upload_start ))
-    DEPLOY_DELTA_BYTES="$(file_size_bytes "$package_path")"
-    log "hot update frontend dist in running app container"
-    if ! cloud_ssh env \
-      CLOUD_USER="$CLOUD_USER" \
-      REMOTE_PACKAGE="$remote_package" \
-      bash -s <<'REMOTE'
-set -euo pipefail
-TS=$(date +%Y%m%d%H%M%S)
-WORK_DIR="/tmp/gupiao-frontend-hot-$TS"
-rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR"
-tar -xzf "$REMOTE_PACKAGE" -C "$WORK_DIR"
-test -f "$WORK_DIR/dist/index.html"
-sudo docker inspect tquant-app-mysql >/dev/null
-sudo docker tag tquant-web:mysql "tquant-web:mysql-before-frontend-hot-$TS" 2>/dev/null || true
-cat > "$WORK_DIR/Dockerfile.frontend-hot" <<'DOCKER'
-FROM tquant-web:mysql
-USER root
-RUN rm -rf /app/frontend/dist && mkdir -p /app/frontend/dist
-COPY dist/ /app/frontend/dist/
-RUN chown -R tquant:tquant /app/frontend/dist && chmod -R a+rX /app/frontend/dist
-USER tquant
-CMD ["sh", "-c", "exec gunicorn -k uvicorn.workers.UvicornWorker -w \"${APP_WORKERS:-1}\" --bind 0.0.0.0:8000 app.main:app"]
-DOCKER
-sudo docker build -t tquant-web:mysql -f "$WORK_DIR/Dockerfile.frontend-hot" "$WORK_DIR" >/tmp/gupiao_frontend_hot_build.log
-sudo docker exec -u root tquant-app-mysql sh -c 'rm -rf /app/frontend/dist && mkdir -p /app/frontend/dist'
-sudo docker cp "$WORK_DIR/dist/." tquant-app-mysql:/app/frontend/dist/
-sudo docker exec -u root tquant-app-mysql sh -c 'chown -R tquant:tquant /app/frontend/dist && chmod -R a+rX /app/frontend/dist'
-echo "frontend_hot:updated"
-echo "frontend_hot_image:rebuilt"
-rm -rf "$WORK_DIR" "$REMOTE_PACKAGE"
-REMOTE
-    then
-      return 1
-    fi
-    DEPLOY_UPLOAD_SECONDS="$upload_seconds"
-    return 0
-  fi
-
   if [[ "$DEPLOY_EFFECTIVE_SYNC_MODE" == "delta-package" ]]; then
     log "upload delta package to ${CLOUD_USER}@${CLOUD_HOST}:${remote_package}"
   else
@@ -1141,6 +1064,9 @@ REMOTE
     DEPLOY_COMPOSE_TOPOLOGY="$DEPLOY_COMPOSE_TOPOLOGY" \
     REMOTE_DEBIAN_APT_MIRROR="$REMOTE_DEBIAN_APT_MIRROR" \
     REMOTE_DEBIAN_APT_SECURITY_MIRROR="$REMOTE_DEBIAN_APT_SECURITY_MIRROR" \
+    REMOTE_NODE_BASE_IMAGE="$REMOTE_NODE_BASE_IMAGE" \
+    REMOTE_RUST_BASE_IMAGE="$REMOTE_RUST_BASE_IMAGE" \
+    REMOTE_PYTHON_BASE_IMAGE="$REMOTE_PYTHON_BASE_IMAGE" \
     DEPLOY_RESOLVED_SCOPE="$DEPLOY_RESOLVED_SCOPE" \
     HTTPS_REQUIRED="$HTTPS_REQUIRED" \
     DEPLOY_PREBUILT_IMAGES_ENABLED="$DEPLOY_PREBUILT_IMAGES_ENABLED" \
@@ -1153,7 +1079,7 @@ REMOTE
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend/package.json frontend/src/main.tsx frontend/src/ui/data/index.ts frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 SYNC_MODE="${DEPLOY_EFFECTIVE_SYNC_MODE:-package-only}"
 
@@ -1300,10 +1226,7 @@ use_prebuilt_go_images() {
 DEPLOY_UNITS=" $DEPLOY_SCOPE "
 case "$DEPLOY_SCOPE" in
   all)
-    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next frontend-legacy ops "
-    ;;
-  frontend-hot)
-    DEPLOY_UNITS=" frontend-legacy "
+    DEPLOY_UNITS=" all db-migration backend-api worker go frontend-next ops "
     ;;
   *)
     DEPLOY_UNITS=" $(printf '%s' "$DEPLOY_SCOPE" | tr ',' ' ') "
@@ -1477,6 +1400,15 @@ if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
 fi
 if test -n "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"; then
   upsert_env_value DEBIAN_APT_SECURITY_MIRROR "$REMOTE_DEBIAN_APT_SECURITY_MIRROR"
+fi
+if test -n "$REMOTE_NODE_BASE_IMAGE"; then
+  upsert_env_value NODE_BASE_IMAGE "$REMOTE_NODE_BASE_IMAGE"
+fi
+if test -n "$REMOTE_RUST_BASE_IMAGE"; then
+  upsert_env_value RUST_BASE_IMAGE "$REMOTE_RUST_BASE_IMAGE"
+fi
+if test -n "$REMOTE_PYTHON_BASE_IMAGE"; then
+  upsert_env_value PYTHON_BASE_IMAGE "$REMOTE_PYTHON_BASE_IMAGE"
 fi
 
 if has_unit db-migration && test "$DEPLOY_SCOPE" != all; then
@@ -1770,7 +1702,7 @@ import json
 payload = json.load(open('/tmp/gupiao_readyz.json', encoding='utf-8'))
 assert payload.get('status') == 'ok', payload
 assert payload.get('checks', {}).get('database') is True, payload
-assert payload.get('checks', {}).get('frontend_dist') is True, payload
+assert payload.get('checks', {}).get('frontend_next_dist') is True, payload
 print('readyz:ok')
 PY
 AUTH_STATUS=$(curl -sS -o /tmp/gupiao_auth_guard.json -w '%{http_code}' --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/api/screeners/low-buy?limit=4&scan_limit=24")
@@ -1844,8 +1776,13 @@ if test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" = "separated" && sudo docker insp
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
   curl -sS -f --max-time 10 "http://127.0.0.1:${BACKEND_API_PORT:-18091}/readyz" >/tmp/gupiao_readyz.json
 else
-  STATUS=$(sudo docker inspect tquant-app-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
-  echo "tquant-app-mysql health:$STATUS"
+  STATUS=starting
+  for _ in $(seq 1 30); do
+    STATUS=$(sudo docker inspect tquant-app-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}')
+    echo "tquant-app-mysql health:$STATUS"
+    case "$STATUS" in healthy|running) break ;; esac
+    sleep 2
+  done
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
   curl -sS -f --max-time 10 "http://127.0.0.1:${CLOUD_APP_PORT}/readyz" >/tmp/gupiao_readyz.json
 fi
@@ -2035,14 +1972,13 @@ main() {
   log "resolved deploy scope: ${DEPLOY_RESOLVED_SCOPE}"
   log "requested deploy sync mode: ${DEPLOY_SYNC_MODE}"
   run_local_checks
-  ensure_frontend_hot_artifact
   ensure_frontend_next_artifact
   local package_path=""
   if remote_deploy_from_git; then
     DEPLOY_EFFECTIVE_SYNC_MODE="$DEPLOY_SYNC_MODE"
     log "remote git sync deploy completed"
   else
-    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-hot" && "$DEPLOY_RESOLVED_SCOPE" != "frontend-legacy" && "$DEPLOY_RESOLVED_SCOPE" != "frontend-next" && ( "$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone" ) ]] && ! deploy_scope_has_unit frontend-next && ! deploy_scope_has_unit frontend-legacy; then
+    if [[ "$DEPLOY_RESOLVED_SCOPE" != "frontend-next" && ( "$DEPLOY_SYNC_MODE" == "git-inplace" || "$DEPLOY_SYNC_MODE" == "git-clone" ) ]] && ! deploy_scope_has_unit frontend-next; then
       log "remote git sync unavailable; falling back to package upload"
       DEPLOY_DELTA_FALLBACK_REASON="remote_git_sync_unavailable"
     fi

@@ -9,8 +9,9 @@ from pathlib import PurePosixPath
 from typing import Iterable
 
 
-ORDERED_UNITS = ("db-migration", "backend-api", "worker", "go", "frontend-next", "frontend-legacy", "ops")
-SUPPORTED_EXPLICIT_SCOPES = {"auto", "all", *ORDERED_UNITS, "frontend-hot", "ops-docs", "verify-only"}
+ORDERED_UNITS = ("db-migration", "backend-api", "worker", "go", "frontend-next", "ops")
+SUPPORTED_EXPLICIT_SCOPES = {"auto", "all", *ORDERED_UNITS, "ops-docs", "verify-only"}
+RETIRED_EXPLICIT_SCOPES = {"frontend-hot", "frontend-legacy"}
 DOC_ONLY_PATHS = ("docs/",)
 STRATEGY_POLICY_PATHS = {"strategy_policy.py", "backend/app/services/low_buy/strategy_policy.py"}
 
@@ -22,7 +23,6 @@ class DeployScope:
     requires_migration: bool = False
     requires_backend_restart: bool = False
     requires_frontend_next_build: bool = False
-    requires_legacy_frontend_build: bool = False
     requires_worker_restart: bool = False
     requires_go_restart: bool = False
     requires_ops_reload: bool = False
@@ -36,7 +36,6 @@ class DeployScope:
             "requires_migration": self.requires_migration,
             "requires_backend_restart": self.requires_backend_restart,
             "requires_frontend_next_build": self.requires_frontend_next_build,
-            "requires_legacy_frontend_build": self.requires_legacy_frontend_build,
             "requires_worker_restart": self.requires_worker_restart,
             "requires_go_restart": self.requires_go_restart,
             "requires_ops_reload": self.requires_ops_reload,
@@ -56,6 +55,13 @@ def normalize_changed_files(paths: Iterable[str]) -> list[str]:
 
 
 def resolve_deploy_scope(paths: Iterable[str], explicit_scope: str = "auto") -> DeployScope:
+    if explicit_scope in RETIRED_EXPLICIT_SCOPES:
+        return DeployScope(
+            scope="blocked",
+            units=(),
+            blocked=True,
+            reason=f"{explicit_scope} is retired; deploy frontend-next instead",
+        )
     if explicit_scope not in SUPPORTED_EXPLICIT_SCOPES:
         return DeployScope(
             scope="blocked",
@@ -64,8 +70,7 @@ def resolve_deploy_scope(paths: Iterable[str], explicit_scope: str = "auto") -> 
             reason=f"invalid explicit scope: {explicit_scope}",
         )
     if explicit_scope != "auto":
-        canonical = "frontend-legacy" if explicit_scope == "frontend-hot" else explicit_scope
-        return _scope_from_units((canonical,), reason=f"explicit scope: {explicit_scope}")
+        return _scope_from_units((explicit_scope,), reason=f"explicit scope: {explicit_scope}")
 
     changed = normalize_changed_files(paths)
     if not changed:
@@ -97,8 +102,8 @@ def resolve_deploy_scope(paths: Iterable[str], explicit_scope: str = "auto") -> 
             units.add("go")
         elif classified == "frontend-next":
             units.add("frontend-next")
-        elif classified == "frontend-legacy":
-            units.add("frontend-legacy")
+        elif classified == "frontend-retired":
+            units.add("ops-docs")
         elif classified == "ops":
             units.add("ops")
 
@@ -111,7 +116,7 @@ def _classify_path(path: str) -> str:
     if path.startswith("frontend-next/"):
         return "frontend-next"
     if path.startswith("frontend/"):
-        return "frontend-legacy"
+        return "frontend-retired"
     if path.startswith("go-services/"):
         return "go"
     if path.startswith("backend/alembic/") or path.startswith("backend/app/models/"):
@@ -178,7 +183,6 @@ def _scope_from_units(units: tuple[str, ...], reason: str) -> DeployScope:
         requires_migration="db-migration" in units or "all" in units,
         requires_backend_restart="backend-api" in units or "all" in units,
         requires_frontend_next_build="frontend-next" in units or "all" in units,
-        requires_legacy_frontend_build="frontend-legacy" in units or "all" in units,
         requires_worker_restart="worker" in units or "all" in units,
         requires_go_restart="go" in units or "all" in units,
         requires_ops_reload="ops" in units or "all" in units,

@@ -11,7 +11,7 @@ from app.services.db_admin_service import DatabaseAdminService
 from app.services.settings_service import SettingsService
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-FRONTEND_DIST_INDEX = PROJECT_ROOT / "frontend" / "dist" / "index.html"
+FRONTEND_NEXT_DIST_INDEX = PROJECT_ROOT / "frontend-next" / "dist" / "index.html"
 
 
 class SettingsRuntimeDiagnosticsService:
@@ -36,7 +36,8 @@ class SettingsRuntimeDiagnosticsService:
         consistency_ok = runtime_database_matches_settings and not runtime_llm_secret_persisted
         ready_checks = {
             "database": self._database_ready(database_url),
-            "frontend_dist": FRONTEND_DIST_INDEX.exists(),
+            "frontend_next_dist": FRONTEND_NEXT_DIST_INDEX.exists(),
+            "frontend_dist": FRONTEND_NEXT_DIST_INDEX.exists(),
             "runtime_consistency": consistency_ok,
         }
         consistency_status, consistency_text = _consistency_status_text(
@@ -57,8 +58,8 @@ class SettingsRuntimeDiagnosticsService:
             runtime_llm_secret_persisted=runtime_llm_secret_persisted,
             settings_consistency_status=consistency_status,
             settings_consistency_text=consistency_text,
-            frontend_dist_path=str(FRONTEND_DIST_INDEX),
-            frontend_dist_ready=FRONTEND_DIST_INDEX.exists(),
+            frontend_dist_path=str(FRONTEND_NEXT_DIST_INDEX),
+            frontend_dist_ready=FRONTEND_NEXT_DIST_INDEX.exists(),
             llm_configured=bool(payload.llm_api_key.strip() and payload.llm_base_url.strip() and payload.llm_model.strip()),
             data_source=payload.data_source,
             data_source_base_url=payload.data_source_base_url,

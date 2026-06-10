@@ -1,24 +1,25 @@
 import { expect, test } from "@playwright/test";
 import { installE2eAuthState } from "./auth-state";
+import { installDataSettingsFixtures } from "./cutover-fixtures";
 
 const shadowFlows = [
   {
     kind: "local-intent",
     route: "/next/data",
-    heading: "应急数据控制面板",
-    field: "输入系统管理授权令牌 (Token)",
+    heading: "管理操作解锁",
+    field: "粘贴管理员授权令牌",
     value: "ADMIN_TOKEN",
     submitButton: "数据重新拉取",
-    doneText: "已记录 [数据重新拉取] 本地维护意图",
+    doneText: "已基于当前管理员账号记录 [数据重新拉取] 本地维护意图",
   },
   {
     kind: "local-intent",
     route: "/next/settings",
     heading: "QUANT COMMAND 极致量化综合面板",
-    field: "管理令牌(测试用: ADMIN_TOKEN)",
+    field: "粘贴管理员授权令牌",
     value: "ADMIN_TOKEN",
     submitButton: "记录全部意图",
-    unlockButton: "解锁",
+    unlockButton: "解锁管理操作",
     doneText: "[全局配置] 已记录本地配置意图",
   },
 ] as const;
@@ -26,6 +27,7 @@ const shadowFlows = [
 for (const flow of shadowFlows) {
   test(`${flow.route} supports no-write shadow interaction`, async ({ page }) => {
     await installE2eAuthState(page);
+    await installDataSettingsFixtures(page);
     const writeRequests: string[] = [];
     page.on("request", (request) => {
       if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) && request.url().includes("/api/")) {

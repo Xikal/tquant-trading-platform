@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createRouter } from "@tanstack/solid-router";
+import { render } from "solid-js/web";
 import { compatibilityRoutes, nextRoutes } from "../shared/config/routes";
 import { routeHasParityTarget } from "../shared/testing/legacyParity";
 import { AUTH_LOGIN_ROUTE } from "./authRoutes";
+import { RouteLoadingFallback } from "./RouteLoading";
 import { routeTree } from "./routeTree";
 
 describe("frontend-next route inventory", () => {
@@ -57,5 +59,15 @@ describe("frontend-next route inventory", () => {
     expect(AUTH_LOGIN_ROUTE).toBe("/next/login");
     expect(router.routesByPath[AUTH_LOGIN_ROUTE]).toBeDefined();
     expect(router.routesByPath["/login"]).toBeDefined();
+  });
+
+  it("renders a visible route fallback instead of a blank content area", () => {
+    const container = document.createElement("div");
+    const dispose = render(() => <RouteLoadingFallback routeLabel="选股宝典" />, container);
+
+    expect(container.textContent).toContain("选股宝典加载中");
+    expect(container.querySelector("[data-testid='route-loading-fallback']")).toBeTruthy();
+
+    dispose();
   });
 });

@@ -11,7 +11,7 @@ DEFAULT_DEPLOY_MODE="${DEFAULT_DEPLOY_MODE:-safe}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [--scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>] [quick deploy options]
+Usage: scripts/one_click_cloud_deploy.sh [--safe|--fast|--full|--verify-only] [--scope <auto|frontend-next|backend-api|db-migration|worker|go|ops|all>] [quick deploy options]
 
 Config:
   Reads .env.deploy.local by default when present. Override with DEPLOY_ENV_FILE.

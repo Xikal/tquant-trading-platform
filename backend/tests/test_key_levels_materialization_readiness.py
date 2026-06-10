@@ -99,13 +99,6 @@ def _client(db) -> TestClient:
 
 
 def test_after_close_enqueues_a_key_level_materialization_with_stable_idempotency_key(monkeypatch) -> None:
-    class _FakeRepo:
-        def __init__(self, _db) -> None:
-            pass
-
-        def stock_count_by_trade_date(self, _trade_date: str) -> int:
-            return close_refresh.MIN_STOCK_DAILY_BARS
-
     payloads = []
 
     class _FakeQueue:
@@ -118,8 +111,12 @@ def test_after_close_enqueues_a_key_level_materialization_with_stable_idempotenc
 
     monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: True)
     monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: "2026-05-18")
-    monkeypatch.setattr(close_refresh, "DailyHistoryRepository", _FakeRepo)
     monkeypatch.setattr(close_refresh, "RuntimeTaskQueue", _FakeQueue)
+    monkeypatch.setattr(
+        close_refresh,
+        "enqueue_after_close_followups",
+        lambda _db, **_kwargs: {"ok": True, "action": "stubbed_for_test"},
+    )
     monkeypatch.setattr(
         close_refresh,
         "daily_bar_freshness_status",

@@ -1,6 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "../../shared/api/client";
-import { candidateDateGroups, candidateFamilies, boardMetrics, loadPlaybookDataset, mergePlaybookQuotes, type PlaybookDataset } from "./playbookModel";
+import {
+  candidateDateGroups,
+  candidateFamilies,
+  boardMetrics,
+  loadPlaybookDataset,
+  loadPlaybookDeepScreener,
+  loadPlaybookFastDataset,
+  mergePlaybookQuotes,
+  mergePlaybookScreener,
+  type PlaybookDataset,
+} from "./playbookModel";
 
 describe("playbook priority board model", () => {
   afterEach(() => {
@@ -17,6 +27,38 @@ describe("playbook priority board model", () => {
     await loadPlaybookDataset("first_board");
 
     expect(quotes).toHaveBeenCalledWith(["000001", "600000"], "first_board", expect.any(Object));
+  });
+
+  it("loads the fast playbook dataset from priority board cache without blocking on deep screener", async () => {
+    const screener = vi.spyOn(apiClient, "lowBuyScreener").mockResolvedValue({
+      candidates: [{ symbol: "603319", name: "美湖股份" }],
+    });
+    const priorityBoard = vi.spyOn(apiClient, "lowBuyPriorityBoard").mockResolvedValue(groupedPriorityBoard);
+
+    const data = await loadPlaybookFastDataset();
+
+    expect(priorityBoard).toHaveBeenCalledWith(30, "baseline", "cache", expect.objectContaining({ timeoutMs: 8000, retry: false }));
+    expect(screener).not.toHaveBeenCalled();
+    expect(candidateFamilies(data).flatMap((family) => family.items.map((item) => item.symbol))).toEqual(["000001", "600000"]);
+  });
+
+  it("keeps priority board candidates visible until the selected strategy deep screener arrives", async () => {
+    const base = { priorityBoard: groupedPriorityBoard } as PlaybookDataset;
+    vi.spyOn(apiClient, "lowBuyScreener").mockResolvedValue({
+      strategy_key: "first_board",
+      candidates: [{ symbol: "603319", name: "美湖股份", strategy_key: "first_board", simple_bucket: "wait_price" }],
+    });
+
+    const pendingSymbols = candidateFamilies(base).flatMap((family) => family.items.map((item) => item.symbol));
+    const deep = await loadPlaybookDeepScreener("first_board");
+    const mergedSymbols = candidateFamilies(mergePlaybookScreener(base, deep)).flatMap((family) => family.items.map((item) => item.symbol));
+
+    expect(pendingSymbols).toEqual(["000001", "600000"]);
+    expect(mergedSymbols).toEqual(["603319"]);
+    expect(apiClient.lowBuyScreener).toHaveBeenCalledWith(
+      { strategy: "first_board", limit: 36, scan_limit: 36, scan_mode: "full", include_history: true },
+      expect.objectContaining({ timeoutMs: 20000, retry: false }),
+    );
   });
 
   it("loads quote data for the selected strategy screener before the global priority board", async () => {

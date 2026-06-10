@@ -286,6 +286,9 @@ Runbook 使用 `docs/operations/<topic>-runbook.md`。
 5. 策略、回测、生产分改动：必须跑口径守卫、样本报告或指定回测验收。
 6. 数据库迁移：必须跑 upgrade、downgrade、upgrade 冒烟。
 7. 高风险合入前必须跑全量回归，不能只写“通过”。
+8. 删除、瘦身、迁移、退役、重构类提交默认视为高风险：合入前必须跑 `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests -q` 或 CI 等价的 `pytest backend/tests` 全量后端回归。
+9. 上述提交影响 `frontend-next/`、入口、监控页、数据页、设置页或切流链路时，必须跑 `cd frontend-next && npm run check:all`，并补跑受影响 e2e；监控入口至少覆盖 `tests/e2e/monitor-workflows.spec.ts` 和 `tests/e2e/monitor-live-readiness.spec.ts`。
+10. PR 或交付说明必须贴出实际命令与结果；如果因耗时、环境或授权限制未跑满全量回归，必须写明未跑项、原因和剩余风险，不能只写“已验证”。
 
 ### 6.12 例外审批规则
 

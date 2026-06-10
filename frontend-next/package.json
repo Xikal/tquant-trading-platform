@@ -13,6 +13,7 @@
     "check:css": "node ./scripts/check-css-guard.mjs",
     "check:boundary": "node ./scripts/check-boundary-guard.mjs",
     "check:bundle-budget": "node ./scripts/check-bundle-budget.mjs",
+    "check:all": "npm run api:check && npm run typecheck && npm run lint && npm test -- --run && npm run build",
     "test": "vitest run",
     "api:generate": "openapi-typescript ../docs/contracts/openapi.json -o src/generated/api-types.ts",
     "api:check": "npm run api:generate && npm run typecheck",

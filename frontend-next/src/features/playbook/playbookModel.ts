@@ -53,6 +53,30 @@ export interface PlaybookDateGroup {
 }
 
 export const DEFAULT_PLAYBOOK_STRATEGY = "first_board";
+export const PLAYBOOK_FAST_TIMEOUT_MS = 8_000;
+export const PLAYBOOK_DEEP_TIMEOUT_MS = 20_000;
+
+export async function loadPlaybookFastDataset(init: RequestJsonOptions = {}): Promise<PlaybookDataset> {
+  const priorityBoard = await apiClient.lowBuyPriorityBoard(30, "baseline", "cache", withTimeout(init, PLAYBOOK_FAST_TIMEOUT_MS));
+  return emptyPlaybookDataset({ priorityBoard });
+}
+
+export async function loadPlaybookConfig(init: RequestJsonOptions = {}): Promise<Pick<PlaybookDataset, "strategies" | "meta">> {
+  const requestInit = withTimeout(init, PLAYBOOK_FAST_TIMEOUT_MS);
+  const [strategies, meta] = await Promise.all([
+    apiClient.lowBuyStrategies(requestInit),
+    apiClient.strategiesMeta(requestInit),
+  ]);
+  return { strategies, meta };
+}
+
+export async function loadPlaybookDeepScreener(strategy: string, init: RequestJsonOptions = {}): Promise<Pick<PlaybookDataset, "screener">> {
+  const screener = await apiClient.lowBuyScreener(
+    { strategy, limit: 36, scan_limit: 36, scan_mode: "full", include_history: true },
+    withTimeout(init, PLAYBOOK_DEEP_TIMEOUT_MS),
+  );
+  return { screener };
+}
 
 export async function loadPlaybookDataset(strategy: string, init: RequestJsonOptions = {}, options: { includeQuotes?: boolean } = {}): Promise<PlaybookDataset> {
   const [screener, priorityBoard, strategies, meta] = await Promise.all([
@@ -64,6 +88,16 @@ export async function loadPlaybookDataset(strategy: string, init: RequestJsonOpt
   const symbols = playbookCandidates({ screener, priorityBoard } as PlaybookDataset).slice(0, 20).map((item) => item.symbol);
   const quotes = options.includeQuotes === false ? undefined : await apiClient.lowBuyQuotes(symbols, strategy, init);
   return { screener, priorityBoard, quotes, strategies, meta, loadedAt: new Date().toLocaleTimeString("zh-CN", { hour12: false }) };
+}
+
+export function mergePlaybookConfig(data: PlaybookDataset | null, config: Pick<PlaybookDataset, "strategies" | "meta"> | undefined): PlaybookDataset | null {
+  if (!data || config === undefined) return data;
+  return { ...data, strategies: config.strategies, meta: config.meta };
+}
+
+export function mergePlaybookScreener(data: PlaybookDataset | null, screener: Pick<PlaybookDataset, "screener"> | undefined): PlaybookDataset | null {
+  if (!data || screener === undefined) return data;
+  return { ...data, screener: screener.screener };
 }
 
 export function strategyTabs(data: PlaybookDataset | null): PlaybookStrategyTab[] {
@@ -415,6 +449,22 @@ function normalizeDate(value: string): string {
 
 function latestDateBefore(dates: string[], tradeDate: string): string {
   return dates.filter((date) => date < tradeDate).at(-1) ?? "";
+}
+
+function emptyPlaybookDataset(patch: Partial<PlaybookDataset> = {}): PlaybookDataset {
+  return {
+    screener: undefined,
+    priorityBoard: undefined,
+    quotes: undefined,
+    strategies: undefined,
+    meta: undefined,
+    loadedAt: new Date().toLocaleTimeString("zh-CN", { hour12: false }),
+    ...patch,
+  };
+}
+
+function withTimeout(init: RequestJsonOptions, timeoutMs: number): RequestJsonOptions {
+  return { ...init, timeoutMs: init.timeoutMs ?? timeoutMs, retry: init.retry ?? false };
 }
 
 export function performanceSummary(family: PlaybookFamily | null) {

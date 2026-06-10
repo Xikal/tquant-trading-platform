@@ -19,8 +19,9 @@ test("/next/monitor preserves priority order and keeps monitor writes protected 
   await expect(rows.nth(0)).toContainText("000001");
   await expect(rows.nth(1)).toContainText("600000");
 
-  await page.getByRole("button", { name: "前排加权" }).click();
+  await page.getByRole("button", { name: "观察池" }).click();
   await expect(page.getByText("浦发银行").first()).toBeVisible();
+  await page.getByRole("button", { name: "全部候选" }).click();
   await rows.filter({ hasText: "600000" }).first().click();
   await page.getByRole("button", { name: "选股宝典" }).click();
   await expect(page).toHaveURL(/\/next\/playbook$/);

@@ -33,9 +33,13 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
 
     assert "DEPLOY_PACKAGE_REQUIRED_PATHS" in deploy_script
     assert "verify_package_contents" in deploy_script
-    assert "frontend/src/ui/data/index.ts" in deploy_script
+    assert "frontend-next/src/index.tsx" in deploy_script
+    assert "frontend/src/ui/data/index.ts" not in deploy_script
     assert "REMOTE_DEBIAN_APT_MIRROR" in deploy_script
     assert "REMOTE_DEBIAN_APT_SECURITY_MIRROR" in deploy_script
+    assert "REMOTE_NODE_BASE_IMAGE" in deploy_script
+    assert "REMOTE_RUST_BASE_IMAGE" in deploy_script
+    assert "REMOTE_PYTHON_BASE_IMAGE" in deploy_script
     assert "COMPOSE_BAKE=false" in deploy_script
     assert "DOCKER_BUILDKIT=0" in deploy_script
     assert "context deadline exceeded" in deploy_script
@@ -432,23 +436,26 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "frontend_next_hot:updated" in deploy_script
     assert "frontend_next_hot:monolith_compat" in deploy_script
     assert "frontend_next_hot:separated_frontend_web" in deploy_script
-    assert "frontend-hot" in deploy_script
+    assert "frontend-hot" not in deploy_script
     assert "go-services/" in scope_helper
-    assert "create frontend hot package" in deploy_script
+    assert "create frontend hot package" not in deploy_script
     assert "create frontend-next hot package" in deploy_script
-    assert "frontend_hot:updated" in deploy_script
-    assert "frontend_hot_image:rebuilt" in deploy_script
-    assert "tquant-web:mysql-before-frontend-hot" in deploy_script
-    assert "Dockerfile.frontend-hot" in deploy_script
-    assert "rm -rf /app/frontend/dist" in deploy_script
-    assert "sudo docker build -t tquant-web:mysql -f \"$WORK_DIR/Dockerfile.frontend-hot\"" in deploy_script
+    assert "frontend_hot:updated" not in deploy_script
+    assert "frontend_hot_image:rebuilt" not in deploy_script
+    assert "tquant-web:mysql-before-frontend-hot" not in deploy_script
+    assert "Dockerfile.frontend-hot" not in deploy_script
+    assert "rm -rf /app/frontend/dist" not in deploy_script
+    assert "sudo docker build -t tquant-web:mysql -f \"$WORK_DIR/Dockerfile.frontend-hot\"" not in deploy_script
     assert "docker commit" not in deploy_script
     assert "skip HTTPS/backup cron refresh for scope" in deploy_script
     assert "skip latest low-buy data closure for scope" in deploy_script
-    assert "--scope <auto|frontend-next|frontend-legacy|backend-api|db-migration|worker|go|ops|all>" in quick_script
-    assert "DEPLOY_FRONTEND_HOT_REQUIRED" in quick_script
+    assert "--scope <auto|frontend-next|backend-api|db-migration|worker|go|ops|all>" in quick_script
+    assert "DEPLOY_FRONTEND_HOT_REQUIRED" not in quick_script
     assert "DEPLOY_FRONTEND_NEXT_REQUIRED" in quick_script
     assert "DEPLOY_CHANGED_FILES_FROM" in quick_script
+    assert "REMOTE_NODE_BASE_IMAGE" in quick_script
+    assert "REMOTE_RUST_BASE_IMAGE" in quick_script
+    assert "REMOTE_PYTHON_BASE_IMAGE" in quick_script
     assert "VERIFY_WEB_IMAGE_SYNC" in quick_script
     assert "web_image:skipped_frontend_hot" in quick_script
     assert "web_image:skipped_frontend_next" in quick_script
@@ -461,8 +468,8 @@ def test_deploy_scripts_support_scope_aware_fast_paths() -> None:
     assert "CLOUD_PUBLIC_BASE_URL=https://43.143.243.97" in deploy_example
     assert "package-only remains the automatic fallback" in deploy_example
     assert "root /usr/share/nginx/html-next;" in frontend_nginx
-    assert "location /__legacy/assets/" in frontend_nginx
-    assert "/usr/share/nginx/html-root/" in frontend_dockerfile
+    assert "location /__legacy/assets/" not in frontend_nginx
+    assert "/usr/share/nginx/html-root/" not in frontend_dockerfile
     assert "/usr/share/nginx/html-next/" in frontend_dockerfile
 
 
@@ -484,7 +491,7 @@ def test_frontend_next_scope_does_not_build_backend_or_run_migration() -> None:
 
     remote_deploy = deploy_script.split("remote_deploy() {", 1)[1]
     hot_branch = remote_deploy.split('if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-next" ]]; then', 1)[1].split(
-        'if [[ "$DEPLOY_RESOLVED_SCOPE" == "frontend-hot"', 1
+        'if [[ "$DEPLOY_EFFECTIVE_SYNC_MODE" == "delta-package" ]]; then', 1
     )[0]
     assert "frontend_next_hot:updated" in hot_branch
     assert "frontend_next_hot:separated_frontend_web" in hot_branch
@@ -520,8 +527,9 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
     combined_branch = deploy_script.split('if has_unit frontend-next && test "$DEPLOY_SCOPE" != all; then', 1)[1].split(
         'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next', 1
     )[0]
-    assert "if ! deploy_scope_has_unit frontend-legacy && ! deploy_scope_has_unit frontend-next; then" in make_package
-    assert "tar_excludes+=(--exclude='frontend/dist')" in make_package
+    assert "deploy_scope_has_unit frontend-legacy" not in make_package
+    assert "--exclude='frontend/node_modules'" in make_package
+    assert "--exclude='frontend/dist'" in make_package
     assert package_branch.index("publish_frontend_next() {") < package_branch.index("if has_unit frontend-next")
     assert package_branch.index("refresh_gateway_if_present() {") < package_branch.index("if has_unit ops")
     assert "test -f frontend-next/dist/index.html" in publish_function
@@ -632,8 +640,9 @@ def test_verify_remote_is_scope_aware_for_separated_topology() -> None:
     assert 'BACKEND_API_PORT="$BACKEND_API_PORT"' in deploy_script
     assert "tquant-frontend-web health" in deploy_script
     assert "tquant-backend-api health" in deploy_script
+    assert "tquant-app-mysql health" in deploy_script
     assert "for _ in $(seq 1 30)" in verify_frontend
-    assert "for _ in $(seq 1 30)" in verify_backend
+    assert verify_backend.count("for _ in $(seq 1 30)") >= 2
     assert "sleep 2" in verify_frontend
     assert "sleep 2" in verify_backend
 
@@ -643,6 +652,8 @@ def test_deploy_scope_helper_recognizes_frontend_next_and_blocks_strategy_policy
 
     assert "frontend-next/" in script
     assert "frontend-legacy" in script
+    assert "RETIRED_EXPLICIT_SCOPES" in script
+    assert "deploy frontend-next instead" in script
     assert "backend-api" in script
     assert "db-migration" in script
     assert "strategy_policy.py requires explicit human review" in script
@@ -674,7 +685,7 @@ def test_cloud_deploy_prefers_remote_git_sync_before_package_upload() -> None:
     assert "remote git sync unavailable; falling back to package upload" in deploy_script
     assert 'if [[ "$DEPLOY_RESOLVED_SCOPE" != "go" ]]; then' in deploy_script
     assert "frontend_next_uses_hot_package" in deploy_script
-    assert "frontend_hot_uses_hot_package" in deploy_script
+    assert "frontend_hot_uses_hot_package" not in deploy_script
     assert "package-only" in deploy_script
     assert 'DEPLOY_SYNC_MODE: "delta-package"' in workflow
     assert "DEPLOY_GIT_REF: ${{ github.sha }}" in workflow
@@ -856,7 +867,8 @@ def test_makefile_has_one_click_deploy_shortcuts() -> None:
     assert "deploy-cloud:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh" in makefile
     assert "deploy-cloud-web:" in makefile
-    assert "./scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required" in makefile
+    assert "./scripts/one_click_cloud_deploy.sh --scope frontend-next --frontend-next-required" in makefile
+    assert "frontend-hot" not in makefile
     assert "deploy-cloud-next:" in makefile
     assert "./scripts/one_click_cloud_deploy.sh --scope frontend-next --frontend-next-required" in makefile
     assert "deploy-cloud-api:" in makefile
@@ -876,10 +888,10 @@ def test_makefile_has_one_click_deploy_shortcuts() -> None:
 def test_ci_reuses_frontend_artifact_and_selects_deploy_scope() -> None:
     workflow = read_repo_file(".github/workflows/ci.yml")
 
-    assert "Upload frontend dist artifact" in workflow
+    assert "Upload frontend dist artifact" not in workflow
     assert "Upload frontend-next dist artifact" in workflow
     assert "actions/upload-artifact@v4" in workflow
-    assert "Download frontend dist artifact" in workflow
+    assert "Download frontend dist artifact" not in workflow
     assert "Download frontend-next dist artifact" in workflow
     assert "actions/download-artifact@v4" in workflow
     assert "Select deploy target scope" in workflow
@@ -890,7 +902,7 @@ def test_ci_reuses_frontend_artifact_and_selects_deploy_scope() -> None:
     assert "python3 scripts/deploy_scope.py" in workflow
     assert "DEPLOY_TARGET_SCOPE=$scope" in workflow
     assert "DEPLOY_CHANGED_FILES<<DEPLOY_FILES" in workflow
-    assert "DEPLOY_FRONTEND_HOT_REQUIRED" in workflow
+    assert "DEPLOY_FRONTEND_HOT_REQUIRED" not in workflow
     assert "DEPLOY_FRONTEND_NEXT_REQUIRED" in workflow
 
 

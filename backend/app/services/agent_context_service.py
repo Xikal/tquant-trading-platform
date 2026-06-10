@@ -23,7 +23,7 @@ from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.watchlist_signal_service import WatchlistSignalService
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-FRONTEND_INDEX_FILE = PROJECT_ROOT / "frontend" / "dist" / "index.html"
+FRONTEND_NEXT_INDEX_FILE = PROJECT_ROOT / "frontend-next" / "dist" / "index.html"
 
 
 class AgentContextService:
@@ -36,7 +36,8 @@ class AgentContextService:
     def health(self, db: Session) -> AgentHealthResponse:  # noqa: ARG002
         checks = {
             "database": False,
-            "frontend_dist": FRONTEND_INDEX_FILE.exists(),
+            "frontend_dist": FRONTEND_NEXT_INDEX_FILE.exists(),
+            "frontend_next_dist": FRONTEND_NEXT_INDEX_FILE.exists(),
             "watchlist_signals": False,
             "priority_board": False,
         }

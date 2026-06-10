@@ -29,7 +29,7 @@ const viewports = [
   { name: "tablet", width: 768, height: 1024 },
   { name: "desktop", width: 1440, height: 960 },
 ];
-const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/data", "/settings"];
+const paths = ["/monitor", "/emotion", "/analysis", "/playbook", "/strategy-tracking", "/strategy", "/backtest", "/paper", "/data", "/settings"];
 const reportPath = resolve("dist", "responsive-smoke-report.json");
 
 async function installMockAuth(page) {
