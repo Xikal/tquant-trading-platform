@@ -114,6 +114,8 @@ def _daily_bar_insert_statement():
 class DailyHistoryRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
+        self._coverage_counts_by_recent_key: dict[tuple[str | None, int], dict[str, int]] = {}
+        self._stock_count_by_trade_date: dict[str, int] = {}
 
     def latest_trade_date_for_symbol(self, symbol: str) -> str | None:
         row = (
@@ -141,36 +143,72 @@ class DailyHistoryRepository:
         )
         return sorted(str(row) for row in rows)
 
+    def recent_stock_counts_by_trade_date(
+        self,
+        *,
+        max_trade_date: str | None = None,
+        limit: int = 60,
+    ) -> dict[str, int]:
+        safe_limit = max(1, int(limit or 60))
+        cache_key = (max_trade_date, safe_limit)
+        cached = self._coverage_counts_by_recent_key.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+        candidate_query = select(DailyBarSnapshot.trade_date).distinct()
+        if max_trade_date:
+            candidate_query = candidate_query.where(DailyBarSnapshot.trade_date <= max_trade_date)
+        candidate_dates = (
+            self.db.execute(
+                candidate_query.order_by(DailyBarSnapshot.trade_date.desc()).limit(safe_limit)
+            )
+            .scalars()
+            .all()
+        )
+        normalized_dates = [str(row) for row in candidate_dates]
+        if not normalized_dates:
+            self._coverage_counts_by_recent_key[cache_key] = {}
+            return {}
+        rows = (
+            self.db.execute(
+                select(
+                    DailyBarSnapshot.trade_date,
+                    func.count(DailyBarSnapshot.symbol).label("stock_count"),
+                )
+                .where(
+                    DailyBarSnapshot.instrument_type == "stock",
+                    DailyBarSnapshot.trade_date.in_(normalized_dates),
+                )
+                .group_by(DailyBarSnapshot.trade_date)
+            )
+            .all()
+        )
+        counts = {str(trade_date): int(stock_count or 0) for trade_date, stock_count in rows}
+        for trade_date, count in counts.items():
+            self._stock_count_by_trade_date[trade_date] = count
+        self._coverage_counts_by_recent_key[cache_key] = dict(counts)
+        return counts
+
     def latest_complete_trade_date(
         self,
         *,
         max_trade_date: str | None = None,
         min_stock_count: int = 4500,
     ) -> str | None:
-        query = select(
-            DailyBarSnapshot.trade_date,
-            func.count(DailyBarSnapshot.symbol).label("stock_count"),
-        ).where(DailyBarSnapshot.instrument_type == "stock")
-        if max_trade_date:
-            query = query.where(DailyBarSnapshot.trade_date <= max_trade_date)
-        rows = (
-            self.db.execute(
-                query.group_by(DailyBarSnapshot.trade_date)
-                .order_by(DailyBarSnapshot.trade_date.desc())
-                .limit(60)
-            )
-            .all()
-        )
-        for trade_date, stock_count in rows:
-            if int(stock_count or 0) >= min_stock_count:
-                return str(trade_date)
+        counts = self.recent_stock_counts_by_trade_date(max_trade_date=max_trade_date, limit=60)
+        for trade_date in sorted(counts, reverse=True):
+            if counts[trade_date] >= min_stock_count:
+                return trade_date
         return None
 
     def stock_count_by_trade_date(self, trade_date: str) -> int:
+        normalized_trade_date = _as_iso_date(trade_date)
+        cached = self._stock_count_by_trade_date.get(normalized_trade_date)
+        if cached is not None:
+            return cached
         return int(
             self.db.execute(
                 select(func.count(DailyBarSnapshot.symbol)).where(
-                    DailyBarSnapshot.trade_date == trade_date,
+                    DailyBarSnapshot.trade_date == normalized_trade_date,
                     DailyBarSnapshot.instrument_type == "stock",
                 )
             ).scalar_one()

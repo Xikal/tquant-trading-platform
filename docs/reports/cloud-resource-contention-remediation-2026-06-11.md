@@ -821,6 +821,14 @@ Recommended next implementation work stays in D6, not D5:
 3. Narrow runtime task summary/read-model queries after EXPLAIN on exact production SQL.
 4. Defer any schema/index changes or historical task cleanup until a separate DB-write authorization window.
 
+### D6 Daily-Bar Coverage Read Model Local Optimization - 2026-06-12
+
+Implementation report: `docs/reports/daily-bar-coverage-read-model-optimization-2026-06-12.md`.
+
+The first D6 read-path mitigation was implemented locally without schema/index changes. `DailyHistoryRepository.latest_complete_trade_date()` now builds a repository-local recent-date coverage model by first selecting recent `trade_date` candidates and then counting only those dates with `trade_date IN (...)`. `stock_count_by_trade_date()` can reuse the same counted values inside the repository instance.
+
+This keeps raw daily-bar history fetches, priority board ordering, `production_score`, and strategy semantics unchanged. It directly addresses the root-cause evidence that broad `daily_bar_snapshots` coverage/group-by queries were scanning large historical ranges.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |

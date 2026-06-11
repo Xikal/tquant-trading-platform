@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from sqlalchemy import create_engine
+from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
 
 from app.models.base import Base
@@ -44,6 +45,53 @@ class LowBuyRepositoryTests(unittest.TestCase):
             self.assertEqual(len(rows), 2)
             self.assertEqual(rows[0].trade_date, "2026-04-18")
             self.assertAlmostEqual(rows[1].close_price, 10.2)
+
+    def test_daily_history_coverage_queries_only_count_recent_candidate_dates(self) -> None:
+        with self.Session() as db:
+            repo = DailyHistoryRepository(db)
+            for idx in range(1, 6):
+                symbol_count = 2 if idx >= 4 else 1
+                for symbol_idx in range(symbol_count):
+                    repo.upsert_rows(
+                        f"00000{symbol_idx}",
+                        [
+                            DailyBarRow(
+                                f"2026-04-{idx:02d}",
+                                10.0,
+                                10.5,
+                                10.6,
+                                9.9,
+                                1000,
+                                2000,
+                                1.2,
+                            )
+                        ],
+                    )
+            db.commit()
+
+            statements: list[str] = []
+
+            def _capture_sql(_conn, _cursor, statement, _params, _context, _executemany):  # noqa: ANN001
+                if "daily_bar_snapshots" in statement:
+                    statements.append(" ".join(statement.split()).lower())
+
+            event.listen(db.bind, "before_cursor_execute", _capture_sql)
+            try:
+                self.assertEqual(
+                    repo.latest_complete_trade_date(max_trade_date="2026-04-05", min_stock_count=2),
+                    "2026-04-05",
+                )
+                self.assertEqual(repo.stock_count_by_trade_date("2026-04-04"), 2)
+            finally:
+                event.remove(db.bind, "before_cursor_execute", _capture_sql)
+
+            grouped_statements = [
+                statement
+                for statement in statements
+                if "group by" in statement and "daily_bar_snapshots" in statement
+            ]
+            self.assertEqual(len(grouped_statements), 1)
+            self.assertIn("trade_date in", grouped_statements[0])
 
     def test_pool_repository_replace(self) -> None:
         with self.Session() as db:
