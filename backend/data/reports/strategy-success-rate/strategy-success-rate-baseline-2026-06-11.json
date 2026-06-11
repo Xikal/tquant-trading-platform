@@ -1,0 +1,412 @@
+{
+  "batch": "D0",
+  "body": {
+    "batch_conclusion": {
+      "production_change_allowed": false,
+      "reason": "D0 only records current facts and constraints.",
+      "status": "ready"
+    },
+    "code_anchors": [
+      "backend/scripts/low_buy_market_backtest_reporting.py",
+      "backend/scripts/low_buy_execution_matrix.py",
+      "backend/app/services/low_buy/execution_simulation.py",
+      "backend/app/services/decision_context/market_gate.py",
+      "backend/app/services/low_buy/intraday_confirmation.py",
+      "backend/app/services/track_record/"
+    ],
+    "input_reports": {
+      "data_quality_conclusion": "24个月日线数据完整性通过，可以基于该 Manifest 继续报告。",
+      "live_vs_backtest": {
+        "conclusion": "真实战绩 vs 回测：no_data，尚未生成 strategy_drift_snapshots；漂移监控不造分、不替代回测结论。",
+        "items": [],
+        "status": "no_data"
+      },
+      "manifest": {
+        "dataset_version": "daily_bars_20260531075105",
+        "manifest_path": "/Users/j/Documents/gupiao/backend/data/analytics/manifests/daily_bars_20260531075105.json",
+        "period_end": "2026-05-31",
+        "period_start": "2024-05-31",
+        "quality": {
+          "actual_days": 483,
+          "actual_end": "2026-05-29",
+          "actual_start": "2024-05-31",
+          "backfill_task_id": null,
+          "blockers": [],
+          "complete_trade_day_count": 483,
+          "dataset_key": "daily_bars",
+          "duplicate_rows": 0,
+          "expected_days": 354,
+          "invalid_ohlc_rows": 0,
+          "missing_days": 0,
+          "period_end": "2026-05-31",
+          "period_start": "2024-05-31",
+          "row_count": 2350759,
+          "status": "ok",
+          "symbol_count": 4976
+        },
+        "row_count": 2350759,
+        "symbol_count": 4976
+      },
+      "strategy_report_status": "ok"
+    },
+    "metric_guardrails": {
+      "forbidden_promotion_metrics": [
+        "spike_return_*",
+        "avg_max_gain_5d",
+        "max_gain_5d"
+      ],
+      "production_return_fact_source": "portfolio_backtest_metrics",
+      "win_rate_role": "auxiliary_only"
+    },
+    "target_strategies": [
+      {
+        "avg_trade_return_pct": 1.1219,
+        "filled_count": 1064,
+        "max_drawdown_pct": -5.4221,
+        "oos": {
+          "daily_signal_equal_weight_compound_return_pct": -1.0111,
+          "evidence_level": "quarter_breakdown_proxy_not_true_walk_forward",
+          "filled_count": 46,
+          "global_role": {
+            "filled_count": 266,
+            "max_drawdown_pct": -7.9325,
+            "profit_factor": 1.0627,
+            "quarters": [
+              "2026Q2"
+            ],
+            "sample_count": 278,
+            "total_return_pct": 5.7808,
+            "win_rate_pct": 49.2512
+          },
+          "max_drawdown_pct": -1.6144,
+          "profit_factor": 0.7516,
+          "quarters": [
+            "2026Q2"
+          ],
+          "sample_count": 48,
+          "status": "quarter_proxy"
+        },
+        "oos_summary": "quarter_proxy filled=46 PF=0.7516 return=-1.0111%",
+        "policy_tier": "core",
+        "portfolio_backtests": {
+          "max_10": {
+            "avg_trade_return_pct": 1.0884,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 1064,
+            "capital_model_label": "真实组合回测 max10",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -1.9071,
+            "portfolio_return_pct": 28.2201,
+            "profit_factor": 2.3681,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 3,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 822,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 231
+          },
+          "max_5": {
+            "avg_trade_return_pct": 1.096,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 1064,
+            "capital_model_label": "真实组合回测 max5",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -3.8069,
+            "portfolio_return_pct": 62.3094,
+            "profit_factor": 2.3529,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 2,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 801,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 226
+          }
+        },
+        "priority_board_eligible": true,
+        "profit_factor": 2.6258,
+        "quarter_stability": {
+          "pf_pass_quarter_count": 7,
+          "pf_pass_rate_pct": 87.5,
+          "positive_quarter_count": 7,
+          "positive_rate_pct": 87.5,
+          "quarter_count": 8,
+          "status": "complete"
+        },
+        "sample_count": 1108,
+        "strategy_key": "first_board",
+        "strategy_title": "首板回调",
+        "walk_forward": {
+          "avg_max_drawdown_pct": -3.8433,
+          "avg_profit_factor": 2.0104,
+          "avg_total_return_pct": 14.3259,
+          "note": "parameter walk-forward complete; production write still blocked by shadow gate",
+          "pass_rate_pct": 100.0,
+          "passed_window_count": 7,
+          "production_eligible": false,
+          "shadow_candidate": true,
+          "source": "/Users/j/Documents/gupiao/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json",
+          "status": "complete",
+          "window_count": 7
+        },
+        "walk_forward_summary": "7/7 pass",
+        "win_rate_pct": 53.48
+      },
+      {
+        "avg_trade_return_pct": 0.619,
+        "filled_count": 510,
+        "max_drawdown_pct": -13.2359,
+        "oos": {
+          "daily_signal_equal_weight_compound_return_pct": 0.1452,
+          "evidence_level": "quarter_breakdown_proxy_not_true_walk_forward",
+          "filled_count": 15,
+          "global_role": {
+            "filled_count": 266,
+            "max_drawdown_pct": -7.9325,
+            "profit_factor": 1.0627,
+            "quarters": [
+              "2026Q2"
+            ],
+            "sample_count": 278,
+            "total_return_pct": 5.7808,
+            "win_rate_pct": 49.2512
+          },
+          "max_drawdown_pct": -1.9707,
+          "profit_factor": 0.9014,
+          "quarters": [
+            "2026Q2"
+          ],
+          "sample_count": 19,
+          "status": "quarter_proxy"
+        },
+        "oos_summary": "quarter_proxy filled=15 PF=0.9014 return=0.1452%",
+        "policy_tier": "core",
+        "portfolio_backtests": {
+          "max_10": {
+            "avg_trade_return_pct": 0.1538,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 510,
+            "capital_model_label": "真实组合回测 max10",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -3.6947,
+            "portfolio_return_pct": 2.9403,
+            "profit_factor": 1.1312,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 12,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 299,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 199
+          },
+          "max_5": {
+            "avg_trade_return_pct": 0.1538,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 510,
+            "capital_model_label": "真实组合回测 max5",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -7.336,
+            "portfolio_return_pct": 5.6239,
+            "profit_factor": 1.1312,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 12,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 299,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 199
+          }
+        },
+        "priority_board_eligible": true,
+        "profit_factor": 1.6597,
+        "quarter_stability": {
+          "pf_pass_quarter_count": 6,
+          "pf_pass_rate_pct": 75.0,
+          "positive_quarter_count": 7,
+          "positive_rate_pct": 87.5,
+          "quarter_count": 8,
+          "status": "complete"
+        },
+        "sample_count": 552,
+        "strategy_key": "volume_shrink",
+        "strategy_title": "量能低吸",
+        "walk_forward": {
+          "avg_max_drawdown_pct": -8.9792,
+          "avg_profit_factor": 1.21,
+          "avg_total_return_pct": 3.0312,
+          "note": "parameter walk-forward complete; production write still blocked by shadow gate",
+          "pass_rate_pct": 85.7143,
+          "passed_window_count": 6,
+          "production_eligible": false,
+          "shadow_candidate": false,
+          "source": "/Users/j/Documents/gupiao/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json",
+          "status": "complete",
+          "window_count": 7
+        },
+        "walk_forward_summary": "6/7 pass",
+        "win_rate_pct": 56.67
+      },
+      {
+        "avg_trade_return_pct": 1.3472,
+        "filled_count": 58,
+        "max_drawdown_pct": -7.7415,
+        "oos": {
+          "daily_signal_equal_weight_compound_return_pct": 1.9044,
+          "evidence_level": "quarter_breakdown_proxy_not_true_walk_forward",
+          "filled_count": 5,
+          "global_role": {
+            "filled_count": 266,
+            "max_drawdown_pct": -7.9325,
+            "profit_factor": 1.0627,
+            "quarters": [
+              "2026Q2"
+            ],
+            "sample_count": 278,
+            "total_return_pct": 5.7808,
+            "win_rate_pct": 49.2512
+          },
+          "max_drawdown_pct": -2.812,
+          "profit_factor": 2.5574,
+          "quarters": [
+            "2026Q2"
+          ],
+          "sample_count": 5,
+          "status": "quarter_proxy"
+        },
+        "oos_summary": "quarter_proxy filled=5 PF=2.5574 return=1.9044%",
+        "policy_tier": "auxiliary",
+        "portfolio_backtests": {
+          "max_10": {
+            "avg_trade_return_pct": 1.4152,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 58,
+            "capital_model_label": "真实组合回测 max10",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -1.551,
+            "portfolio_return_pct": 7.6996,
+            "profit_factor": 2.2635,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 1,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 4,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 53
+          },
+          "max_5": {
+            "avg_trade_return_pct": 1.4152,
+            "base_round_trip_cost_bps": 16.0,
+            "candidate_count": 58,
+            "capital_model_label": "真实组合回测 max5",
+            "extra_cost_bps": 0.0,
+            "max_drawdown_pct": -3.1046,
+            "portfolio_return_pct": 15.8017,
+            "profit_factor": 2.2635,
+            "same_symbol_reentry_blocked": true,
+            "sector_daily_limit": 2,
+            "skipped_by_duplicate_symbol": 1,
+            "skipped_by_sector_limit": 0,
+            "skipped_by_strategy_daily_limit": 4,
+            "total_cost_bps_assumption": 16.0,
+            "trade_count": 53
+          }
+        },
+        "priority_board_eligible": true,
+        "profit_factor": 2.2359,
+        "quarter_stability": {
+          "pf_pass_quarter_count": 6,
+          "pf_pass_rate_pct": 75.0,
+          "positive_quarter_count": 6,
+          "positive_rate_pct": 75.0,
+          "quarter_count": 8,
+          "status": "complete"
+        },
+        "sample_count": 60,
+        "strategy_key": "late_session_strong_support",
+        "strategy_title": "收盘强势承接",
+        "walk_forward": {
+          "avg_max_drawdown_pct": -4.7369,
+          "avg_profit_factor": 0.4639,
+          "avg_total_return_pct": 0.5795,
+          "note": "run_after_core_or_keep_research",
+          "pass_rate_pct": 0.0,
+          "passed_window_count": 0,
+          "production_eligible": false,
+          "source": "/Users/j/Documents/gupiao/docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json",
+          "status": "complete",
+          "window_count": 7
+        },
+        "walk_forward_summary": "0/7 pass",
+        "win_rate_pct": 55.17
+      }
+    ],
+    "test_anchors": [
+      "backend/tests/test_strategy_24m_duckdb_report.py",
+      "backend/tests/test_low_buy_trade_controls.py",
+      "backend/tests/test_low_buy_backtest_isolation.py",
+      "backend/tests/test_decision_context_market_gate.py",
+      "backend/tests/test_low_buy_intraday_confirmation.py",
+      "backend/tests/test_track_record_ledger.py",
+      "backend/tests/test_track_record_realized.py",
+      "backend/tests/test_track_record_drift.py",
+      "backend/tests/test_low_buy_production_scoring.py",
+      "backend/tests/test_low_buy_priority_board_strategy_variants.py",
+      "backend/tests/test_strategy_engine_production_gate_guards.py",
+      "backend/tests/test_strategy_engine_boundary.py"
+    ]
+  },
+  "generated_at": "2026-06-11T08:50:54+08:00",
+  "git": {
+    "branch": "codex/phase4-phase5-architecture",
+    "status_short": [
+      "M .gitignore",
+      " M IMPLEMENTATION_PLAN.md",
+      "?? backend/data/",
+      "?? backend/scripts/strategy_success_rate_diagnostics.py",
+      "?? backend/tests/test_strategy_success_rate_diagnostics.py",
+      "?? docs/reports/first-board-oos-diagnosis-2026-06-11.md",
+      "?? docs/reports/strategy-correlation-dedup-2026-06-11.md",
+      "?? docs/reports/strategy-cost-liquidity-sensitivity-2026-06-11.md",
+      "?? docs/reports/strategy-drift-observation-2026-06-11.md",
+      "?? docs/reports/strategy-exit-variants-2026-06-11.md",
+      "?? docs/reports/strategy-market-state-matrix-2026-06-11.md",
+      "?? docs/reports/strategy-retired-reentry-research-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-baseline-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-implementation-report-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-production-review-2026-06-11.md",
+      "?? docs/reports/strategy-volume-shrink-intraday-confirmation-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-development-plan-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-requirements-2026-06-11.md"
+    ]
+  },
+  "hard_boundaries": [
+    "不修改 backend/app/services/low_buy/strategy_policy.py。",
+    "不改变 production_score、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。",
+    "strategy_engine 保持 shadow-only，replacement_enabled=false。",
+    "research/ML/因子/重分析任务不回到 Web 主进程。",
+    "portfolio_backtest_metrics 继续作为真实组合回测唯一事实源。",
+    "spike_return_*、avg_max_gain_5d、max_gain_5d 只作诊断，不作生产晋级收益指标。",
+    "本轮不部署、不切流、不执行线上写操作。"
+  ],
+  "metric_guardrails": {
+    "forbidden_promotion_metrics": [
+      "spike_return_*",
+      "avg_max_gain_5d",
+      "max_gain_5d"
+    ],
+    "production_return_fact_source": "portfolio_backtest_metrics",
+    "win_rate_role": "auxiliary_only"
+  },
+  "report_slug": "strategy-success-rate-baseline",
+  "source_paths": {
+    "execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2026-04-28.json",
+    "latest_backtest": "backend/data/reports/low_buy_market_backtest_24m_confirmed_2025-10-09_2026-04-20.json",
+    "n_pattern_observe": "backend/data/reports/n_pattern_observe_confirmed/low_buy_market_backtest_24m_empty.json",
+    "strategy_24m": "backend/data/analytics/reports/strategy_24m_duckdb_report.json",
+    "target_execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_first_board_volume_shrink_late_session_strong_support_auto_auto.json",
+    "tradability": "docs/reports/front-row-weighted-minute-tick-tradability-2026-05-30.json"
+  },
+  "status": "ready",
+  "title": "策略成功率优化基线报告"
+}

@@ -1,0 +1,168 @@
+{
+  "batch": "D3",
+  "body": {
+    "batch_conclusion": {
+      "priority_board_sort_changed": false,
+      "production_change_allowed": false,
+      "status": "ready"
+    },
+    "matrix": [
+      {
+        "avg_trade_return_pct": 0.9166,
+        "filled_count": 588,
+        "market_state": "broad_rally",
+        "max_drawdown_pct": -5.4221,
+        "profit_factor": 2.2624,
+        "sample_count": 609,
+        "strategy_key": "first_board",
+        "strategy_title": "首板回调",
+        "total_return_pct": 119.8941,
+        "win_rate_pct": 50.51
+      },
+      {
+        "avg_trade_return_pct": 1.8626,
+        "filled_count": 31,
+        "market_state": "low_volume_wait",
+        "max_drawdown_pct": 0.0,
+        "profit_factor": 3.7387,
+        "sample_count": 32,
+        "strategy_key": "first_board",
+        "strategy_title": "首板回调",
+        "total_return_pct": 8.9185,
+        "win_rate_pct": 64.52
+      },
+      {
+        "avg_trade_return_pct": 1.3414,
+        "filled_count": 445,
+        "market_state": "repair",
+        "max_drawdown_pct": -3.7504,
+        "profit_factor": 3.086,
+        "sample_count": 467,
+        "strategy_key": "first_board",
+        "strategy_title": "首板回调",
+        "total_return_pct": 92.9513,
+        "win_rate_pct": 56.63
+      },
+      {
+        "avg_trade_return_pct": 0.624,
+        "filled_count": 305,
+        "market_state": "broad_rally",
+        "max_drawdown_pct": -12.2554,
+        "profit_factor": 1.7348,
+        "sample_count": 329,
+        "strategy_key": "volume_shrink",
+        "strategy_title": "量能低吸",
+        "total_return_pct": 25.2785,
+        "win_rate_pct": 58.03
+      },
+      {
+        "avg_trade_return_pct": 0.5989,
+        "filled_count": 181,
+        "market_state": "repair",
+        "max_drawdown_pct": -7.1119,
+        "profit_factor": 1.5936,
+        "sample_count": 199,
+        "strategy_key": "volume_shrink",
+        "strategy_title": "量能低吸",
+        "total_return_pct": 32.7475,
+        "win_rate_pct": 55.25
+      },
+      {
+        "avg_trade_return_pct": 0.7067,
+        "filled_count": 24,
+        "market_state": "weight_support_active",
+        "max_drawdown_pct": -5.4603,
+        "profit_factor": 1.4601,
+        "sample_count": 24,
+        "strategy_key": "volume_shrink",
+        "strategy_title": "量能低吸",
+        "total_return_pct": 0.9311,
+        "win_rate_pct": 50.0
+      },
+      {
+        "avg_trade_return_pct": 0.8851,
+        "filled_count": 37,
+        "market_state": "broad_rally",
+        "max_drawdown_pct": -15.6403,
+        "profit_factor": 1.6297,
+        "sample_count": 38,
+        "strategy_key": "late_session_strong_support",
+        "strategy_title": "收盘强势承接",
+        "total_return_pct": 24.4868,
+        "win_rate_pct": 48.65
+      },
+      {
+        "avg_trade_return_pct": 2.1612,
+        "filled_count": 21,
+        "market_state": "repair",
+        "max_drawdown_pct": -2.812,
+        "profit_factor": 5.0476,
+        "sample_count": 22,
+        "strategy_key": "late_session_strong_support",
+        "strategy_title": "收盘强势承接",
+        "total_return_pct": 35.7743,
+        "win_rate_pct": 66.67
+      }
+    ],
+    "research_gate_recommendation": {
+      "feature_flag_required_if_added": true,
+      "production_change_allowed": false,
+      "reason": "The available confirmed target-strategy breakdown does not show a direct weak/retreat state concentration that justifies changing production market_gate semantics.",
+      "status": "no_strategy_gate_change",
+      "weak_rows": []
+    }
+  },
+  "generated_at": "2026-06-11T08:50:54+08:00",
+  "git": {
+    "branch": "codex/phase4-phase5-architecture",
+    "status_short": [
+      "M .gitignore",
+      " M IMPLEMENTATION_PLAN.md",
+      "?? backend/data/",
+      "?? backend/scripts/strategy_success_rate_diagnostics.py",
+      "?? backend/tests/test_strategy_success_rate_diagnostics.py",
+      "?? docs/reports/first-board-oos-diagnosis-2026-06-11.md",
+      "?? docs/reports/strategy-correlation-dedup-2026-06-11.md",
+      "?? docs/reports/strategy-cost-liquidity-sensitivity-2026-06-11.md",
+      "?? docs/reports/strategy-drift-observation-2026-06-11.md",
+      "?? docs/reports/strategy-exit-variants-2026-06-11.md",
+      "?? docs/reports/strategy-market-state-matrix-2026-06-11.md",
+      "?? docs/reports/strategy-retired-reentry-research-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-baseline-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-implementation-report-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-production-review-2026-06-11.md",
+      "?? docs/reports/strategy-volume-shrink-intraday-confirmation-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-development-plan-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-requirements-2026-06-11.md"
+    ]
+  },
+  "hard_boundaries": [
+    "不修改 backend/app/services/low_buy/strategy_policy.py。",
+    "不改变 production_score、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。",
+    "strategy_engine 保持 shadow-only，replacement_enabled=false。",
+    "research/ML/因子/重分析任务不回到 Web 主进程。",
+    "portfolio_backtest_metrics 继续作为真实组合回测唯一事实源。",
+    "spike_return_*、avg_max_gain_5d、max_gain_5d 只作诊断，不作生产晋级收益指标。",
+    "本轮不部署、不切流、不执行线上写操作。"
+  ],
+  "metric_guardrails": {
+    "forbidden_promotion_metrics": [
+      "spike_return_*",
+      "avg_max_gain_5d",
+      "max_gain_5d"
+    ],
+    "production_return_fact_source": "portfolio_backtest_metrics",
+    "win_rate_role": "auxiliary_only"
+  },
+  "report_slug": "strategy-market-state-matrix",
+  "source_paths": {
+    "execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2026-04-28.json",
+    "latest_backtest": "backend/data/reports/low_buy_market_backtest_24m_confirmed_2025-10-09_2026-04-20.json",
+    "n_pattern_observe": "backend/data/reports/n_pattern_observe_confirmed/low_buy_market_backtest_24m_empty.json",
+    "strategy_24m": "backend/data/analytics/reports/strategy_24m_duckdb_report.json",
+    "target_execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_first_board_volume_shrink_late_session_strong_support_auto_auto.json",
+    "tradability": "docs/reports/front-row-weighted-minute-tick-tradability-2026-05-30.json"
+  },
+  "status": "ready",
+  "title": "策略 x market_state 矩阵"
+}

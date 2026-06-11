@@ -1,0 +1,364 @@
+{
+  "batch": "D2",
+  "body": {
+    "batch_conclusion": {
+      "coverage_status": [
+        "partial"
+      ],
+      "production_change_allowed": false,
+      "required_before_production": [
+        "target-only full coverage matrix for first_board/volume_shrink/late_session_strong_support",
+        "24M + walk-forward + OOS comparison against baseline",
+        "guard tests if any production exit semantics are proposed"
+      ],
+      "status": "partial_data"
+    },
+    "existing_execution_matrix": {
+      "best_by_avg_net_return": "quick_tp3_trailing1",
+      "best_by_drawdown": "quick_tp3_trailing1",
+      "best_by_profit_factor": "quick_tp3_trailing1",
+      "rows": [
+        {
+          "avg_net_return_pct": -0.0982,
+          "coverage_pct": 26.08,
+          "coverage_status": "partial",
+          "evaluated_count": 205,
+          "execution_profit_factor": 0.9495,
+          "filled_count": 202,
+          "filled_exit_reason_counts": {
+            "到达最长持有天数，按收盘价退出。": 26,
+            "开盘跳空跌破止损位，按开盘价退出。": 1,
+            "触发止损位。": 46,
+            "触发移动防守线。": 65,
+            "触发首次止盈位。": 64
+          },
+          "max_drawdown_pct": -58.8845,
+          "net_win_rate": 44.55,
+          "purpose": "作为当前生产/研究候选退出计划基线。",
+          "title": "候选原始退出计划",
+          "total_return_pct": -32.9389,
+          "variant_key": "default_exit"
+        },
+        {
+          "avg_net_return_pct": -0.3358,
+          "coverage_pct": 26.08,
+          "coverage_status": "partial",
+          "evaluated_count": 205,
+          "execution_profit_factor": 0.8448,
+          "filled_count": 202,
+          "filled_exit_reason_counts": {
+            "到达最长持有天数，按收盘价退出。": 24,
+            "开盘跳空跌破止损位，按开盘价退出。": 5,
+            "触发止损位。": 56,
+            "触发移动防守线。": 55,
+            "触发首次止盈位。": 62
+          },
+          "max_drawdown_pct": -70.8719,
+          "net_win_rate": 43.56,
+          "purpose": "验证按标的波动缩放止损的中性版本。",
+          "title": "ATR 1.0x 动态止损",
+          "total_return_pct": -59.1805,
+          "variant_key": "atr_stop_1p0"
+        },
+        {
+          "avg_net_return_pct": 0.3029,
+          "coverage_pct": 26.08,
+          "coverage_status": "partial",
+          "evaluated_count": 205,
+          "execution_profit_factor": 1.1893,
+          "filled_count": 202,
+          "filled_exit_reason_counts": {
+            "开盘跳空跌破止损位，按开盘价退出。": 1,
+            "研究模型 T+1 收盘退出。": 85,
+            "触发止损位。": 39,
+            "触发移动防守线。": 46,
+            "触发首次止盈位。": 31
+          },
+          "max_drawdown_pct": -42.7195,
+          "net_win_rate": 45.54,
+          "purpose": "验证次日兑现纪律能否减少冲高回落。",
+          "title": "最迟 T+1 收盘退出",
+          "total_return_pct": 51.7536,
+          "variant_key": "force_t1_close"
+        },
+        {
+          "avg_net_return_pct": 0.1075,
+          "coverage_pct": 26.08,
+          "coverage_status": "partial",
+          "evaluated_count": 205,
+          "execution_profit_factor": 1.0575,
+          "filled_count": 202,
+          "filled_exit_reason_counts": {
+            "到达最长持有天数，按收盘价退出。": 19,
+            "开盘跳空跌破止损位，按开盘价退出。": 1,
+            "研究模型 T+2 收盘退出。": 46,
+            "触发止损位。": 44,
+            "触发移动防守线。": 57,
+            "触发首次止盈位。": 35
+          },
+          "max_drawdown_pct": -45.9759,
+          "net_win_rate": 43.56,
+          "purpose": "验证短持仓窗口能否提升资金效率。",
+          "title": "最迟 T+2 收盘退出",
+          "total_return_pct": -0.2683,
+          "variant_key": "force_t2_close"
+        },
+        {
+          "avg_net_return_pct": 0.826,
+          "coverage_pct": 26.08,
+          "coverage_status": "partial",
+          "evaluated_count": 205,
+          "execution_profit_factor": 2.0085,
+          "filled_count": 202,
+          "filled_exit_reason_counts": {
+            "开盘跳空跌破止损位，按开盘价退出。": 1,
+            "触发止损位。": 34,
+            "触发移动防守线。": 71,
+            "触发首次止盈位。": 96
+          },
+          "max_drawdown_pct": -27.1855,
+          "net_win_rate": 82.67,
+          "purpose": "验证短线冲高兑现和更紧防守线的组合。",
+          "title": "3% 首次止盈 + 1% 移动防守 + 最多 3 天",
+          "total_return_pct": 384.6271,
+          "variant_key": "quick_tp3_trailing1"
+        }
+      ],
+      "scope": {
+        "end": "2026-04-28",
+        "engine": "fast",
+        "forward_days": 5,
+        "limit": 80,
+        "materialization_mode": "isolated",
+        "max_dates": 0,
+        "months": 24,
+        "scan_limit": 480,
+        "start": "2025-10-09",
+        "states": "confirmed",
+        "strategies": "all"
+      }
+    },
+    "partial_exit_model_decision": {
+      "default_behavior_changed": false,
+      "needed_now": false,
+      "production_change_allowed": false,
+      "reason": "Existing matrix already shows the quick_tp3_trailing1 research variant as strongest, but the artifact is partial coverage and all-strategy scope. A strict half-take-profit model would be premature without full target-strategy outcome rows."
+    },
+    "target_strategy_matrix_run": {
+      "note": "Target-strategy matrix command was executed locally. Empty coverage is treated as no evidence, not as a green production result.",
+      "rows": [
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "作为当前生产/研究候选退出计划基线。",
+          "title": "候选原始退出计划",
+          "total_return_pct": 0.0,
+          "variant_key": "default_exit"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证更紧止损能否降低回撤和止损拖累。",
+          "title": "固定 -2.5% 止损",
+          "total_return_pct": 0.0,
+          "variant_key": "fixed_stop_m2p5"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证放宽止损能否减少噪声止损且不扩大回撤。",
+          "title": "固定 -3.5% 止损",
+          "total_return_pct": 0.0,
+          "variant_key": "fixed_stop_m3p5"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证按标的波动缩放止损的保守版本。",
+          "title": "ATR 0.8x 动态止损",
+          "total_return_pct": 0.0,
+          "variant_key": "atr_stop_0p8"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证按标的波动缩放止损的中性版本。",
+          "title": "ATR 1.0x 动态止损",
+          "total_return_pct": 0.0,
+          "variant_key": "atr_stop_1p0"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证按标的波动缩放止损的放宽版本。",
+          "title": "ATR 1.2x 动态止损",
+          "total_return_pct": 0.0,
+          "variant_key": "atr_stop_1p2"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证次日兑现纪律能否减少冲高回落。",
+          "title": "最迟 T+1 收盘退出",
+          "total_return_pct": 0.0,
+          "variant_key": "force_t1_close"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证短持仓窗口能否提升资金效率。",
+          "title": "最迟 T+2 收盘退出",
+          "total_return_pct": 0.0,
+          "variant_key": "force_t2_close"
+        },
+        {
+          "avg_net_return_pct": 0.0,
+          "coverage_pct": 0.0,
+          "coverage_status": "empty",
+          "evaluated_count": 0,
+          "execution_profit_factor": 0.0,
+          "filled_count": 0,
+          "filled_exit_reason_counts": {},
+          "max_drawdown_pct": 0.0,
+          "net_win_rate": 0.0,
+          "purpose": "验证短线冲高兑现和更紧防守线的组合。",
+          "title": "3% 首次止盈 + 1% 移动防守 + 最多 3 天",
+          "total_return_pct": 0.0,
+          "variant_key": "quick_tp3_trailing1"
+        }
+      ],
+      "scope": {
+        "end": "",
+        "engine": "fast",
+        "forward_days": 5,
+        "limit": 80,
+        "materialization_mode": "isolated",
+        "max_dates": 0,
+        "months": 24,
+        "purged_gap_days": 0,
+        "purged_gap_end": "",
+        "purged_gap_start": "",
+        "purged_gap_temporal_order_passed": false,
+        "scan_limit": 480,
+        "split_plan_encoded": false,
+        "start": "",
+        "states": "confirmed",
+        "strategies": "first_board,volume_shrink,late_session_strong_support",
+        "train_end": "",
+        "train_start": "",
+        "validation_end": "",
+        "validation_start": ""
+      },
+      "status": "empty_no_evidence"
+    }
+  },
+  "generated_at": "2026-06-11T08:50:54+08:00",
+  "git": {
+    "branch": "codex/phase4-phase5-architecture",
+    "status_short": [
+      "M .gitignore",
+      " M IMPLEMENTATION_PLAN.md",
+      "?? backend/data/",
+      "?? backend/scripts/strategy_success_rate_diagnostics.py",
+      "?? backend/tests/test_strategy_success_rate_diagnostics.py",
+      "?? docs/reports/first-board-oos-diagnosis-2026-06-11.md",
+      "?? docs/reports/strategy-correlation-dedup-2026-06-11.md",
+      "?? docs/reports/strategy-cost-liquidity-sensitivity-2026-06-11.md",
+      "?? docs/reports/strategy-drift-observation-2026-06-11.md",
+      "?? docs/reports/strategy-exit-variants-2026-06-11.md",
+      "?? docs/reports/strategy-market-state-matrix-2026-06-11.md",
+      "?? docs/reports/strategy-retired-reentry-research-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-baseline-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-implementation-report-2026-06-11.md",
+      "?? docs/reports/strategy-success-rate-production-review-2026-06-11.md",
+      "?? docs/reports/strategy-volume-shrink-intraday-confirmation-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-development-plan-2026-06-11.md",
+      "?? docs/strategy-success-rate-optimization-requirements-2026-06-11.md"
+    ]
+  },
+  "hard_boundaries": [
+    "不修改 backend/app/services/low_buy/strategy_policy.py。",
+    "不改变 production_score、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。",
+    "strategy_engine 保持 shadow-only，replacement_enabled=false。",
+    "research/ML/因子/重分析任务不回到 Web 主进程。",
+    "portfolio_backtest_metrics 继续作为真实组合回测唯一事实源。",
+    "spike_return_*、avg_max_gain_5d、max_gain_5d 只作诊断，不作生产晋级收益指标。",
+    "本轮不部署、不切流、不执行线上写操作。"
+  ],
+  "metric_guardrails": {
+    "forbidden_promotion_metrics": [
+      "spike_return_*",
+      "avg_max_gain_5d",
+      "max_gain_5d"
+    ],
+    "production_return_fact_source": "portfolio_backtest_metrics",
+    "win_rate_role": "auxiliary_only"
+  },
+  "report_slug": "strategy-exit-variants",
+  "source_paths": {
+    "execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_all_2025-10-09_2026-04-28.json",
+    "latest_backtest": "backend/data/reports/low_buy_market_backtest_24m_confirmed_2025-10-09_2026-04-20.json",
+    "n_pattern_observe": "backend/data/reports/n_pattern_observe_confirmed/low_buy_market_backtest_24m_empty.json",
+    "strategy_24m": "backend/data/analytics/reports/strategy_24m_duckdb_report.json",
+    "target_execution_matrix": "backend/data/reports/execution_matrix/low_buy_execution_matrix_24m_confirmed_first_board_volume_shrink_late_session_strong_support_auto_auto.json",
+    "tradability": "docs/reports/front-row-weighted-minute-tick-tradability-2026-05-30.json"
+  },
+  "status": "partial_data",
+  "title": "出场矩阵与分批出场研究结论"
+}

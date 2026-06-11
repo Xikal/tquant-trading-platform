@@ -1,5 +1,64 @@
 # TQuant 实施计划
 
+## 2026-06-11 策略成功率优化收口任务
+
+需求来源：
+
+- `docs/strategy-success-rate-optimization-plan-2026-06-10.md`
+- `docs/strategy-success-rate-optimization-requirements-2026-06-11.md`
+- `docs/strategy-success-rate-optimization-development-plan-2026-06-11.md`
+- `docs/engineering-conventions.md`
+- `TRADING_QUANT_LEAD_PLAYBOOK.md`
+
+### 执行边界
+
+- [x] 已执行 `git status --short`：当前保护在途改动为两份本任务未跟踪文档 `docs/strategy-success-rate-optimization-development-plan-2026-06-11.md`、`docs/strategy-success-rate-optimization-requirements-2026-06-11.md`。
+- [x] 已执行 `git branch --show-current`：当前分支 `codex/phase4-phase5-architecture`。
+- [x] 不修改 `backend/app/services/low_buy/strategy_policy.py`。
+- [x] 不改变 `production_score`、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。
+- [x] `strategy_engine` 保持 shadow-only，`replacement_enabled=false`。
+- [x] 不把 research/ML/因子/重分析任务放回 Web 主进程。
+- [x] `portfolio_backtest_metrics` 继续作为真实组合回测唯一事实源。
+- [x] `spike_return_*`、`avg_max_gain_5d`、`max_gain_5d` 只作诊断字段，不作生产晋级收益指标。
+- [x] 本轮默认不部署、不切流、不执行线上写操作、不停容器、不清 Docker cache、不改 sysctl。
+
+### 本轮 TODO
+
+- [x] D0：核对 24M 报告、策略层级、现有脚本/测试，输出 `strategy-success-rate-baseline`。
+- [x] D1：输出 `first-board-oos-diagnosis`，当前因缺完整逐笔 OOS outcome 明确 `blocked_by_data`，阻断调参。
+- [x] D2：复核现有 `low_buy_execution_matrix`；目标策略矩阵本地空样本，不新增分批出场模型，默认行为不变。
+- [x] D3：输出 `strategy x market_state` 矩阵，策略级门控仅 research/flag-off。
+- [x] D4：研究 `volume_shrink + VWAP/尾盘确认` 数据覆盖，分钟覆盖不足，输出 `partial_minute_coverage`。
+- [x] D5：输出成本/滑点/流动性分桶报告，因缺全量逐笔 amount 联结 `blocked_by_data`，不改 `portfolio_backtest_metrics` 默认行为。
+- [x] D6：输出同日同票/同板块重叠报告，因缺全量逐笔 signal rows `blocked_by_data`，不改单策略信号。
+- [x] D7：输出退役/限权策略回归路径，N 字仅 observe_confirmed 研究态。
+- [x] D8：准备 track record 漂移观察包，`DRIFT_ALERT_ENABLED=false`，不执行线上捕获。
+- [x] D9：输出生产评审 `not_ready`，未满足 24M、walk-forward、OOS、真实组合、成本敏感性、守卫测试全门禁。
+
+### 当前进度
+
+- [x] 新增只读离线报告脚本 `backend/scripts/strategy_success_rate_diagnostics.py`，用于按 D0-D9 生成 Markdown 和 JSON 研究产物。
+- [x] 新增 `backend/tests/test_strategy_success_rate_diagnostics.py`，覆盖目标策略基线抽取、OOS 数据阻断、分时覆盖阻断、生产评审 not_ready 和报告写盘。
+- [x] 生成 D0-D9 + SUMMARY Markdown 报告到 `docs/reports/`，机器 JSON 到 `backend/data/reports/strategy-success-rate/`。
+
+### 验证记录
+
+- [x] `git status --short`：保护本任务文档与新增报告/脚本，未见无关改动被覆盖。
+- [x] `git branch --show-current`：`codex/phase4-phase5-architecture`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_24m_duckdb_report.py`：6 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_success_rate_diagnostics.py`：5 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/low_buy_execution_matrix.py --months 24 --strategies first_board,volume_shrink,late_session_strong_support --states confirmed --engine fast --materialization-mode isolated`：命令成功，生成目标策略矩阵，但 coverage `empty`，不作为生产通过证据。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_trade_controls.py backend/tests/test_low_buy_backtest_isolation.py`：34 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_decision_context_market_gate.py`：4 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_intraday_confirmation.py`：7 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_n_pattern_observe_confirmed.py`：18 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_track_record_ledger.py backend/tests/test_track_record_realized.py backend/tests/test_track_record_drift.py`：15 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_production_scoring.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_strategy_engine_production_gate_guards.py backend/tests/test_strategy_engine_boundary.py`：25 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_strategy_24m_duckdb_report.py backend/tests/test_strategy_success_rate_diagnostics.py backend/tests/test_low_buy_trade_controls.py backend/tests/test_low_buy_backtest_isolation.py backend/tests/test_decision_context_market_gate.py backend/tests/test_low_buy_intraday_confirmation.py backend/tests/test_track_record_ledger.py backend/tests/test_track_record_realized.py backend/tests/test_track_record_drift.py backend/tests/test_low_buy_production_scoring.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_strategy_engine_production_gate_guards.py backend/tests/test_strategy_engine_boundary.py backend/tests/test_n_pattern_observe_confirmed.py`：102 passed / 1 LibreSSL warning。
+- [x] `git diff --check`：PASS。
+- [x] `git diff -- backend/app/services/low_buy/strategy_policy.py backend/app/services/decision_context/market_gate.py backend/app/services/low_buy/intraday_confirmation.py backend/app/services/strategy_engine backend/app/services/track_record`：无输出，硬边界文件/目录未改。
+- [x] `git status --short --ignored backend/data/reports/strategy-success-rate ...`：`backend/data/` 为 ignored；机器 JSON 已落盘但不会出现在普通 `git status --short` 中。
+
 ## 2026-06-10 平台优化收口任务
 
 需求来源：

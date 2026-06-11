@@ -19,6 +19,12 @@ backend/data/*.db
 backend/data/*.sqlite
 backend/data/runtime.env
 data/
+!backend/data/
+backend/data/*
+!backend/data/reports/
+backend/data/reports/*
+!backend/data/reports/strategy-success-rate/
+!backend/data/reports/strategy-success-rate/*.json
 !frontend/src/ui/data/
 !frontend/src/ui/data/**
 artifacts/
