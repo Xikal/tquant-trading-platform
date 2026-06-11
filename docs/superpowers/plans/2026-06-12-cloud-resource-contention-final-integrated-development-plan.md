@@ -24,6 +24,24 @@
 | 域名公网链路不稳 | `weisilianghua.cloud` 曾外部 TLS reset；IP HTTPS 可用 | 独立网络入口问题 |
 | 旧前端 | 当前仓库 `frontend/` 目录 absent，tracked 文件数为 0；运行、CI、Docker 主链路指向 `frontend-next/` | 旧前端物理退役已基本完成，剩余是 guard 和历史引用收口 |
 | 模拟盘 | active `/paper`、`/next/paper` 不再作为核心功能；历史 `paper_*` runtime task 已按 removed feature skipped | 不恢复，不作为核心保护项 |
+| D5 gate | `2026-06-12 02:29 CST` collector: `d5_gate.ready=false`，blockers 为 full trading day incomplete、scheduler provider warnings、runtime non-terminal task count | 继续观察，不执行 scheduler embed |
+
+### 1.1.1 最新线上快照
+
+来源：`docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md`，生成时间 `2026-06-12 02:29 CST`。
+
+| 项 | 最新值 | 判断 |
+|---|---:|---|
+| Host load | `0.54 / 0.73 / 0.65` | 当前不高 |
+| Memory available | `1392MiB` | 已明显缓解 |
+| Swap used | `33.47%` | 仍需观察，接近警戒线 |
+| Root disk / inode | `62% / 13%` | 非当前瓶颈 |
+| `runtime-worker` | `294.8MiB / 768MiB` | 当前有余量 |
+| `runtime-scheduler` | `261.1MiB / 640MiB` | 常驻成本仍存在 |
+| MySQL | `849.3MiB / 1.5GiB` | 当前稳定，但慢查询累计 `48` |
+| `/readyz` | `200`, `0.006410s` | 可用 |
+| `/next/*` 核心页面 | `/next/monitor`、`/next/monitor/market`、`/next/strategy-tracking`、`/next/analysis`、`/next/backtest`、`/next/data`、`/next/settings` 均 `200` | 页面壳可用 |
+| D5 readiness | `false` | 不允许停独立 scheduler |
 
 ### 1.2 已完成事项
 
@@ -37,6 +55,7 @@
 | D6 MySQL 资源上限止血 | 已执行 | `MYSQL_MEM_LIMIT=1536m`、`MYSQL_MEMSWAP_LIMIT=2048m` |
 | D6 close-refresh dedupe | 已开发并最小部署到 scheduler | 阻止同日成功任务重复入队 |
 | D6 worker recycle guard | 已开发 | 目标是任务边界回收高 RSS worker，需持续观察和确认线上启用状态 |
+| D6 provider degraded guard | 已开发并 scheduler-only 发布 | 减少 provider fallback 链式压力；仍有 residual board-breadth warning，D5 未通过 |
 | 旧前端删除/退役 | 已执行 | `frontend/` absent；CI/Docker/deploy 指向 `frontend-next` |
 | removed paper task skipped | 已执行 | 历史 paper runtime task 不再污染 failed/retry |
 
@@ -48,7 +67,7 @@
 | P1 | D5 scheduler 合并门槛复核 | worker RSS 仍曾达到 `92-98%`，立即合并会把 scheduler 压力转移进 worker |
 | P1 | MySQL 慢查询、连接池、索引和机器规格根因 | 提高 limit 只是止血，不代表慢查询/规格已解决 |
 | P1 | 域名 TLS/SNI reset 独立处理 | 资源方案不能解决公网链路 reset |
-| P2 | provider timeout、fallback、缓存命中治理 | EastMoney/AkShare/Go market-read 失败会放大 scheduler/worker 压力 |
+| P2 | provider timeout、fallback、缓存命中治理 | 已做 market regime degraded guard，但 scheduler 仍有 board-breadth provider warning |
 | P2 | 历史 failed runtime_tasks 降噪 | 不影响核心功能，但影响运维判断；需要 DB 写授权 |
 | P2 | 旧前端 guard 收尾 | 继续防止 `frontend-hot`、`frontend-legacy`、`/__legacy/*` 回流 |
 | P3 | analytics/backtest/ML/factor 按需运行手册 | 非核心能力可用但不常驻，需要清楚的人工启动和回滚路径 |
@@ -141,6 +160,7 @@
 - D5 embedded scheduler 不是立即执行项。
 - 若 worker 仍在 `700MiB+ / 768MiB` 区间，保留独立 scheduler 更稳，因为它隔离了 provider/scheduler 压力。
 - scheduler 合并能省常驻内存，但前提是 worker 有余量，否则会把两个风险合并到一个进程。
+- provider degraded guard 只能减少 fallback 爆发，不能代替完整交易日长稳 gate。
 
 ### 3.3 第三层：处理 MySQL、机器规格和入口根因
 
@@ -209,6 +229,8 @@
 | `scripts/quick_cloud_deploy.sh` | embedded scheduler 验证兼容 |
 | `backend/app/workers/runtime_worker.py` | removed paper task skipped、worker recycle guard |
 | `backend/app/services/latest_data_close_refresh.py` | 成功任务 dedupe |
+| `backend/app/services/market/regime.py` | market regime provider degraded cooldown、inflight probe guard、cached/warming fallback |
+| `backend/app/services/market/providers/router.py` | all-provider circuit-open 快照判断 |
 | `backend/app/services/tasks/queue.py` | skipped 终态和低优先级暂停 |
 | `docker-compose.mysql.yml` | worker/scheduler env、低优先级任务类型、按需 analytics profile |
 
@@ -219,6 +241,7 @@
 | `docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md` | 完整交易日稳定性观察，正文记录实际观察日期 |
 | `docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md` | 自动采集的一次只读 D5 gate 快照 |
 | `docs/reports/mysql-runtime-root-cause-review-2026-06-12.md` | MySQL 慢查询、连接池、规格根因 |
+| `docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md` | D6 provider degraded guard 设计、验证和上线记录 |
 | `docs/reports/domain-entry-tls-reset-review-2026-06-12.md` | 域名公网 reset 独立排查 |
 | `docs/reports/frontend-next-legacy-guard-final-2026-06-12.md` | 旧前端 guard 最终验收 |
 
@@ -231,6 +254,26 @@
 - 不新增生产策略分数或排序字段。
 
 ## 6. 开发任务清单
+
+### 6.0 并行批次与合并顺序
+
+| 批次 | 可并行 Agent | 主要产出 | 合并门槛 | 是否允许线上写 |
+|---|---|---|---|---|
+| Batch 1: 状态收口 | `trading-platform-supervisor`、`qa-tester`、`devops-operator` | 当前状态报告、D5 gate 快照、未完成清单 | docs-only 或只读报告通过复核 | 否 |
+| Batch 2: 策略/产品边界审查 | `trading-quant-lead`、`stock-analysis-specialist`、`product-strategist` | 策略守卫、市场复盘关闭影响、功能影响矩阵 | 明确不影响核心任务和生产口径 | 否 |
+| Batch 3: 后端稳定性守卫 | `fullstack-builder`、`qa-tester` | provider degraded guard、dedupe、runtime queue、worker recycle 测试 | pytest 通过，低吸/priority-board 守卫通过 | 本地代码可改；线上需授权 |
+| Batch 4: 前端/旧入口 guard | `ui-designer`、`qa-tester`、`devops-operator` | frontend-next smoke、legacy scope 阻断、CI/Docker guard | frontend-next build/test 与旧入口 guard 测试通过 | 否 |
+| Batch 5: 完整交易日观察 | `qa-tester`、`devops-operator` | 09:15-15:30 资源/API/任务观测 | `d5_gate.ready=true` 且无 P0/P1 | 否 |
+| Batch 6: D5 scheduler embed 候选 | `devops-operator`、`fullstack-builder`、`trading-platform-supervisor` | 维护窗口执行/回滚方案 | 用户明确授权 + Batch 5 通过 | 是，最小范围 |
+| Batch 7: MySQL/机器规格/域名专项 | `devops-operator`、`fullstack-builder`、`qa-tester` | 慢查询、规格、TLS/SNI 根因处理 | 每项单独方案和授权 | 是，逐项授权 |
+
+合并顺序：
+
+1. Batch 1 和 Batch 2 可并行启动，先合并 docs/report。
+2. Batch 3 和 Batch 4 可并行开发，但必须各自测试全绿后再进入 Batch 5。
+3. Batch 5 必须覆盖完整交易日，不得用短窗替代。
+4. Batch 6 只有在 Batch 5 通过后才允许进入维护窗口。
+5. Batch 7 不阻塞 Batch 1-5，但任何 MySQL/域名/规格写动作都必须单独授权。
 
 ### Task A: 统一当前事实和状态报告
 
@@ -266,6 +309,7 @@ Expected:
 - 明确 D5 未执行或未通过 gate。
 - 明确旧前端 `frontend/` 当前 absent。
 - 明确模拟盘不恢复。
+- 明确 D6 provider degraded guard 已降低 fallback 链式压力，但 residual provider warning 仍阻塞 D5。
 
 - [ ] **Step 3: 提交状态报告**
 
@@ -403,8 +447,12 @@ Expected:
 **Files:**
 
 - Modify only if needed: `backend/app/services/latest_data_close_refresh.py`
+- Modify only if needed: `backend/app/services/market/regime.py`
+- Modify only if needed: `backend/app/services/market/providers/router.py`
 - Modify only if needed: BFF/provider route/service files found by `rg`
 - Test: `backend/tests/test_latest_data_close_refresh.py`
+- Test: `backend/tests/test_market_regime_strategy_p2.py`
+- Test: `backend/tests/test_v4_remaining_contracts.py`
 - Test: `backend/tests/test_bff_monitor_workspace.py`
 - Test: `backend/tests/test_market_quote_cache_refresh.py`
 
@@ -413,6 +461,8 @@ Expected:
 ```bash
 PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
   backend/tests/test_latest_data_close_refresh.py \
+  backend/tests/test_market_regime_strategy_p2.py \
+  backend/tests/test_v4_remaining_contracts.py \
   backend/tests/test_bff_monitor_workspace.py \
   backend/tests/test_market_quote_cache_refresh.py
 ```
@@ -421,6 +471,7 @@ Expected:
 
 - PASS。
 - 不改变 priority board 排序和生产分。
+- provider degraded/warming snapshot 必须显式标记 cached/warming，不伪装 live freshness。
 
 - [ ] **Step 2: 线上只读任务分布**
 
@@ -435,6 +486,22 @@ Expected:
 
 - 同日已成功的 A-key/strategy-tracking 不再重复大量新增。
 - low-priority 任务不被 worker claim。
+
+- [ ] **Step 3: D5 residual provider warning 复核**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+cd /home/ubuntu/gupiao-upload
+sudo docker logs --since 30m tquant-runtime-scheduler-mysql 2>&1 | \
+  egrep -i "market provider circuit open|EastMoney|AkShare|fetch_intraday_bars|board_breadth|provider.*failed|timeout" | tail -120 || true
+'
+```
+
+Expected:
+
+- `fetch_intraday_bars` 链式 fallback 不应重新出现。
+- board-breadth provider warning 若仍存在，D5 继续阻塞。
+- 只记录问题，不通过重启 scheduler 来“清日志”。
 
 ### Task E: MySQL 根因专项
 
@@ -631,7 +698,7 @@ Expected:
 开始前：
 1. 执行 cd /Users/j/Documents/gupiao && git status --short。
 2. 阅读 AGENTS.md、docs/engineering-conventions.md、docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md。
-3. 阅读本计划、docs/reports/cloud-resource-contention-remediation-2026-06-11.md、docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md。
+3. 阅读本计划、docs/reports/cloud-resource-contention-remediation-2026-06-11.md、docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md、docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md、docs/reports/mysql-runtime-root-cause-review-2026-06-12.md。
 
 硬边界：
 - 不改 backend/app/services/low_buy/strategy_policy.py。
@@ -643,6 +710,7 @@ Expected:
 执行要求：
 - 本地开发可多 Agent 并行，线上动作必须串行并记录授权。
 - D5 embedded scheduler 只有完整交易日 gate 通过后才能执行。
+- provider degraded guard、worker recycle guard、dedupe 都只能作为 D5 前置稳定性条件，不能单独替代完整交易日 gate。
 - 每批输出：完成项、失败项、风险、证据、是否执行线上写操作、下一步授权清单。
 - 每批结束前复核 git status，并保护无关未提交文件。
 ```
@@ -685,12 +753,16 @@ Expected:
 范围：
 - backend/app/workers/runtime_worker.py
 - backend/app/services/latest_data_close_refresh.py
+- backend/app/services/market/regime.py
+- backend/app/services/market/providers/router.py
 - backend/app/services/tasks/queue.py
 - backend/app/core/config.py
 - backend/app/runtime/background_jobs.py
 - backend/tests/test_runtime_task_queue.py
 - backend/tests/test_phase4_runtime_worker_tasks.py
 - backend/tests/test_latest_data_close_refresh.py
+- backend/tests/test_market_regime_strategy_p2.py
+- backend/tests/test_v4_remaining_contracts.py
 - backend/tests/test_platform_budget_verifier.py
 
 目标：
@@ -699,14 +771,16 @@ Expected:
 3. worker recycle guard 只在任务完成后触发，不中断 running task。
 4. close-refresh dedupe 防止同日成功任务重复入队。
 5. scheduler embed 支持但默认关闭，不能重复跑 scheduler。
+6. market regime provider degraded guard 使用 cached/warming snapshot 降级，减少 provider fallback 链式压力。
 
 禁止：
 - 不改 backend/app/services/low_buy/strategy_policy.py。
 - 不改变生产策略语义、production_score、priority_board 排序和口径。
 - 不新增 active paper 功能。
+- 不把 provider 降级结果伪装为 live freshness。
 
 验证：
-- PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_runtime_task_queue.py backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_latest_data_close_refresh.py backend/tests/test_platform_budget_verifier.py backend/tests/test_independent_runtime_components.py
+- PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_runtime_task_queue.py backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_latest_data_close_refresh.py backend/tests/test_market_regime_strategy_p2.py backend/tests/test_v4_remaining_contracts.py backend/tests/test_platform_budget_verifier.py backend/tests/test_independent_runtime_components.py
 - 如触碰 low-buy/priority-board/read path，额外跑 backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py
 ```
 
@@ -721,6 +795,7 @@ Expected:
 3. 验证资源：uptime/load/free/swap/df/df -ih/docker ps/docker stats/docker system df。
 4. 验证任务：runtime_tasks、scheduler heartbeat、worker heartbeat、low-priority pause、dedupe。
 5. 验证前端：无白屏、无 chunk 404、无旧前端入口回流。
+6. 验证 D5 gate：full trading day incomplete、scheduler provider warnings、non-terminal tasks 任一存在时必须保持 blocked。
 
 禁止：
 - 不做线上写操作。
@@ -743,6 +818,7 @@ Expected:
 2. 明确哪些是核心必须保留：监控、行情缓存、低吸榜、priority board、策略追踪、watchdog。
 3. 明确哪些是按需能力：analytics、backtest、ML/factor、数据修复、研究任务、监控面板。
 4. 明确模拟盘不恢复为核心功能，历史入口只做降噪和 skipped。
+5. 明确关闭项是否影响当前用户重心任务；若影响，必须提供替代路径或恢复条件。
 
 禁止：
 - 不提出恢复 active paper 作为核心路径。
@@ -823,7 +899,7 @@ Expected:
 1. cd /Users/j/Documents/gupiao && git status --short
 2. 阅读 AGENTS.md、docs/engineering-conventions.md、docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md
 3. 阅读 docs/superpowers/plans/2026-06-12-cloud-resource-contention-final-integrated-development-plan.md
-4. 阅读 docs/reports/cloud-resource-contention-remediation-2026-06-11.md、docs/reports/online-service-status-audit-2026-06-11.md、docs/reports/online-stability-remaining-7-items-final-2026-06-11.md
+4. 阅读 docs/reports/cloud-resource-contention-remediation-2026-06-11.md、docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md、docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md、docs/reports/mysql-runtime-root-cause-review-2026-06-12.md、docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md、docs/reports/online-stability-legacy-frontend-retirement-implementation-2026-06-11.md
 
 硬边界：
 - 不改 backend/app/services/low_buy/strategy_policy.py
@@ -832,6 +908,8 @@ Expected:
 - 不把云端改成 Web-only
 - 不恢复 active 模拟盘，不恢复 /paper 或 /next/paper 作为核心路径
 - 未获授权不得改线上 .env、不得重启/重建/停止容器、不得清理 Docker/磁盘、不得改 nginx/MySQL、不得写生产数据库
+- D5 embedded scheduler 不得在 d5_gate.ready=false 时执行
+- 域名 TLS/SNI、MySQL schema/index/配置、Docker cleanup、机器升配都必须作为独立授权专项
 
 执行方式：
 - 可多 Agent 并行：trading-quant-lead 做策略守卫，stock-analysis-specialist 做市场复盘关闭影响审查，product-strategist 做功能影响矩阵，ui-designer 做 frontend-next 页面/旧入口检查，fullstack-builder 做后端 guard/dedupe/provider/verifier，qa-tester 做测试和长稳验收，devops-operator 做 runbook/只读线上验证/授权操作。
@@ -842,12 +920,13 @@ Expected:
 1. 更新或新增 docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md，记录完整交易日观察模板和当前未完成项。
 2. 复核第一层 stop profile 是否在线生效：PLATFORM_AUTOPILOT_ENABLED=false、RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true、MARKET_REVIEW_ENABLED=false。
 3. 复核 worker recycle guard 是否已启用及是否在任务边界正常工作；未稳定前不得执行 scheduler embed。
-4. 复跑 dedupe、runtime task、priority board、low-buy、frontend-next cutover 相关测试。
-5. 输出下一步授权清单：哪些可以只读，哪些需要用户明确授权。
+4. 复核 provider degraded guard 是否减少 fallback 链式压力；如仍有 scheduler_provider_warnings_present，D5 继续阻塞。
+5. 复跑 dedupe、runtime task、priority board、low-buy、frontend-next cutover 相关测试。
+6. 输出下一步授权清单：哪些可以只读，哪些需要用户明确授权。
 
 验收命令至少包含：
 PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_platform_budget_verifier.py backend/tests/test_runtime_task_queue.py backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_independent_runtime_components.py backend/tests/test_cloud_deploy_scripts.py
-PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_latest_data_close_refresh.py backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_latest_data_close_refresh.py backend/tests/test_market_regime_strategy_p2.py backend/tests/test_v4_remaining_contracts.py backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py
 cd frontend-next && npm run api:check && npm run typecheck && npm run lint && npm test -- --run && npm run build
 
 输出：

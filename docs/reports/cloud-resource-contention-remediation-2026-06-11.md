@@ -841,9 +841,43 @@ This keeps runtime queue claim/retry/skip semantics, low-priority pause visibili
 
 Implementation report: `docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md`.
 
-The third D6 mitigation was implemented locally without online config or schema changes. `MarketProviderRouter` now exposes a read-only all-provider-circuit-open check, and `MarketRegimeMixin.get_market_regime()` uses persisted or lightweight `warming` snapshots when board-breadth providers are already circuit-open. This avoids repeated live provider fallback bursts from scheduler market-regime prewarm while keeping first-run and half-open recovery probes available.
+The third D6 mitigation was first implemented locally without online config or schema changes, then promoted through a scheduler-only online rollout after D5 remained blocked by provider warnings. `MarketProviderRouter` now exposes a read-only all-provider-circuit-open check, and `MarketRegimeMixin.get_market_regime()` uses persisted or lightweight `warming` snapshots when board-breadth providers are already circuit-open or recently failed. It also records a short degraded cooldown and uses an in-process probe guard so concurrent scheduler refreshes do not launch repeated live board-breadth probes. This avoids repeated live provider fallback bursts from scheduler market-regime prewarm while keeping first-run and half-open recovery probes available.
 
 The returned snapshot is explicitly marked cached or warming; it does not fake live freshness and does not change priority-board ordering, `production_score`, or low-buy strategy semantics. D5 embedded scheduler remains closed until provider pressure is proven stable across the trading-day gate.
+
+### D6 Provider-Degraded Scheduler-Only Rollout - 2026-06-12 02:15-02:29 CST
+
+This rollout targeted only `runtime-scheduler`, because the observed repeated provider work came from scheduler-side market-regime prewarm. It did not touch app/API, core `runtime-worker`, MySQL, Redis, Go hot-read/scan services, frontend/nginx, database data, volumes, nginx/systemd, Docker cleanup, or `.env`.
+
+| Item | Evidence |
+|---|---|
+| Initial backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/provider-cooldown-20260612021554` |
+| Follow-up backups | `provider-cooldown-v2-20260612022004`, `provider-cooldown-v3-20260612022348`, `provider-cooldown-v4-20260612022738` under `.runtime/manual-hotfix-backups/` |
+| Uploaded sources | first rollout: `backend/app/services/market/providers/router.py`, `backend/app/services/market/regime.py`; follow-ups: `backend/app/services/market/regime.py` |
+| Build | `sudo docker compose -f docker-compose.mysql.yml build runtime-scheduler` |
+| Recreate | `sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-scheduler` |
+| Scope check | `worker_unchanged=yes`, `app_unchanged=yes`, `mysql_unchanged=yes` |
+| D5 status after rollout | still blocked: `full_trading_day_observation_incomplete`, `scheduler_provider_warnings_present`, `runtime_nonterminal_task_count=2` |
+
+Latest gate collector after the final scheduler-only rollout:
+
+```text
+generated_at=2026-06-11T18:29:46Z
+host_time=2026-06-12 02:29:42 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present, runtime_nonterminal_task_count=2
+warnings=scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, mysql_slow_queries=48
+```
+
+| Area | Evidence |
+|---|---|
+| Host | load `0.54 / 0.73 / 0.65`; memory available `1392MiB`; swap used `33.47%` |
+| Scheduler | `261.1MiB / 640MiB`, CPU sample `15.70%`, healthy |
+| Worker | `294.8MiB / 768MiB`, healthy |
+| MySQL | `849.3MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` |
+| HTTP/pages | `/readyz` `200`; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` |
+| Residual warning | final scheduler logs no longer showed the earlier intraday fallback chain, but board-breadth provider warnings still appeared |
 
 ## Write Operation Summary So Far
 
@@ -851,9 +885,9 @@ The returned snapshot is explicitly marked cached or warming; it does not fake l
 |---|---|---|
 | Local docs/code commits | yes | D1-D3 local implementation, D6 dedupe fix, D6 worker guard implementation, integrated plan, and this report update |
 | Online `.env` changes | yes | D4 non-core stop flags, D6 MySQL memory limits, D6 worker recycle threshold `RUNTIME_WORKER_RECYCLE_RSS_MB=700` |
-| Online source upload | yes | D6 minimal upload of `latest_data_close_refresh.py`; D6 worker guard upload of `config.py`, `runtime_worker.py`, `docker-compose.mysql.yml`, each with remote backup |
-| Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql; D6 minimal runtime-scheduler recreate; D6 worker guard runtime-worker recreate |
-| Docker build | yes | D6 rebuild of `runtime-scheduler`; D6 rebuild of `runtime-worker` |
+| Online source upload | yes | D6 minimal upload of `latest_data_close_refresh.py`; D6 worker guard upload of `config.py`, `runtime_worker.py`, `docker-compose.mysql.yml`; D6 provider-degraded uploads of `market/providers/router.py` and `market/regime.py`, each with remote backup |
+| Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql; D6 minimal runtime-scheduler recreate; D6 worker guard runtime-worker recreate; D6 provider-degraded scheduler-only recreates |
+| Docker build | yes | D6 rebuilds of `runtime-scheduler` for dedupe and provider-degraded guard; D6 rebuild of `runtime-worker` |
 | D5 scheduler embed | no | not executed; current worker memory fails the gate |
 | Worker recycle guard live enablement | yes | `RUNTIME_WORKER_RECYCLE_RSS_MB=700`; current worker healthy with RSS about `162MiB / 768MiB` |
 | Docker cleanup/image prune/volume prune | no | not executed |

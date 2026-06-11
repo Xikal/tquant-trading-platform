@@ -209,6 +209,14 @@ class _RegimeFallbackHarness(MarketRegimeMixin):
 
 
 class MarketRegimeStrategyP2Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        MarketRegimeMixin._clear_provider_degraded("fetch_board_breadth_frame")
+        MarketRegimeMixin._exit_provider_probe("fetch_board_breadth_frame")
+
+    def tearDown(self) -> None:
+        MarketRegimeMixin._clear_provider_degraded("fetch_board_breadth_frame")
+        MarketRegimeMixin._exit_provider_probe("fetch_board_breadth_frame")
+
     def test_hot_overlap_uses_ranked_yesterday_today_continuity(self) -> None:
         stable = MarketRegimeMixin._compute_hot_overlap_ratio(
             [["人工智能", "机器人", "算力"], ["人工智能", "机器人", "传媒"]]
@@ -260,6 +268,23 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
         self.assertEqual(harness.persisted_snapshots, [])
         self.assertIs(harness.cache["2026-06-12"], persisted)
 
+    def test_market_regime_uses_short_degraded_cooldown_after_provider_failure(self) -> None:
+        persisted = replace(
+            _market_regime("repair"),
+            snapshot_source="cached",
+            snapshot_source_text="使用 2026-06-12 最近完整市场快照，后台正在刷新实时情绪",
+        )
+        first = _RegimeFallbackHarness(persisted)
+
+        self.assertIs(first.get_market_regime(hot_industries=["半导体"]), persisted)
+        self.assertEqual(first.board_calls, 1)
+        self.assertEqual(first.persisted_calls, 1)
+
+        second = _RegimeFallbackHarness(persisted)
+        self.assertIs(second.get_market_regime(hot_industries=["半导体"]), persisted)
+        self.assertEqual(second.board_calls, 0)
+        self.assertEqual(second.persisted_calls, 1)
+
     def test_market_regime_skips_live_provider_when_breadth_circuit_open(self) -> None:
         persisted = replace(
             _market_regime("repair"),
@@ -285,6 +310,34 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
         self.assertEqual(harness.board_calls, 0)
         self.assertEqual(harness.persisted_calls, 1)
         self.assertEqual(harness.persisted_snapshots, [])
+
+    def test_market_regime_returns_lightweight_snapshot_after_live_provider_failure_without_persisted_snapshot(self) -> None:
+        harness = _RegimeFallbackHarness(None)
+
+        snapshot = harness.get_market_regime(hot_industries=["半导体"])
+
+        self.assertEqual(snapshot.snapshot_source, "warming")
+        self.assertEqual(snapshot.hot_industries, ["半导体"])
+        self.assertEqual(snapshot.hot_industry_source, "cached_fallback")
+        self.assertEqual(harness.board_calls, 1)
+        self.assertEqual(harness.persisted_calls, 1)
+        self.assertEqual(harness.emotion_calls, 0)
+        self.assertEqual(harness.persisted_snapshots, [])
+
+    def test_market_regime_skips_second_live_probe_while_board_probe_is_inflight(self) -> None:
+        persisted = replace(
+            _market_regime("repair"),
+            snapshot_source="cached",
+            snapshot_source_text="使用 2026-06-12 最近完整市场快照，后台正在刷新实时情绪",
+        )
+        self.assertTrue(MarketRegimeMixin._try_enter_provider_probe("fetch_board_breadth_frame"))
+        harness = _RegimeFallbackHarness(persisted)
+
+        snapshot = harness.get_market_regime(hot_industries=["半导体"])
+
+        self.assertIs(snapshot, persisted)
+        self.assertEqual(harness.board_calls, 0)
+        self.assertEqual(harness.persisted_calls, 1)
 
     def test_market_block_happens_in_signal_layer(self) -> None:
         harness = _SignalHarness()

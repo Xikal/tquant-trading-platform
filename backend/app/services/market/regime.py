@@ -41,9 +41,14 @@ from app.services.market.regime_types import (
 )
 from app.services.market.regime_style import load_style_proxy_changes
 
+
 class MarketRegimeMixin:
     _recent_hot_industries_cache: tuple[float, list[str]] = (0.0, [])
     _recent_hot_industries_ttl_seconds = 300.0
+    _provider_degraded_until: dict[str, float] = {}
+    _provider_probe_inflight: set[str] = set()
+    _provider_degraded_lock = threading.Lock()
+    _provider_degraded_cooldown_seconds = 60.0
 
     def get_market_regime(
         self,
@@ -59,25 +64,35 @@ class MarketRegimeMixin:
         if cached is not None:
             return cached
 
-        if self._provider_circuit_open("fetch_board_breadth_frame"):
-            persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
-            if persisted is not None:
-                self._set_market_regime_cache(trade_date, persisted)
-                return persisted
-            snapshot = self._build_lightweight_market_regime(
-                hot_industries=hot_industries or self._recent_hot_industries(),
-                hot_industry_source=hot_industry_source or "cached_fallback",
-                hot_industry_source_text=hot_industry_source_text or "热点来源：provider 退化，暂用轻量快照",
+        board_operation = "fetch_board_breadth_frame"
+        if self._provider_degraded_recently(board_operation) or self._provider_circuit_open(board_operation):
+            return self._provider_degraded_regime_snapshot(
+                trade_date=trade_date,
+                hot_industries=hot_industries,
+                hot_industry_source=hot_industry_source,
+                hot_industry_source_text=hot_industry_source_text,
             )
-            self._set_market_regime_cache(trade_date, snapshot)
-            return snapshot
 
-        board_frame = self._load_board_breadth_frame()
+        if not self._try_enter_provider_probe(board_operation):
+            return self._provider_degraded_regime_snapshot(
+                trade_date=trade_date,
+                hot_industries=hot_industries,
+                hot_industry_source=hot_industry_source,
+                hot_industry_source_text=hot_industry_source_text,
+            )
+        try:
+            board_frame = self._load_board_breadth_frame()
+        finally:
+            self._exit_provider_probe(board_operation)
         if board_frame is None:
-            persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
-            if persisted is not None:
-                self._set_market_regime_cache(trade_date, persisted)
-                return persisted
+            self._remember_provider_degraded(board_operation)
+            return self._provider_degraded_regime_snapshot(
+                trade_date=trade_date,
+                hot_industries=hot_industries,
+                hot_industry_source=hot_industry_source,
+                hot_industry_source_text=hot_industry_source_text,
+            )
+        self._clear_provider_degraded(board_operation)
         snapshot = classify_market_regime(
             board_frame,
             limit_down_count=self._load_limit_down_count_cached(
@@ -274,6 +289,56 @@ class MarketRegimeMixin:
             return bool(checker(operation))
         except Exception:
             return False
+
+    def _provider_degraded_regime_snapshot(
+        self,
+        *,
+        trade_date: str,
+        hot_industries: list[str] | None,
+        hot_industry_source: str,
+        hot_industry_source_text: str,
+    ) -> MarketRegimeSnapshot:
+        persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
+        if persisted is not None:
+            self._set_market_regime_cache(trade_date, persisted)
+            return persisted
+        snapshot = self._build_lightweight_market_regime(
+            hot_industries=hot_industries or self._recent_hot_industries(),
+            hot_industry_source=hot_industry_source or "cached_fallback",
+            hot_industry_source_text=hot_industry_source_text or "热点来源：provider 退化，暂用轻量快照",
+        )
+        self._set_market_regime_cache(trade_date, snapshot)
+        return snapshot
+
+    @classmethod
+    def _provider_degraded_recently(cls, operation: str) -> bool:
+        with cls._provider_degraded_lock:
+            return cls._provider_degraded_until.get(operation, 0.0) > time.monotonic()
+
+    @classmethod
+    def _remember_provider_degraded(cls, operation: str) -> None:
+        with cls._provider_degraded_lock:
+            cls._provider_degraded_until[operation] = (
+                time.monotonic() + cls._provider_degraded_cooldown_seconds
+            )
+
+    @classmethod
+    def _clear_provider_degraded(cls, operation: str) -> None:
+        with cls._provider_degraded_lock:
+            cls._provider_degraded_until.pop(operation, None)
+
+    @classmethod
+    def _try_enter_provider_probe(cls, operation: str) -> bool:
+        with cls._provider_degraded_lock:
+            if operation in cls._provider_probe_inflight:
+                return False
+            cls._provider_probe_inflight.add(operation)
+            return True
+
+    @classmethod
+    def _exit_provider_probe(cls, operation: str) -> None:
+        with cls._provider_degraded_lock:
+            cls._provider_probe_inflight.discard(operation)
 
     def _load_market_breadth_snapshot(
         self,
