@@ -609,3 +609,49 @@ Operations not executed in this checkpoint:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 04:51 CST Supervisor Waiting State
+
+Local supervisor check:
+
+```text
+local_time=2026-06-12 04:51:46 CST
+git_status=clean
+strategy_policy_diff_lines=0
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete
+```
+
+The formal D5 observation window has not started. The next valid checkpoint is
+`09:15 CST`; running another collector before that time would only create another
+premarket continuity snapshot and would not satisfy the full trading-day gate.
+
+Next command to run at `09:15 CST`:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label 09:15 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-0915.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-0915.md
+```
+
+Decision:
+
+1. D5 embedded scheduler remains closed.
+2. Do not stop standalone `runtime-scheduler`.
+3. Keep waiting for the formal checkpoint sequence.
+
+Operations not executed in this supervisor check:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
