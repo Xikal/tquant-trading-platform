@@ -535,3 +535,114 @@ D5 scheduler embed remains closed until:
 2. Provider warning bursts are resolved or proven harmless across a full trading day.
 3. MySQL slow-path fixes are either completed or explicitly deferred with user authorization.
 4. User approves a maintenance window to stop the standalone scheduler.
+
+## 2026-06-12 04:20 CST Read-Only Root-Cause Refresh
+
+This refresh was read-only. A first SSH command failed inside the MySQL SQL segment because of shell quoting, after resource and container evidence had already been printed. The MySQL, queue, heartbeat, HTTP, and scheduler-log checks were then rerun using `docker exec -i ... mysql` through stdin, with no database writes.
+
+### Resource Snapshot
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.23, 0.26, 0.27`; memory available `1332MiB`; swap used `649MiB / 1987MiB`; root `63%`; inode `13%` | warning: swap still present |
+| app | `60.23MiB / 768MiB`, healthy, restart `0` | pass |
+| runtime-worker | `296.1MiB / 768MiB`, healthy, restart `0` | pass |
+| runtime-scheduler | `255.1MiB / 640MiB`, healthy, restart `0` | pass |
+| MySQL | `863.6MiB / 1.5GiB`, healthy, restart `0`, OOM `false` | warning |
+| Redis/Go services | healthy, restart `0` | pass |
+| Kernel OOM since midnight | no OOM lines returned | pass |
+
+### MySQL Evidence
+
+| Metric | Value |
+|---|---:|
+| `Threads_connected` | `9` |
+| `Threads_running` | `3` |
+| `Threads_cached` | `4` |
+| `Threads_created` | `13` |
+| `Slow_queries` | `55` |
+| `max_connections` | `120` |
+| `innodb_buffer_pool_size` | `536870912` |
+| `t_quant` table size | `1452.06MiB` |
+
+Largest tables:
+
+| Table | Size | Rows |
+|---|---:|---:|
+| `daily_bar_snapshots` | `866.06MiB` | `2857088` |
+| `key_level_snapshots` | `284.41MiB` | `18813` |
+| `low_buy_strategy_pool_snapshots` | `55.09MiB` | `62087` |
+| `low_buy_result_snapshots` | `50.50MiB` | `2870` |
+| `runtime_tasks` | `47.58MiB` | `44365` |
+| `runtime_task_events` | `38.08MiB` | `146776` |
+
+Interpretation:
+
+1. Connection pressure is not the current root cause: `Threads_connected=9`, `Threads_running=3`, `max_connections=120`.
+2. The largest persistent pressure source is table volume, especially `daily_bar_snapshots` at roughly `866MiB`.
+3. `Slow_queries=55` remains a warning. The counter is cumulative, so the next decision should be based on growth rate during the full trading-day window, not the absolute number alone.
+4. No evidence currently justifies changing production priority-board scoring or sorting.
+
+### Runtime Queue And Heartbeat
+
+Recent four-hour task summary:
+
+| Task | Status | Count | Window |
+|---|---|---:|---|
+| `low_buy_materialization_refresh` | `succeeded` | `8` | `2026-06-11 17:11:29` to `2026-06-11 19:57:59` |
+
+Non-terminal queue:
+
+- No `queued` or `running` rows returned in the capped query.
+
+Heartbeats:
+
+| Component | Worker id | Updated at | Status |
+|---|---|---|---|
+| `runtime-scheduler` | `runtime-scheduler` | `2026-06-11 20:20:41` | `running` |
+| `runtime-worker` | `runtime-8a2ddf90d9f2` | `2026-06-11 20:20:38` | `running` |
+
+This confirms D5 has not been executed: scheduler heartbeat is still standalone, not `runtime-worker-embedded-scheduler`.
+
+### HTTP And Scheduler Pressure
+
+| Path | Status | Time |
+|---|---:|---:|
+| `/readyz` | `200` | `0.005834s` |
+| `/api/monitor` | `404` | `0.005489s` |
+| `/api/monitor/snapshot` | `401` | `0.007518s` |
+| `/api/priority-board` | `404` | `0.003892s` |
+| `/api/screeners/low-buy/priority-board` | `401` | `0.004723s` |
+| `/api/runtime-tasks/summary` | `401` | `0.004446s` |
+| `/next/monitor` | `200` | `0.003638s` |
+| `/next/monitor/market` | `200` | `0.003726s` |
+| `/next/strategy-tracking` | `200` | `0.003590s` |
+| `/next/analysis` | `200` | `0.003595s` |
+| `/next/backtest` | `200` | `0.003549s` |
+| `/next/data` | `200` | `0.003576s` |
+| `/next/settings` | `200` | `0.004333s` |
+
+Scheduler board-breadth provider warnings:
+
+| Window | Count |
+|---|---:|
+| since scheduler restart | `15` |
+| last 30 minutes | `15` |
+
+Interpretation:
+
+1. The D6 provider backoff rollout is still holding below the D5 blocking threshold in this fresh window.
+2. Core pages are available.
+3. Protected APIs return `401` quickly when unauthenticated, which is expected.
+4. `/api/monitor` and `/api/priority-board` currently return `404` for these exact paths; the active low-buy priority-board path remains `/api/screeners/low-buy/priority-board` and is auth-protected.
+
+### Current D6 Decision
+
+No core read-path change is justified from this snapshot alone. The next evidence needed is a full trading-day growth profile for:
+
+- `Slow_queries` delta.
+- `daily_bar_snapshots` hot queries, if available through slow logs or application traces.
+- monitor / priority-board p95 under open, midday, close, and post-close pressure.
+- worker RSS after close-refresh tasks.
+
+Recommended next step: continue D5 checkpoint collection and keep MySQL/query changes evidence-gated. If slow-query growth increases during the trading day, inspect exact SQL and `EXPLAIN` before adding indexes or changing read paths.
