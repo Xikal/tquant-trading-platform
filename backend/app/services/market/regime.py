@@ -59,7 +59,25 @@ class MarketRegimeMixin:
         if cached is not None:
             return cached
 
+        if self._provider_circuit_open("fetch_board_breadth_frame"):
+            persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
+            if persisted is not None:
+                self._set_market_regime_cache(trade_date, persisted)
+                return persisted
+            snapshot = self._build_lightweight_market_regime(
+                hot_industries=hot_industries or self._recent_hot_industries(),
+                hot_industry_source=hot_industry_source or "cached_fallback",
+                hot_industry_source_text=hot_industry_source_text or "热点来源：provider 退化，暂用轻量快照",
+            )
+            self._set_market_regime_cache(trade_date, snapshot)
+            return snapshot
+
         board_frame = self._load_board_breadth_frame()
+        if board_frame is None:
+            persisted = self._load_persisted_market_regime_snapshot(trade_date, hot_industries)
+            if persisted is not None:
+                self._set_market_regime_cache(trade_date, persisted)
+                return persisted
         snapshot = classify_market_regime(
             board_frame,
             limit_down_count=self._load_limit_down_count_cached(
@@ -88,7 +106,15 @@ class MarketRegimeMixin:
             snapshot,
             self._peek_market_regime_snapshot(trade_date),
         )
-        snapshot = replace(snapshot, snapshot_source="live", snapshot_source_text="实时市场快照")
+        snapshot = replace(
+            snapshot,
+            snapshot_source="live" if board_frame is not None else "warming",
+            snapshot_source_text=(
+                "实时市场快照"
+                if board_frame is not None
+                else "实时 provider 暂不可用，使用本地/轻量市场状态"
+            ),
+        )
         self._set_market_regime_cache(trade_date, snapshot)
         self._persist_market_regime_snapshot(trade_date, snapshot)
         return snapshot
@@ -239,6 +265,15 @@ class MarketRegimeMixin:
         if result.usable and result.data is not None:
             return normalize_board_frame(result.data)
         return None
+
+    def _provider_circuit_open(self, operation: str) -> bool:
+        checker = getattr(self.provider_router, "all_providers_circuit_open", None)
+        if not callable(checker):
+            return False
+        try:
+            return bool(checker(operation))
+        except Exception:
+            return False
 
     def _load_market_breadth_snapshot(
         self,

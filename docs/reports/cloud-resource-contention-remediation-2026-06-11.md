@@ -837,6 +837,14 @@ The second D6 read-path mitigation was implemented locally without schema/index 
 
 This keeps runtime queue claim/retry/skip semantics, low-priority pause visibility, and strategy behavior unchanged. D5 embedded scheduler remains closed until the full trading-day gate passes.
 
+### D6 Provider-Degraded Market Regime Cooldown - 2026-06-12
+
+Implementation report: `docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md`.
+
+The third D6 mitigation was implemented locally without online config or schema changes. `MarketProviderRouter` now exposes a read-only all-provider-circuit-open check, and `MarketRegimeMixin.get_market_regime()` uses persisted or lightweight `warming` snapshots when board-breadth providers are already circuit-open. This avoids repeated live provider fallback bursts from scheduler market-regime prewarm while keeping first-run and half-open recovery probes available.
+
+The returned snapshot is explicitly marked cached or warming; it does not fake live freshness and does not change priority-board ordering, `production_score`, or low-buy strategy semantics. D5 embedded scheduler remains closed until provider pressure is proven stable across the trading-day gate.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |

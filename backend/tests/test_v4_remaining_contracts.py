@@ -56,6 +56,26 @@ def test_provider_router_marks_timed_out_provider_unavailable() -> None:
     assert "timed out" in result.message
 
 
+def test_provider_router_reports_all_providers_circuit_open_only_when_every_provider_open() -> None:
+    left = _Provider("left")
+    right = _Provider("right")
+    router = MarketProviderRouter([left, right])
+
+    assert router.all_providers_circuit_open("fetch_board_breadth_frame") is False
+
+    router.circuits.record("left", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+    router.circuits.record("left", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+    router.circuits.record("left", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+
+    assert router.all_providers_circuit_open("fetch_board_breadth_frame") is False
+
+    router.circuits.record("right", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+    router.circuits.record("right", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+    router.circuits.record("right", "fetch_board_breadth_frame", ok=False, latency_ms=10, error="failed")
+
+    assert router.all_providers_circuit_open("fetch_board_breadth_frame") is True
+
+
 def test_paper_exit_rejects_stale_quote_quality() -> None:
     from app.services.paper import scheduler_exit
 

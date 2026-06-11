@@ -157,6 +157,20 @@ class MarketProviderRouter:
     def metrics_snapshot(self) -> dict:
         return self.circuits.snapshot()
 
+    def all_providers_circuit_open(self, operation: str) -> bool:
+        if not self.providers:
+            return False
+        snapshot = self.circuits.snapshot()
+        provider_metrics = snapshot.get("providers") if isinstance(snapshot, dict) else {}
+        if not isinstance(provider_metrics, dict) or not provider_metrics:
+            return False
+        for provider in self.providers:
+            provider_name = getattr(provider, "name", provider.__class__.__name__)
+            metrics = provider_metrics.get(f"{provider_name}:{operation}") or {}
+            if not metrics or not metrics.get("circuit_open"):
+                return False
+        return True
+
     def _first_usable(self, operation: str, call) -> ProviderResult:
         last_result: ProviderResult | None = None
         for provider in order_providers_for_operation(self.providers, self.circuits.snapshot(), operation):

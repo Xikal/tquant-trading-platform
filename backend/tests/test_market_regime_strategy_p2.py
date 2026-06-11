@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import unittest
 
 import pandas as pd
@@ -133,6 +134,80 @@ class _EmotionHarness(MarketEmotionMixin):
     pass
 
 
+class SimpleProviderRouter:
+    def __init__(self, *, circuit_open: bool) -> None:
+        self.circuit_open = circuit_open
+
+    def all_providers_circuit_open(self, operation: str) -> bool:
+        assert operation == "fetch_board_breadth_frame"
+        return self.circuit_open
+
+
+class _RegimeFallbackHarness(MarketRegimeMixin):
+    def __init__(self, persisted: MarketRegimeSnapshot | None, *, circuit_open: bool = False) -> None:
+        self.persisted = persisted
+        self.provider_router = SimpleProviderRouter(circuit_open=circuit_open)
+        self.persisted_calls = 0
+        self.emotion_calls = 0
+        self.board_calls = 0
+        self.persisted_snapshots: list[MarketRegimeSnapshot] = []
+        self.cache: dict[str, MarketRegimeSnapshot] = {}
+
+    @staticmethod
+    def _resolve_regime_trade_date(_latest_trade_date):  # noqa: ANN001
+        return "2026-06-12"
+
+    def _load_board_breadth_frame(self):
+        self.board_calls += 1
+        return None
+
+    @staticmethod
+    def _resolve_hot_industries(_board_frame, hot_industries):
+        return hot_industries or []
+
+    @staticmethod
+    def _load_market_breadth_snapshot(_recent_hot_sequences=None):  # noqa: ANN001
+        raise AssertionError("persisted fallback should avoid live breadth fallback work")
+
+    def _load_market_emotion_snapshot(self, _latest_trade_date):  # noqa: ANN001
+        self.emotion_calls += 1
+        raise AssertionError("persisted fallback should avoid provider-backed emotion work")
+
+    @staticmethod
+    def _load_limit_down_count_cached(_latest_trade_date):  # noqa: ANN001
+        raise AssertionError("persisted fallback should avoid provider-backed limit-down work")
+
+    @staticmethod
+    def _stabilize_market_regime(snapshot, _previous_snapshot):  # noqa: ANN001
+        return snapshot
+
+    @staticmethod
+    def _apply_market_readiness_guard(snapshot):
+        return snapshot
+
+    @staticmethod
+    def _apply_regime_continuity(snapshot, _previous_snapshot):  # noqa: ANN001
+        return snapshot
+
+    def _get_compatible_regime_cache(self, cache_key, _hot_industries):  # noqa: ANN001
+        return self.cache.get(cache_key)
+
+    def _set_market_regime_cache(self, cache_key, snapshot):  # noqa: ANN001
+        self.cache[cache_key] = snapshot
+
+    @staticmethod
+    def _peek_market_regime_snapshot(_cache_key):  # noqa: ANN001
+        return None
+
+    def _load_persisted_market_regime_snapshot(self, cache_key, _hot_industries):  # noqa: ANN001
+        assert cache_key == "2026-06-12"
+        self.persisted_calls += 1
+        return self.persisted
+
+    def _persist_market_regime_snapshot(self, _cache_key, snapshot):  # noqa: ANN001
+        self.persisted_snapshots.append(snapshot)
+
+
 class MarketRegimeStrategyP2Tests(unittest.TestCase):
     def test_hot_overlap_uses_ranked_yesterday_today_continuity(self) -> None:
         stable = MarketRegimeMixin._compute_hot_overlap_ratio(
@@ -167,6 +242,49 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
         self.assertGreater(snapshot.promotion_break_gap, 0.0)
         self.assertGreater(snapshot.high_flyer_gap_speed, 0.7)
         self.assertGreater(snapshot.emotion_distribution_pressure, 0.0)
+
+    def test_market_regime_uses_persisted_snapshot_when_live_provider_unavailable(self) -> None:
+        persisted = replace(
+            _market_regime("repair"),
+            snapshot_source="cached",
+            snapshot_source_text="使用 2026-06-12 最近完整市场快照，后台正在刷新实时情绪",
+        )
+        harness = _RegimeFallbackHarness(persisted)
+
+        snapshot = harness.get_market_regime(hot_industries=["半导体"])
+
+        self.assertIs(snapshot, persisted)
+        self.assertEqual(snapshot.snapshot_source, "cached")
+        self.assertEqual(harness.persisted_calls, 1)
+        self.assertEqual(harness.emotion_calls, 0)
+        self.assertEqual(harness.persisted_snapshots, [])
+        self.assertIs(harness.cache["2026-06-12"], persisted)
+
+    def test_market_regime_skips_live_provider_when_breadth_circuit_open(self) -> None:
+        persisted = replace(
+            _market_regime("repair"),
+            snapshot_source="cached",
+            snapshot_source_text="使用 2026-06-12 最近完整市场快照，后台正在刷新实时情绪",
+        )
+        harness = _RegimeFallbackHarness(persisted, circuit_open=True)
+
+        snapshot = harness.get_market_regime(hot_industries=["半导体"])
+
+        self.assertIs(snapshot, persisted)
+        self.assertEqual(harness.board_calls, 0)
+        self.assertEqual(harness.persisted_calls, 1)
+
+    def test_market_regime_returns_lightweight_snapshot_when_circuit_open_without_persisted_snapshot(self) -> None:
+        harness = _RegimeFallbackHarness(None, circuit_open=True)
+
+        snapshot = harness.get_market_regime(hot_industries=["半导体"])
+
+        self.assertEqual(snapshot.snapshot_source, "warming")
+        self.assertEqual(snapshot.hot_industries, ["半导体"])
+        self.assertEqual(snapshot.hot_industry_source, "cached_fallback")
+        self.assertEqual(harness.board_calls, 0)
+        self.assertEqual(harness.persisted_calls, 1)
+        self.assertEqual(harness.persisted_snapshots, [])
 
     def test_market_block_happens_in_signal_layer(self) -> None:
         harness = _SignalHarness()
