@@ -655,3 +655,52 @@ Operations not executed in this supervisor check:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 04:53 CST Local Guard Recheck
+
+Local supervisor check:
+
+```text
+local_time=2026-06-12 04:53:14 CST
+git_status=clean
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete
+observed_checkpoints=premarket-0448
+missing_checkpoints=09:15,09:35,10:30,11:30,13:05,14:55,15:10,15:30
+```
+
+The required implementation guard suite was re-run while waiting for the formal
+trading-day window:
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_platform_budget_verifier.py \
+  backend/tests/test_runtime_task_queue.py \
+  backend/tests/test_cloud_deploy_scripts.py \
+  backend/tests/test_independent_runtime_components.py
+```
+
+Result:
+
+```text
+75 passed, 1 warning
+```
+
+Decision:
+
+1. The local budget/runtime/deploy guards still pass.
+2. No priority-board or low-buy production read path changed in this check, so
+   no additional strategy semantics test was required.
+3. D5 embedded scheduler remains closed until the formal checkpoint set is
+   collected and summarized as `d5_ready=true`.
+
+Operations not executed in this guard recheck:
+
+- No online collector run.
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
