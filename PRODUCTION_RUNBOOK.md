@@ -108,6 +108,8 @@ Latest-data gaps, stuck `runtime_tasks`, empty priority board recovery, and runt
 
 Independent Web, runtime-worker, scheduler and analytics-worker operation is documented in [deployment-topology-runbook.md](docs/operations/deployment-topology-runbook.md) and [worker-runbook.md](docs/operations/worker-runbook.md).
 
+Small-host cloud resource contention mitigation, non-core task stop commands, embedded scheduler cutover, observation, and rollback are documented in [cloud-core-worker-resource-runbook.md](docs/operations/cloud-core-worker-resource-runbook.md).
+
 ## 5.1 单端口生产化运行
 
 后端现在会直接托管 `frontend-next/dist`，所以构建前端后，可以只启动后端：
