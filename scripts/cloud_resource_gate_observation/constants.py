@@ -64,4 +64,5 @@ DEFAULT_THRESHOLDS = {
     "root_warning_pct": 75.0,
     "duplicate_success_warning_count": 12,
     "queue_warning_count": 1,
+    "scheduler_provider_warning_blocking_lines": 20,
 }

@@ -20,6 +20,10 @@ def count_rows(rows: list[dict[str, Any]]) -> int:
     return total
 
 
+def count_nonblank_lines(text: str) -> int:
+    return sum(1 for line in text.splitlines() if line.strip())
+
+
 def evaluate(report: dict[str, Any], thresholds: dict[str, float], full_trading_day_complete: bool) -> dict[str, Any]:
     blocking: list[str] = []
     warnings: list[str] = []
@@ -63,8 +67,13 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, float], full_trading_
         blocking.append("kernel_oom_logs_present")
     if report.get("logs", {}).get("worker_signals"):
         warnings.append("runtime_worker_signal_logs_present")
-    if report.get("logs", {}).get("scheduler_provider_signals"):
-        warnings.append("scheduler_provider_warnings_present")
+    scheduler_provider_signals = str(report.get("logs", {}).get("scheduler_provider_signals") or "")
+    scheduler_provider_signal_lines = count_nonblank_lines(scheduler_provider_signals)
+    if scheduler_provider_signal_lines:
+        if scheduler_provider_signal_lines >= thresholds["scheduler_provider_warning_blocking_lines"]:
+            warnings.append(f"scheduler_provider_warning_lines={scheduler_provider_signal_lines}")
+        else:
+            warnings.append(f"scheduler_provider_warning_lines_observed={scheduler_provider_signal_lines}")
 
     queued_total = count_rows(report.get("runtime_tasks", {}).get("nonterminal", []))
     if queued_total >= thresholds["queue_warning_count"]:
@@ -98,7 +107,7 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, float], full_trading_
             warnings.append(f"mysql_slow_queries={slow_queries}")
 
     critical_warning_prefixes = (
-        "scheduler_provider_warnings_present",
+        "scheduler_provider_warning_lines=",
         "runtime_worker_signal_logs_present",
         "runtime_worker_memory_pct=",
         "runtime_nonterminal_task_count=",

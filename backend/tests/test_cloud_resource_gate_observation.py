@@ -187,7 +187,9 @@ def test_observation_keeps_d5_blocked_on_worker_or_scheduler_pressure(tmp_path: 
     fixture["logs"] = {
         "oom": "",
         "worker_signals": "",
-        "scheduler_provider_signals": "market provider circuit open: eastmoney",
+        "scheduler_provider_signals": "\n".join(
+            f"market provider circuit open: eastmoney {index}" for index in range(20)
+        ),
     }
     fixture["runtime_tasks"] = {
         **fixture["runtime_tasks"],  # type: ignore[arg-type]
@@ -210,9 +212,31 @@ def test_observation_keeps_d5_blocked_on_worker_or_scheduler_pressure(tmp_path: 
     warnings = payload["evaluation"]["warnings"]
     blockers = payload["evaluation"]["d5_gate"]["blockers"]
     assert "runtime_worker_memory_pct=92.0" in warnings
-    assert "scheduler_provider_warnings_present" in warnings
+    assert "scheduler_provider_warning_lines=20" in warnings
     assert "runtime_nonterminal_task_count=2" in warnings
-    assert "scheduler_provider_warnings_present" in blockers
+    assert "scheduler_provider_warning_lines=20" in blockers
+
+
+def test_observation_treats_low_frequency_provider_recovery_probe_as_warning_only(
+    tmp_path: Path,
+) -> None:
+    fixture = sample_gate_report()
+    fixture["logs"] = {
+        "oom": "",
+        "worker_signals": "",
+        "scheduler_provider_signals": "\n".join(
+            f"market provider result not usable: board_breadth {index}" for index in range(5)
+        ),
+    }
+
+    result = run_observation(fixture, tmp_path, "--full-trading-day-complete", "--fail-on-d5-blocked")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((tmp_path / "gate.json").read_text(encoding="utf-8"))
+    warnings = payload["evaluation"]["warnings"]
+    blockers = payload["evaluation"]["d5_gate"]["blockers"]
+    assert "scheduler_provider_warning_lines_observed=5" in warnings
+    assert "scheduler_provider_warning_lines_observed=5" not in blockers
 
 
 def test_observation_parsers_cover_remote_sections() -> None:

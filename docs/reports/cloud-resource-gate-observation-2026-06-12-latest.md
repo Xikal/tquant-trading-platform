@@ -1,21 +1,21 @@
 # Cloud Resource Gate Observation
 
-- Generated at: `2026-06-11T19:17:37.699938+00:00`
+- Generated at: `2026-06-11T19:22:37.486604+00:00`
 - Source: `ubuntu@43.143.243.97`
 - Evaluation: `warning`
 - D5 embedded scheduler ready: `false`
-- D5 blockers: full_trading_day_observation_incomplete, scheduler_provider_warnings_present
+- D5 blockers: full_trading_day_observation_incomplete
 - Blocking: none
-- Warnings: scheduler_provider_warnings_present, mysql_slow_queries=51
+- Warnings: scheduler_provider_warning_lines_observed=18, mysql_slow_queries=51
 
 ## Host
 
 | Metric | Value |
 | --- | --- |
-| Date | `Fri Jun 12 03:17:33 CST 2026` |
-| Uptime | `03:17:33 up 3 days, 16:01, 685 users,  load average: 0.24, 0.38, 0.39` |
-| Memory available MB | 1382 |
-| Swap used percent | 33.06 |
+| Date | `Fri Jun 12 03:22:33 CST 2026` |
+| Uptime | `03:22:33 up 3 days, 16:06, 688 users,  load average: 0.18, 0.29, 0.34` |
+| Memory available MB | 1390 |
+| Swap used percent | 33.01 |
 | Root used percent | 62 |
 | Root inode used percent | 13 |
 
@@ -23,41 +23,41 @@
 
 | Container | CPU | Memory | Memory % |
 | --- | ---: | ---: | ---: |
-| `tquant-runtime-scheduler-mysql` | 0.00% | 252.9MiB / 640MiB | 39.51% |
-| `tquant-runtime-worker-mysql` | 0.00% | 273.5MiB / 768MiB | 35.61% |
-| `tquant-mysql` | 0.37% | 857.3MiB / 1.5GiB | 55.81% |
-| `tquant-app-mysql` | 0.12% | 59.61MiB / 768MiB | 7.76% |
-| `tquant-frontend-web` | 2.55% | 2.711MiB / 128MiB | 2.12% |
-| `tquant-go-bff-gateway` | 2.46% | 5.215MiB / 128MiB | 4.07% |
-| `tquant-go-market-read-service` | 0.00% | 8.328MiB / 128MiB | 6.51% |
-| `tquant-go-scan-worker` | 0.00% | 5.793MiB / 128MiB | 4.53% |
-| `tquant-redis` | 0.49% | 5.746MiB / 128MiB | 4.49% |
+| `tquant-runtime-scheduler-mysql` | 0.00% | 253.4MiB / 640MiB | 39.60% |
+| `tquant-runtime-worker-mysql` | 0.14% | 273.5MiB / 768MiB | 35.61% |
+| `tquant-mysql` | 0.39% | 857.8MiB / 1.5GiB | 55.85% |
+| `tquant-app-mysql` | 0.14% | 59.73MiB / 768MiB | 7.78% |
+| `tquant-frontend-web` | 0.00% | 2.707MiB / 128MiB | 2.11% |
+| `tquant-go-bff-gateway` | 0.00% | 5.254MiB / 128MiB | 4.10% |
+| `tquant-go-market-read-service` | 0.00% | 7.883MiB / 128MiB | 6.16% |
+| `tquant-go-scan-worker` | 0.00% | 5.816MiB / 128MiB | 4.54% |
+| `tquant-redis` | 1.37% | 6.055MiB / 128MiB | 4.73% |
 
 ## HTTP
 
 | Path | Status | Time | Error |
 | --- | ---: | ---: | --- |
-| `/readyz` | 200 | 0.003957 | `` |
-| `/api/monitor` | 404 | 0.004059 | `` |
-| `/api/monitor/snapshot` | 401 | 0.008328 | `` |
-| `/api/priority-board` | 404 | 0.00314 | `` |
-| `/api/screeners/low-buy/priority-board` | 401 | 0.002942 | `` |
-| `/api/runtime-tasks/summary` | 401 | 0.003287 | `` |
-| `/next/monitor` | 200 | 0.008677 | `` |
-| `/next/monitor/market` | 200 | 0.003925 | `` |
-| `/next/strategy-tracking` | 200 | 0.003733 | `` |
-| `/next/analysis` | 200 | 0.003962 | `` |
-| `/next/backtest` | 200 | 0.004004 | `` |
-| `/next/data` | 200 | 0.005518 | `` |
-| `/next/settings` | 200 | 0.003506 | `` |
+| `/readyz` | 200 | 0.005995 | `` |
+| `/api/monitor` | 404 | 0.003902 | `` |
+| `/api/monitor/snapshot` | 401 | 0.003471 | `` |
+| `/api/priority-board` | 404 | 0.002695 | `` |
+| `/api/screeners/low-buy/priority-board` | 401 | 0.002775 | `` |
+| `/api/runtime-tasks/summary` | 401 | 0.002616 | `` |
+| `/next/monitor` | 200 | 0.003231 | `` |
+| `/next/monitor/market` | 200 | 0.003289 | `` |
+| `/next/strategy-tracking` | 200 | 0.003645 | `` |
+| `/next/analysis` | 200 | 0.003156 | `` |
+| `/next/backtest` | 200 | 0.003205 | `` |
+| `/next/data` | 200 | 0.003092 | `` |
+| `/next/settings` | 200 | 0.003287 | `` |
 
 ## MySQL
 
 | Metric | Value |
 | --- | ---: |
 | `Slow_queries` | 51 |
-| `Threads_cached` | 4 |
-| `Threads_connected` | 9 |
+| `Threads_cached` | 5 |
+| `Threads_connected` | 8 |
 | `Threads_created` | 13 |
 | `Threads_running` | 2 |
 | `innodb_buffer_pool_size` | 536870912 |

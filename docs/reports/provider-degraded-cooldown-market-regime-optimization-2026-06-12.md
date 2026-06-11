@@ -235,3 +235,25 @@ d5_gate.ready=false
 d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present
 warnings=scheduler_provider_warnings_present, mysql_slow_queries=51
 ```
+
+### Gate Evaluation Follow-Up
+
+The D5 gate collector previously treated any scheduler provider log line as a D5 blocker. After the cooldown rollout, that was too coarse: a single scheduled recovery probe every 300 seconds is expected and does not represent sustained provider pressure. The evaluator now distinguishes:
+
+- `scheduler_provider_warning_lines=<n>`: D5 blocker when provider log lines in the collection window are at or above `scheduler_provider_warning_blocking_lines`, default `20`.
+- `scheduler_provider_warning_lines_observed=<n>`: warning only when low-frequency provider recovery probes are present below the blocking threshold.
+
+This keeps D5 conservative for sustained provider failure bursts while allowing controlled cooldown recovery probes to be observed without permanently blocking scheduler embed readiness.
+
+Latest collector after this evaluator change:
+
+```text
+generated_at=2026-06-11T19:22:37Z
+host_time=2026-06-12 03:22:33 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+warnings=scheduler_provider_warning_lines_observed=18, mysql_slow_queries=51
+```
+
+The full trading-day requirement is still incomplete, so D5 embedded scheduler remains closed.
