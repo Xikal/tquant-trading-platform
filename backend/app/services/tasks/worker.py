@@ -46,22 +46,30 @@ class RuntimeTaskWorker:
                 queue=queue,
                 worker_id=self.worker_id,
             )
+            log_extra = {"component": self.component, "task_id": task_id, "task_type": task_type}
             try:
+                logger.info("runtime task worker task started", extra=log_extra)
                 context.progress(2.0, "任务已被 Worker 接收", {"worker_id": self.worker_id})
                 result = self.registry.get(task_type)(context)
                 payload = dict(result or {})
                 if context.artifacts:
                     payload.setdefault("artifacts", context.artifacts)
                 queue.mark_succeeded(task_id, payload)
+                logger.info("runtime task worker task succeeded", extra=log_extra)
             except Exception as exc:
-                logger.exception("runtime task worker failed: id=%s type=%s", task_id, task_type)
+                logger.exception("runtime task worker failed: id=%s type=%s", task_id, task_type, extra=log_extra)
                 db.rollback()
                 queue.mark_failed(task_id, str(exc), retryable=True)
             _record_component_heartbeat(db, component=self.component, worker_id=self.worker_id)
             return True
 
     def run_forever(self) -> None:
-        logger.info("runtime task worker started: worker_id=%s task_types=%s", self.worker_id, self.registry.task_types())
+        logger.info(
+            "runtime task worker started: worker_id=%s task_types=%s",
+            self.worker_id,
+            self.registry.task_types(),
+            extra={"component": self.component},
+        )
         while True:
             did_work = self.run_once()
             if not did_work:
@@ -80,4 +88,9 @@ def _record_component_heartbeat(db, *, component: str, worker_id: str) -> None: 
     try:
         record_platform_component_heartbeat(db, component=component, worker_id=worker_id)
     except Exception:
-        logger.exception("component heartbeat update failed: component=%s worker_id=%s", component, worker_id)
+        logger.exception(
+            "component heartbeat update failed: component=%s worker_id=%s",
+            component,
+            worker_id,
+            extra={"component": component},
+        )

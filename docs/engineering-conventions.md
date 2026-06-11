@@ -232,6 +232,14 @@ Runbook 使用 `docs/operations/<topic>-runbook.md`。
 5. 修改生成报告时，必须测试候选池收益、真实组合收益、观察池收益不会混表。
 6. 删除、隐藏、默认关闭功能时，必须确认路由、任务、前端入口、文档索引同步。
 
+#### 6.5.1 日期窗口测试
+
+1. 窗口过滤、导出、manifest、latest trade date、最近 N 天报告等“相对窗口”测试必须使用显式 fixture 时间，禁止依赖当前日期、数据库默认时间或 `datetime.now()` / `datetime.utcnow()`。
+2. 后端窗口 fixture 优先复用 `backend/tests/support/export_time.py` 中的 `EXPORT_WINDOW_END_DATE`、`export_window_date()` 和 `export_window_datetime()`。
+3. 业务规则固定日期可以保留硬编码，例如涨跌停制度日期、交易日历样例、策略形态样本、K 线序列、风控事件日期和历史报告回放日期。
+4. 迁移日期测试时先判断日期语义：只有导出窗口、latest trade date fallback、manifest cutoff、最近 N 天过滤等窗口 fixture 需要迁移；不追求全仓库日期常量清零。
+5. 新增窗口 helper 时必须让同类测试共享，不允许在多个测试文件里散落新的“今天/昨天/最近 N 天”硬编码锚点。
+
 ### 6.6 报告口径规范
 
 1. 所有收益报告必须写明样本范围、时间范围、交易成本、滑点、成交假设、持仓规则。

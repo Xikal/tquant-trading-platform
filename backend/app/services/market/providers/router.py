@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+import logging
 import time
 from typing import Protocol, TypeVar
 
@@ -11,6 +12,7 @@ from app.services.market.providers.quality import MarketDataQuality, ProviderRes
 
 
 T = TypeVar("T")
+logger = logging.getLogger(__name__)
 _FAST_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="market-provider-fast")
 _SLOW_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="market-provider-slow")
 
@@ -160,6 +162,10 @@ class MarketProviderRouter:
         for provider in order_providers_for_operation(self.providers, self.circuits.snapshot(), operation):
             provider_name = getattr(provider, "name", provider.__class__.__name__)
             if not self.circuits.can_call(provider_name, operation):
+                logger.warning(
+                    "market provider circuit open",
+                    extra={"component": "market-provider-router", "provider": provider_name},
+                )
                 last_result = ProviderResult(
                     quality=MarketDataQuality.UNAVAILABLE,
                     source=provider_name,
@@ -177,6 +183,12 @@ class MarketProviderRouter:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 message = f"provider call timed out after {self.call_timeout_seconds:.1f}s"
                 self.circuits.record(provider_name, operation, ok=False, latency_ms=latency_ms, error=message)
+                logger.warning(
+                    "market provider call timed out: operation=%s latency_ms=%s",
+                    operation,
+                    latency_ms,
+                    extra={"component": "market-provider-router", "provider": provider_name},
+                )
                 result = ProviderResult(
                     quality=MarketDataQuality.UNAVAILABLE,
                     source=provider_name,
@@ -186,6 +198,12 @@ class MarketProviderRouter:
             except Exception as exc:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 self.circuits.record(provider_name, operation, ok=False, latency_ms=latency_ms, error=str(exc))
+                logger.warning(
+                    "market provider call failed: operation=%s latency_ms=%s",
+                    operation,
+                    latency_ms,
+                    extra={"component": "market-provider-router", "provider": provider_name},
+                )
                 result = ProviderResult(
                     quality=MarketDataQuality.UNAVAILABLE,
                     source=provider_name,
@@ -204,6 +222,12 @@ class MarketProviderRouter:
             last_result = result
             if result.usable:
                 return result
+            logger.info(
+                "market provider result not usable: operation=%s quality=%s",
+                operation,
+                getattr(result.quality, "value", str(result.quality)),
+                extra={"component": "market-provider-router", "provider": provider_name},
+            )
         return last_result or ProviderResult(
             quality=MarketDataQuality.UNAVAILABLE,
             source="none",

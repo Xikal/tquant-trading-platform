@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import logging
 
 from sqlalchemy import select
 
@@ -85,6 +86,9 @@ from app.services.low_buy.shared import (
 from app.services.market.board_exclusions import is_growth_board_stock
 
 
+logger = logging.getLogger(__name__)
+
+
 class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
     _main_force_shadow_summary_cache: dict | None = None
 
@@ -107,6 +111,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
         if normalized_refresh != "sync":
             cached_response = self._get_priority_response_cache(cache_key)
             if cached_response is not None:
+                _log_priority_board_read_path("priority_board_response_cache", trade_date=target_trade_date)
                 if normalized_refresh == "async":
                     _enqueue_priority_refresh(db, reason="priority_board_refresh_requested")
                     return _mark_priority_refresh_queued(cached_response, stale=False)
@@ -118,6 +123,7 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
                 strategy_variant=variant,
             )
             if read_model_response is not None:
+                _log_priority_board_read_path("priority_board_read_model", trade_date=target_trade_date)
                 if normalized_refresh == "async":
                     _enqueue_priority_refresh(db, reason="priority_board_read_model_refresh_requested")
                     return _mark_priority_refresh_queued(read_model_response, stale=False)
@@ -125,13 +131,16 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
 
             stale_response = self._get_priority_response_cache(cache_key, allow_stale=True)
             if stale_response is not None:
+                _log_priority_board_read_path("priority_board_cached_background_refresh", trade_date=target_trade_date)
                 _enqueue_priority_refresh(db, reason="priority_board_cache_miss")
                 return _mark_priority_refresh_queued(stale_response, stale=True)
 
+            _log_priority_board_read_path("priority_board_cache_empty", trade_date=target_trade_date)
             _enqueue_priority_refresh(db, reason="priority_board_cache_empty")
             if getattr(get_settings(), "priority_board_empty_fallback_to_last_snapshot", True):
                 last_success = _load_latest_successful_priority_snapshot(db, variant=variant, limit=limit)
                 if last_success is not None:
+                    _log_priority_board_read_path("priority_board_latest_successful_snapshot", trade_date=target_trade_date)
                     return _mark_latest_successful_snapshot_queued(last_success)
             return _empty_priority_board_response(
                 target_trade_date=target_trade_date,
@@ -504,6 +513,13 @@ def _priority_read_model_key(
         trade_date=target_trade_date,
         strategy_variant=strategy_variant,
         cache_key=cache_key,
+    )
+
+
+def _log_priority_board_read_path(read_path: str, *, trade_date: str) -> None:
+    logger.info(
+        "priority board read path selected",
+        extra={"component": "priority-board", "read_path": read_path, "trade_date": trade_date},
     )
 
 

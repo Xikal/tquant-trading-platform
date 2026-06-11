@@ -26,7 +26,7 @@
 
 | 路径 | 类型 | 保留原因 | 后续处理 |
 |---|---|---|---|
-| `docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json` | 回测 JSON | 多份 front-row 审查和开发计划引用 | 迁移前保留，补 artifact manifest |
+| `docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json` | 回测 JSON | 多份 front-row 审查和开发计划引用 | 已完成脚本默认路径前置迁移；旧文件等待单独出库/删除授权 |
 | `docs/reports/strategy-24m-backtest-2026-05-30.json` | 回测 JSON | 24 个月策略报告引用 | 后续迁入 `backend/data/reports/` |
 | `docs/reports/strategy-24m-optimization-report-2026-05-28.json` | 优化报告 JSON | 闭环优化和策略验收引用 | 后续迁入 `backend/data/reports/` |
 | `docs/reports/front-row-weighted-production-scoring-review-package-2026-05-30.zip` | 审查包 | 历史审查证据 | 后续迁入外部 artifact |

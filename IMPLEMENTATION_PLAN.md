@@ -1,5 +1,77 @@
 # TQuant 实施计划
 
+## 2026-06-11 全项目架构质量提升收口
+
+需求来源：
+
+- `docs/full-project-architecture-quality-requirements-2026-06-11.md`
+- `docs/full-project-architecture-quality-development-plan-2026-06-11.md`
+- `docs/reports/full-project-architecture-quality-audit-2026-06-11.md`
+- `docs/engineering-conventions.md`
+- `docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md`
+- `AGENTS.md`
+
+### 执行边界
+
+- [x] 已执行 `git status --short`：当前保护在途改动为 `docs/full-project-architecture-quality-development-plan-2026-06-11.md`、`docs/full-project-architecture-quality-requirements-2026-06-11.md`、`docs/reports/frontend-next-online-performance-comparison-2026-06-11.md`、`docs/reports/full-project-architecture-quality-audit-2026-06-11.md`。
+- [x] 已执行 `git branch --show-current`：当前分支 `codex/phase4-phase5-architecture`。
+- [x] 不修改 `backend/app/services/low_buy/strategy_policy.py`。
+- [x] 不改变 `production_score`、priority board 排序语义、生产策略公式、风控阈值、交易日发布门控。
+- [x] `strategy_engine` 保持 shadow-only，`replacement_enabled=false`。
+- [x] 不把 research/ML/因子/重分析任务放回 Web 主进程。
+- [x] `portfolio_backtest_metrics` 继续作为真实组合回测唯一事实源。
+- [x] 不物理删除 `frontend/` 或其它源码目录。
+- [x] 默认不部署、不切流、不执行线上写操作、不停容器、不清 Docker cache、不改 sysctl。
+
+### 本轮 TODO
+
+- [x] D0：基线冻结与任务护栏。
+- [x] D1：结构化日志增强。
+- [x] D2：Priority Board 热读守卫确认。
+- [x] D3：日期窗口测试规范推广。
+- [x] D4：大 JSON 出库前置改造。
+- [x] D5：Scripts 分类与入口收敛。
+- [x] D6：旧前端退役决策包。
+- [x] D7：frontend-next chunk 测量。
+- [x] D8：线上资源/性能/Internal Token 授权包。
+
+### 当前进度
+
+- [x] D0 已核对权威需求、开发计划、审查报告、工程规范、模块化架构基线和 `AGENTS.md`。
+- [x] 本轮 Markdown 报告产物限定到 `docs/reports/`；机器 JSON 限定到 `backend/data/reports/` 或既有 artifact 目录。
+- [x] 发现当前 `docs/full-project-architecture-quality-*.md` 和审查报告自身仍为未跟踪文件；本轮按用户提供的权威输入读取并保护，不覆盖。
+- [x] D1 已扩展 `JsonLogFormatter` extra 白名单，并为 runtime task worker、market provider router、priority board read path 补结构化上下文日志；未改业务返回或任务状态机。
+- [x] D2 已复核 priority board 热读查询预算和 golden 守卫；N=5 与 N=20 候选受控测量均为 4 条跟踪 SQL，未发现线性增长，未改生产路径。
+- [x] D3 已在 `docs/engineering-conventions.md` 增加日期窗口测试规范；当前明确窗口类测试已复用 `backend/tests/support/export_time.py`，其余固定日期多数属于业务规则 fixture，未做无意义清零。
+- [x] D4 已将 front-row weighted 脚本新机器 JSON 默认输出/读取迁到 `backend/data/reports/`；保留显式参数兼容旧路径，不移动不删除历史 docs JSON。
+- [x] D5 已输出 `scripts` inventory 和 archive 建议；未移动脚本，无法证明无引用的一次性脚本统一标记 `keep_until_owner_review`。
+- [x] D6 已输出旧前端退役决策包；确认运行/CI/Docker 主路径已转 `frontend-next`，但 `frontend/` 因 native、清理和历史追溯引用继续保留。
+- [x] D7 已运行 `frontend-next` build 与 chunk profile；首屏 JS raw 261581 bytes，ECharts 首屏资产 0，收益不足不拆包。
+- [x] D8 已输出线上资源/性能/Internal Token 授权包；只准备模板和边界，不执行线上动作。
+
+### 验证记录
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_logging_config.py`：4 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_priority_board_cache_fast_path.py`：23 passed / 1 LibreSSL warning。
+- [x] `git diff -- backend/app/services/low_buy/strategy_policy.py backend/app/services/low_buy/production_scoring.py`：无输出，硬边界未改。
+- [x] `PYTHONPATH=backend:backend/tests:. backend/.venv/bin/python - <<'PY' ...`：priority board hot-read N=5 查询计数 4，N=20 查询计数 4，top3 `000020,000019,000018`，shadow/replacement guard 均通过。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py`：32 passed / 1 LibreSSL warning。
+- [x] `rg -n "EXPORT_WINDOW_END_DATE|export_window_date|export_window_datetime" backend/tests docs/engineering-conventions.md`：确认 helper、测试和规范引用存在。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_analytics_layer.py backend/tests/test_low_buy_read_paths.py`：31 passed / 1 LibreSSL warning。
+- [x] `rg -n "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29\\.json" backend scripts || true`：无输出，代码默认路径不再依赖旧 docs JSON。
+- [x] front-row weighted 脚本 `build_parser().parse_args([])` 检查：新默认 source/json 路径均指向 `backend/data/reports/`，Markdown 摘要仍指向 `docs/reports/`。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_cloud_deploy_scripts.py`：43 passed / 1 LibreSSL warning。
+- [x] `git ls-files -z | xargs -0 ls -lh 2>/dev/null | awk '$5 ~ /M$/ || $5 ~ /G$/ {print $5, $9}'`：仍显示 13M 历史 docs JSON；本批按硬边界保留，后续删除/出库需单独授权。
+- [x] `find scripts backend/scripts -maxdepth 1 -type f | sort`：可复现 139 个脚本清单。
+- [x] `rg -n "scripts/|backend/scripts/" .github docs Makefile README.md`：确认 CI/Makefile/Runbook/历史文档引用广泛，不能默认移动。
+- [x] `test -f docs/reports/scripts-inventory-and-archive-plan-2026-06-11.md`：PASS。
+- [x] `rg -n "frontend/|frontend/dist|__legacy|frontend-legacy|frontend-hot|html-root" Dockerfile deploy backend scripts .github Makefile`：确认旧前端真实运行依赖已退役，剩余为清理、native、测试和历史保护引用。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_deploy_scope.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_frontend_next_level1_cutover.py`：62 passed / 1 LibreSSL warning。
+- [x] `cd frontend-next && npm run build && CHUNK_PROFILE_DATE=2026-06-11 npm run chunk:profile`：PASS，输出 `docs/reports/frontend-next-chunk-profile-2026-06-11.md` 与 ignored artifact `backend/data/reports/frontend-next-chunk-profile-2026-06-11.json`。
+- [x] `rg -n "RUNTIME_WORKER_EMBED_SCHEDULER|swappiness|docker builder prune|TQUANT_INTERNAL_SERVICE_TOKEN|X-Internal-Service-Token|/metrics|/readyz" docs/operations docs/reports`：确认授权包和既有运维入口覆盖关键字。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_auth_cookie_security.py backend/tests/test_go_scan_worker_async.py`：13 passed / 1 LibreSSL warning。
+- [x] `test -f docs/reports/platform-online-authorization-pack-2026-06-11.md`：PASS。
+
 ## 2026-06-11 集合竞价辅助能力开发
 
 需求来源：

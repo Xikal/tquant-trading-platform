@@ -5,6 +5,18 @@ import logging
 from datetime import datetime
 
 
+EXTRA_FIELD_WHITELIST = (
+    "request_id",
+    "task_id",
+    "task_type",
+    "trade_date",
+    "symbol",
+    "component",
+    "provider",
+    "read_path",
+)
+
+
 class JsonLogFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload = {
@@ -13,6 +25,9 @@ class JsonLogFormatter(logging.Formatter):
             "module": record.name,
             "message": record.getMessage(),
         }
+        for field in EXTRA_FIELD_WHITELIST:
+            if hasattr(record, field):
+                payload[field] = getattr(record, field)
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False)

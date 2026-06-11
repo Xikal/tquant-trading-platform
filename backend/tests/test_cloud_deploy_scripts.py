@@ -1055,9 +1055,38 @@ def test_local_artifact_cleanup_script_is_explicit_and_dry_run_by_default() -> N
 
 def test_reports_index_documents_machine_artifact_policy() -> None:
     index = read_repo_file("docs/reports/README.md")
+    migration = read_repo_file("docs/reports/front-row-weighted-artifact-migration-2026-06-11.md")
 
     assert "人读 Markdown" in index
     assert "机器产物" in index
     assert "backend/data/reports" in index
     assert "不要直接删除历史 JSON" in index
-    assert "front-row-weighted-production-scoring-backtest-2026-05-29.json" in index
+    assert "等待单独出库/删除授权" in index
+    assert "backend/data/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json" in migration
+
+
+def test_front_row_weighted_default_inputs_fall_back_to_retained_docs_artifacts() -> None:
+    from backend.scripts import front_row_weighted_minute_tick_tradability as tradability
+    from backend.scripts import front_row_weighted_oos_manifest as oos_manifest
+    from backend.scripts import front_row_weighted_readiness_report as readiness
+    from backend.scripts import front_row_weighted_walk_forward_validation as walk_forward
+    from backend.scripts import front_row_weighted_weak_market_compression as weak_market
+
+    parsers = (
+        oos_manifest.build_parser().parse_args([]),
+        walk_forward.build_parser().parse_args([]),
+        tradability.build_parser().parse_args([]),
+        weak_market.build_parser().parse_args([]),
+    )
+    for args in parsers:
+        source = Path(args.source_report)
+        assert source.exists(), source
+        assert "docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json" in source.as_posix()
+        assert "backend/data/reports" in Path(args.json_output).as_posix()
+
+    readiness_args = readiness.build_parser().parse_args([])
+    for attr in ("base_report", "freeze_manifest", "walk_forward_report", "tradability_report", "weak_market_report"):
+        report = Path(getattr(readiness_args, attr))
+        assert report.exists(), report
+        assert report.as_posix().startswith(str(ROOT_DIR / "docs" / "reports"))
+    assert "backend/data/reports" in Path(readiness_args.json_output).as_posix()

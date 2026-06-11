@@ -7,17 +7,31 @@ from typing import Any
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-DEFAULT_JSON_OUTPUT = ROOT_DIR / "docs" / "reports" / "front-row-weighted-production-readiness-2026-05-30.json"
+
+
+def _default_input_report(filename: str) -> Path:
+    artifact_path = ROOT_DIR / "backend" / "data" / "reports" / filename
+    if artifact_path.exists():
+        return artifact_path
+    return ROOT_DIR / "docs" / "reports" / filename
+
+
+DEFAULT_JSON_OUTPUT = ROOT_DIR / "backend" / "data" / "reports" / "front-row-weighted-production-readiness-2026-05-30.json"
 DEFAULT_MD_OUTPUT = ROOT_DIR / "docs" / "reports" / "front-row-weighted-production-readiness-2026-05-30.md"
+DEFAULT_BASE_REPORT = _default_input_report("front-row-weighted-production-scoring-backtest-2026-05-29.json")
+DEFAULT_FREEZE_MANIFEST = _default_input_report("front-row-weighted-validation-freeze-2026-05-30.json")
+DEFAULT_WALK_FORWARD_REPORT = _default_input_report("front-row-weighted-walk-forward-validation-2026-05-30.json")
+DEFAULT_TRADABILITY_REPORT = _default_input_report("front-row-weighted-minute-tick-tradability-2026-05-30.json")
+DEFAULT_WEAK_MARKET_REPORT = _default_input_report("front-row-weighted-weak-market-compression-2026-05-30.json")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Front-row weighted combined production readiness report")
-    parser.add_argument("--base-report", default="docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json")
-    parser.add_argument("--freeze-manifest", default="docs/reports/front-row-weighted-validation-freeze-2026-05-30.json")
-    parser.add_argument("--walk-forward-report", default="docs/reports/front-row-weighted-walk-forward-validation-2026-05-30.json")
-    parser.add_argument("--tradability-report", default="docs/reports/front-row-weighted-minute-tick-tradability-2026-05-30.json")
-    parser.add_argument("--weak-market-report", default="docs/reports/front-row-weighted-weak-market-compression-2026-05-30.json")
+    parser.add_argument("--base-report", default=str(DEFAULT_BASE_REPORT))
+    parser.add_argument("--freeze-manifest", default=str(DEFAULT_FREEZE_MANIFEST))
+    parser.add_argument("--walk-forward-report", default=str(DEFAULT_WALK_FORWARD_REPORT))
+    parser.add_argument("--tradability-report", default=str(DEFAULT_TRADABILITY_REPORT))
+    parser.add_argument("--weak-market-report", default=str(DEFAULT_WEAK_MARKET_REPORT))
     parser.add_argument("--json-output", default=str(DEFAULT_JSON_OUTPUT))
     parser.add_argument("--markdown-output", default=str(DEFAULT_MD_OUTPUT))
     return parser

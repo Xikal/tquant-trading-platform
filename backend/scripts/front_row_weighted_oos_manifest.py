@@ -18,13 +18,21 @@ from app.models.entities import DailyBarSnapshot
 from app.services.low_buy.oos_validation_manifest import build_freeze_manifest, today_iso, validate_freeze_manifest
 
 
-DEFAULT_OUTPUT = ROOT_DIR / "docs" / "reports" / "front-row-weighted-validation-freeze-2026-05-30.json"
+def _default_input_report(filename: str) -> Path:
+    artifact_path = ROOT_DIR / "backend" / "data" / "reports" / filename
+    if artifact_path.exists():
+        return artifact_path
+    return ROOT_DIR / "docs" / "reports" / filename
+
+
+DEFAULT_SOURCE_REPORT = _default_input_report("front-row-weighted-production-scoring-backtest-2026-05-29.json")
+DEFAULT_OUTPUT = ROOT_DIR / "backend" / "data" / "reports" / "front-row-weighted-validation-freeze-2026-05-30.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Freeze front-row weighted OOS validation manifest")
     parser.add_argument("--freeze-date", default=today_iso())
-    parser.add_argument("--source-report", default="docs/reports/front-row-weighted-production-scoring-backtest-2026-05-29.json")
+    parser.add_argument("--source-report", default=str(DEFAULT_SOURCE_REPORT))
     parser.add_argument("--json-output", default=str(DEFAULT_OUTPUT))
     return parser
 

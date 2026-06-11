@@ -5,8 +5,9 @@ import { gzipSync } from "node:zlib";
 const distRoot = resolve("dist");
 const assetsRoot = resolve(distRoot, "assets");
 const indexPath = resolve(distRoot, "index.html");
-const jsonReportPath = resolve("../docs/reports/frontend-next-chunk-profile-2026-06-08.json");
-const markdownReportPath = resolve("../docs/reports/frontend-next-chunk-profile-2026-06-08.md");
+const profileDate = process.env.CHUNK_PROFILE_DATE || new Date().toISOString().slice(0, 10);
+const jsonReportPath = resolve(`../backend/data/reports/frontend-next-chunk-profile-${profileDate}.json`);
+const markdownReportPath = resolve(`../docs/reports/frontend-next-chunk-profile-${profileDate}.md`);
 const INITIAL_JS_RAW_TARGET = 350_000;
 
 if (!existsSync(indexPath) || !existsSync(assetsRoot)) {
@@ -50,6 +51,10 @@ const report = {
   echarts_assets: echartsAssets,
   largest_assets: allAssets.slice(0, 20),
 };
+report.artifacts = {
+  json_report: relative(resolve(".."), jsonReportPath),
+  markdown_report: relative(resolve(".."), markdownReportPath),
+};
 
 report.status = {
   initial_js_raw: report.summary.initial_js_raw_bytes <= INITIAL_JS_RAW_TARGET ? "ok" : "fail",
@@ -57,6 +62,7 @@ report.status = {
 };
 report.ok = Object.values(report.status).every((status) => status === "ok");
 
+mkdirSync(resolve("../backend/data/reports"), { recursive: true });
 mkdirSync(resolve("../docs/reports"), { recursive: true });
 writeFileSync(jsonReportPath, `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(markdownReportPath, renderMarkdown(report));
@@ -107,7 +113,7 @@ function sum(items, key) {
 }
 
 function renderMarkdown(payload) {
-  return `# Frontend Next Chunk Profile - 2026-06-08
+  return `# Frontend Next Chunk Profile - ${profileDate}
 
 状态：${payload.ok ? "PASS" : "FAIL"}
 生成时间：${payload.generated_at}
@@ -141,5 +147,8 @@ ${payload.echarts_assets.map((asset) => `| ${asset.name} | ${asset.bytes} | ${as
 - 首屏 JS raw 目标：<= ${payload.targets.initial_js_raw_bytes_max} bytes。
 - 首屏 ECharts chunk 目标：0。
 - ECharts chunk 可以存在，但必须保持 lazy，不得出现在 HTML script/modulepreload 初始资产中。
+- 本次首屏 JS raw 为 ${payload.summary.initial_js_raw_bytes} bytes，距离阈值仍有 ${Math.max(0, payload.targets.initial_js_raw_bytes_max - payload.summary.initial_js_raw_bytes)} bytes 余量；首屏 ECharts 资产为 ${payload.summary.initial_echarts_assets}。
+- 当前未发现拆分初始 chunk 的明确收益，默认不改前端代码、不新增拆包策略。
+- 机器 JSON 输出：\`${payload.artifacts.json_report}\`。
 `;
 }

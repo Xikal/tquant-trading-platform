@@ -57,7 +57,7 @@ except ImportError:
 
 
 DEFAULT_START = "2024-05-28"
-DEFAULT_JSON_OUTPUT = ROOT_DIR / "docs" / "reports" / "front-row-weighted-production-scoring-backtest-2026-05-29.json"
+DEFAULT_JSON_OUTPUT = ROOT_DIR / "backend" / "data" / "reports" / "front-row-weighted-production-scoring-backtest-2026-05-29.json"
 DEFAULT_MD_OUTPUT = ROOT_DIR / "docs" / "reports" / "front-row-weighted-production-scoring-backtest-2026-05-29.md"
 VARIANTS = (
     "baseline",
