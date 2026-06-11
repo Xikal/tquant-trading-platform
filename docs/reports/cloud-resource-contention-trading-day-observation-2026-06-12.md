@@ -12,7 +12,7 @@ Reason: the worker recycle guard is now live and the current worker RSS is low, 
 
 Latest read-only gate snapshot: `docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md`.
 
-At `2026-06-12 02:29:42 CST`, the platform is online and no P0 blocker was observed, but D5 remains blocked because the observation is not a full trading day, scheduler provider warnings are still present, and two old `data_quality_sla_refresh` tasks remain queued. The previous duplicate A-key / strategy-tracking two-hour window warning is no longer present in the latest collector output.
+At `2026-06-12 02:48:43 CST`, the platform is online and no P0 blocker was observed, but D5 remains blocked because the observation is not a full trading day, scheduler provider warnings are still present, and two old `data_quality_sla_refresh` tasks remain queued. The previous duplicate A-key / strategy-tracking two-hour window warning is no longer present in the latest collector output.
 
 ## Must Keep Running
 
@@ -106,7 +106,7 @@ All criteria must pass before enabling embedded scheduler:
 
 | Criterion | Required evidence | Current status |
 |---|---|---|
-| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | short-window pass with slow-query warning; `tquant-mysql` `849.3MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` |
+| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | short-window pass with slow-query warning; `tquant-mysql` `852.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` |
 | Worker headroom | worker RSS remains controlled across task cycles; no restart loop | short-window pass; `tquant-runtime-worker-mysql` `294.8MiB / 768MiB` (`38.39%`) |
 | Scheduler pressure | provider/circuit warnings do not cause sustained CPU/RSS pressure | not passed; scheduler provider warning lines still present after D6 provider guard |
 | Queue health | no sustained core backlog; no repeated A-key/strategy-tracking duplicates after successful same-day task | warning; old queued `data_quality_sla_refresh=2`; latest two-hour window no longer shows duplicate A-key / strategy-tracking successes |
@@ -118,13 +118,13 @@ All criteria must pass before enabling embedded scheduler:
 
 | Area | Evidence | Status |
 |---|---|---|
-| Host | load average `0.54, 0.73, 0.65`; memory available `1392MiB`; swap used `665MiB / 1987MiB` (`33.47%`) | warning |
+| Host | load average `0.21, 0.20, 0.32`; memory available `1378MiB`; swap used `662MiB / 1987MiB` (`33.32%`) | warning |
 | Disk | root `34G / 59G` (`62%`); inode `13%` | pass |
-| app/API | `tquant-app-mysql` `44.73MiB / 768MiB`; `/readyz` `200` in `0.003567s` | pass |
+| app/API | `tquant-app-mysql` `52.54MiB / 768MiB`; `/readyz` `200` in `0.003816s` | pass |
 | runtime-worker | `294.8MiB / 768MiB` (`38.39%`) | pass |
-| runtime-scheduler | `261.1MiB / 640MiB` (`40.80%`) | warning: provider logs still present |
-| MySQL | `849.3MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` | warning: slow query count exists |
-| Redis | `5.719MiB / 128MiB` | pass |
+| runtime-scheduler | `255.3MiB / 640MiB` (`39.89%`) | warning: provider logs still present |
+| MySQL | `852.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` | warning: slow query count exists |
+| Redis | `4.961MiB / 128MiB` | pass |
 | frontend-next | `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` | pass |
 | protected APIs | `/api/monitor/snapshot`, `/api/screeners/low-buy/priority-board`, `/api/runtime-tasks/summary` all `401` quickly | pass |
 | queue | queued `data_quality_sla_refresh=2`; recent summary only shows `low_buy_materialization_refresh` successes | warning |
@@ -138,9 +138,9 @@ d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_war
 warnings=scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, mysql_slow_queries=48
 ```
 
-## 2026-06-12 02:29 CST Decision Update
+## 2026-06-12 02:48 CST Decision Update
 
-The latest gate refresh improves the queue signal compared with the `01:14 CST` snapshot: duplicate A-key and strategy-tracking success-window warnings are absent. After the scheduler-only D6 provider-degraded guard rollout, the earlier intraday fallback chain was reduced, but board-breadth provider warnings are still visible in the standalone scheduler logs. D5 is still not allowed because the full trading-day requirement is incomplete, provider pressure is not proven stable, and two old `data_quality_sla_refresh` tasks remain non-terminal.
+The latest gate refresh keeps the same decision as the `02:29 CST` snapshot: no blocking condition and core HTTP/page checks remain healthy, but D5 is still not allowed. After the scheduler-only D6 provider-degraded guard rollout, the earlier intraday fallback chain was reduced, but board-breadth provider warnings are still visible in the standalone scheduler logs. The full trading-day requirement is incomplete, provider pressure is not proven stable, and two old `data_quality_sla_refresh` tasks remain non-terminal.
 
 Recommended next action:
 
