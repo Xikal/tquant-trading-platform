@@ -1,21 +1,21 @@
 # Cloud Resource Gate Observation
 
-- Generated at: `2026-06-11T18:54:10.850271+00:00`
+- Generated at: `2026-06-11T19:17:37.699938+00:00`
 - Source: `ubuntu@43.143.243.97`
 - Evaluation: `warning`
 - D5 embedded scheduler ready: `false`
 - D5 blockers: full_trading_day_observation_incomplete, scheduler_provider_warnings_present
 - Blocking: none
-- Warnings: scheduler_provider_warnings_present, mysql_slow_queries=48
+- Warnings: scheduler_provider_warnings_present, mysql_slow_queries=51
 
 ## Host
 
 | Metric | Value |
 | --- | --- |
-| Date | `Fri Jun 12 02:54:06 CST 2026` |
-| Uptime | `02:54:06 up 3 days, 15:38, 673 users,  load average: 0.45, 0.28, 0.30` |
-| Memory available MB | 1418 |
-| Swap used percent | 33.27 |
+| Date | `Fri Jun 12 03:17:33 CST 2026` |
+| Uptime | `03:17:33 up 3 days, 16:01, 685 users,  load average: 0.24, 0.38, 0.39` |
+| Memory available MB | 1382 |
+| Swap used percent | 33.06 |
 | Root used percent | 62 |
 | Root inode used percent | 13 |
 
@@ -23,39 +23,39 @@
 
 | Container | CPU | Memory | Memory % |
 | --- | ---: | ---: | ---: |
-| `tquant-runtime-scheduler-mysql` | 0.00% | 254.4MiB / 640MiB | 39.75% |
-| `tquant-runtime-worker-mysql` | 0.00% | 294.8MiB / 768MiB | 38.39% |
-| `tquant-mysql` | 0.43% | 853MiB / 1.5GiB | 55.53% |
-| `tquant-app-mysql` | 0.14% | 59.37MiB / 768MiB | 7.73% |
-| `tquant-frontend-web` | 0.00% | 2.711MiB / 128MiB | 2.12% |
-| `tquant-go-bff-gateway` | 0.00% | 5.094MiB / 128MiB | 3.98% |
-| `tquant-go-market-read-service` | 0.00% | 7.641MiB / 128MiB | 5.97% |
-| `tquant-go-scan-worker` | 2.45% | 5.898MiB / 128MiB | 4.61% |
-| `tquant-redis` | 0.49% | 4.957MiB / 128MiB | 3.87% |
+| `tquant-runtime-scheduler-mysql` | 0.00% | 252.9MiB / 640MiB | 39.51% |
+| `tquant-runtime-worker-mysql` | 0.00% | 273.5MiB / 768MiB | 35.61% |
+| `tquant-mysql` | 0.37% | 857.3MiB / 1.5GiB | 55.81% |
+| `tquant-app-mysql` | 0.12% | 59.61MiB / 768MiB | 7.76% |
+| `tquant-frontend-web` | 2.55% | 2.711MiB / 128MiB | 2.12% |
+| `tquant-go-bff-gateway` | 2.46% | 5.215MiB / 128MiB | 4.07% |
+| `tquant-go-market-read-service` | 0.00% | 8.328MiB / 128MiB | 6.51% |
+| `tquant-go-scan-worker` | 0.00% | 5.793MiB / 128MiB | 4.53% |
+| `tquant-redis` | 0.49% | 5.746MiB / 128MiB | 4.49% |
 
 ## HTTP
 
 | Path | Status | Time | Error |
 | --- | ---: | ---: | --- |
-| `/readyz` | 200 | 0.003887 | `` |
-| `/api/monitor` | 404 | 0.003443 | `` |
-| `/api/monitor/snapshot` | 401 | 0.00378 | `` |
-| `/api/priority-board` | 404 | 0.002725 | `` |
-| `/api/screeners/low-buy/priority-board` | 401 | 0.002681 | `` |
-| `/api/runtime-tasks/summary` | 401 | 0.003536 | `` |
-| `/next/monitor` | 200 | 0.003255 | `` |
-| `/next/monitor/market` | 200 | 0.003192 | `` |
-| `/next/strategy-tracking` | 200 | 0.003345 | `` |
-| `/next/analysis` | 200 | 0.003259 | `` |
-| `/next/backtest` | 200 | 0.003134 | `` |
-| `/next/data` | 200 | 0.003067 | `` |
-| `/next/settings` | 200 | 0.003102 | `` |
+| `/readyz` | 200 | 0.003957 | `` |
+| `/api/monitor` | 404 | 0.004059 | `` |
+| `/api/monitor/snapshot` | 401 | 0.008328 | `` |
+| `/api/priority-board` | 404 | 0.00314 | `` |
+| `/api/screeners/low-buy/priority-board` | 401 | 0.002942 | `` |
+| `/api/runtime-tasks/summary` | 401 | 0.003287 | `` |
+| `/next/monitor` | 200 | 0.008677 | `` |
+| `/next/monitor/market` | 200 | 0.003925 | `` |
+| `/next/strategy-tracking` | 200 | 0.003733 | `` |
+| `/next/analysis` | 200 | 0.003962 | `` |
+| `/next/backtest` | 200 | 0.004004 | `` |
+| `/next/data` | 200 | 0.005518 | `` |
+| `/next/settings` | 200 | 0.003506 | `` |
 
 ## MySQL
 
 | Metric | Value |
 | --- | ---: |
-| `Slow_queries` | 48 |
+| `Slow_queries` | 51 |
 | `Threads_cached` | 4 |
 | `Threads_connected` | 9 |
 | `Threads_created` | 13 |
@@ -67,7 +67,7 @@
 
 | Task | Status | Count | Oldest | Latest |
 | --- | --- | ---: | --- | --- |
-| `low_buy_materialization_refresh` | succeeded | 6 | 2026-06-11 17:11:29 | 2026-06-11 18:28:45 |
+| `low_buy_materialization_refresh` | succeeded | 6 | 2026-06-11 18:11:29 | 2026-06-11 19:11:35 |
 
 ## Operations Not Executed
 

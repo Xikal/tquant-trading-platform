@@ -128,3 +128,110 @@ PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_lo
 ```
 
 D5 scheduler embed remains closed until full trading-day observation proves provider pressure, worker RSS, MySQL, swap, and runtime queue dedupe are stable. The next safe action is a full trading-day collector run, not stopping `runtime-scheduler`.
+
+## 2026-06-12 Configurable Cooldown Follow-Up
+
+### Reason
+
+Follow-up read-only scheduler logs showed `fetch_board_breadth_frame` provider warnings still repeating roughly every 90-135 seconds. The previous in-process degraded guard worked, but its 60 second cooldown was shorter than the scheduler market-regime prewarm interval and too short for the current EastMoney/OpenBB/AkShare board-breadth outage pattern.
+
+### Change
+
+Files changed:
+
+- `backend/app/core/config.py`
+- `backend/app/services/market/regime.py`
+- `backend/tests/test_market_regime_strategy_p2.py`
+
+The hard-coded market-regime provider degraded cooldown was replaced with declared runtime setting:
+
+```text
+MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_SECONDS=300
+```
+
+Default behavior is now 300 seconds. Invalid or unavailable settings fall back to 300 seconds. This aligns degraded board-breadth retry cadence with the existing `runtime_market_regime_refresh_interval_seconds=300` default and reduces repeated scheduler-side provider fallback pressure.
+
+### Behavior Kept
+
+- Live provider data is still used when available.
+- Half-open recovery still happens after the cooldown.
+- Cached/warming snapshots remain explicitly marked as cached/warming.
+- No low-buy production policy, `production_score`, priority-board ordering, or strategy semantics changed.
+
+### Local Verification
+
+Executed locally:
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_market_regime_strategy_p2.py backend/tests/test_v4_remaining_contracts.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_platform_budget_verifier.py backend/tests/test_runtime_task_queue.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_independent_runtime_components.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py
+```
+
+Results:
+
+- Market regime / provider contracts: `28 passed`
+- Plan-required platform/runtime/deploy regression: `75 passed`
+- Low-buy / priority-board / production-scoring guard: `32 passed`
+
+### Planned Online Scope
+
+If online provider warnings remain active, the safe rollout scope is scheduler-only:
+
+- Upload `backend/app/core/config.py` and `backend/app/services/market/regime.py`.
+- Build `runtime-scheduler`.
+- Recreate `runtime-scheduler` only.
+
+Not included:
+
+- No `.env` change.
+- No app/API restart.
+- No core `runtime-worker` restart.
+- No MySQL/Redis/Go/frontend/nginx change.
+- No DB write.
+- No Docker cleanup.
+- No D5 scheduler embed or standalone scheduler stop.
+
+### Scheduler-Only Rollout Evidence
+
+Because the 15 minute pre-check still showed `38` scheduler provider warning lines, the configurable cooldown change was promoted to the standalone scheduler only.
+
+| Item | Evidence |
+|---|---|
+| Time | `2026-06-12 03:10 CST` |
+| Backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/provider-cooldown-v5-20260612031024` |
+| Uploaded sources | `backend/app/core/config.py`, `backend/app/services/market/regime.py` |
+| Build | `sudo docker compose -f docker-compose.mysql.yml build runtime-scheduler` |
+| Recreate | `sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-scheduler` |
+| Scheduler before | `2026-06-11T18:27:50.700769863Z restart=0 healthy` |
+| Scheduler after | `2026-06-11T19:10:38.732100058Z restart=0 healthy` |
+| Worker unchanged | `2026-06-11T16:33:27.439851625Z restart=0 healthy` before and after |
+| App unchanged | `2026-06-11T15:40:10.021531795Z restart=0 healthy` before and after |
+| MySQL unchanged | `2026-06-11T15:42:42.993726302Z restart=0 oom=false healthy` before and after |
+| Runtime setting | `market_regime_provider_degraded_cooldown_seconds=300.0`, default `300.0` |
+| `/readyz` | `200`, `0.003822s` immediately after rollout |
+
+Six minute post-rollout observation:
+
+| Checkpoint | Provider warning count since scheduler restart | Interpretation |
+|---|---:|---|
+| `03:11 CST` | `8` | initial startup probe |
+| `03:12 CST` | `8` | no 90s repeat |
+| `03:13 CST` | `8` | no 90s repeat |
+| `03:14 CST` | `8` | no 90s repeat |
+| `03:15 CST` | `8` | no 90s repeat |
+| `03:16 CST` | `11` | single recovery probe after roughly 5 minutes |
+| `03:17 CST` | `13` | same recovery probe completed |
+
+This confirms the active warning cadence changed from roughly 90-135 seconds to the intended 300 second degraded-retry cadence. The gate collector still reports `scheduler_provider_warnings_present` because its 30 minute log window includes the initial startup and 5 minute recovery probe. D5 scheduler embed remains closed until a full trading-day gate passes.
+
+Additional latest gate evidence:
+
+```text
+generated_at=2026-06-11T19:17:37Z
+host_time=2026-06-12 03:17:33 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present
+warnings=scheduler_provider_warnings_present, mysql_slow_queries=51
+```

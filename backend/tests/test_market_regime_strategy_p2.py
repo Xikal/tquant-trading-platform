@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -216,6 +218,35 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
     def tearDown(self) -> None:
         MarketRegimeMixin._clear_provider_degraded("fetch_board_breadth_frame")
         MarketRegimeMixin._exit_provider_probe("fetch_board_breadth_frame")
+
+    def test_provider_degraded_cooldown_uses_runtime_setting(self) -> None:
+        with (
+            patch(
+                "app.services.market.regime.get_settings",
+                return_value=SimpleNamespace(
+                    market_regime_provider_degraded_cooldown_seconds=300.0,
+                ),
+            ),
+            patch("app.services.market.regime.time.monotonic", return_value=1000.0),
+        ):
+            MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+
+        self.assertEqual(
+            MarketRegimeMixin._provider_degraded_until["fetch_board_breadth_frame"],
+            1300.0,
+        )
+
+    def test_provider_degraded_cooldown_falls_back_for_invalid_setting(self) -> None:
+        with patch(
+            "app.services.market.regime.get_settings",
+            return_value=SimpleNamespace(
+                market_regime_provider_degraded_cooldown_seconds="invalid",
+            ),
+        ):
+            self.assertEqual(
+                MarketRegimeMixin._provider_degraded_cooldown_seconds(),
+                MarketRegimeMixin._provider_degraded_default_cooldown_seconds,
+            )
 
     def test_hot_overlap_uses_ranked_yesterday_today_continuity(self) -> None:
         stable = MarketRegimeMixin._compute_hot_overlap_ratio(

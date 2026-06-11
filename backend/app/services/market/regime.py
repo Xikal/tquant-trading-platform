@@ -6,6 +6,7 @@ import time
 
 import pandas as pd
 
+from app.core.config import get_settings
 from app.services.market.regime_persistence import (
     load_persisted_market_regime_snapshot,
     persist_market_regime_snapshot,
@@ -48,7 +49,7 @@ class MarketRegimeMixin:
     _provider_degraded_until: dict[str, float] = {}
     _provider_probe_inflight: set[str] = set()
     _provider_degraded_lock = threading.Lock()
-    _provider_degraded_cooldown_seconds = 60.0
+    _provider_degraded_default_cooldown_seconds = 5 * 60.0
 
     def get_market_regime(
         self,
@@ -319,8 +320,19 @@ class MarketRegimeMixin:
     def _remember_provider_degraded(cls, operation: str) -> None:
         with cls._provider_degraded_lock:
             cls._provider_degraded_until[operation] = (
-                time.monotonic() + cls._provider_degraded_cooldown_seconds
+                time.monotonic() + cls._provider_degraded_cooldown_seconds()
             )
+
+    @classmethod
+    def _provider_degraded_cooldown_seconds(cls) -> float:
+        try:
+            value = get_settings().market_regime_provider_degraded_cooldown_seconds
+        except Exception:
+            return cls._provider_degraded_default_cooldown_seconds
+        try:
+            return max(float(value), 0.0)
+        except (TypeError, ValueError):
+            return cls._provider_degraded_default_cooldown_seconds
 
     @classmethod
     def _clear_provider_degraded(cls, operation: str) -> None:

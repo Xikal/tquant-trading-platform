@@ -232,3 +232,31 @@ Expected post-D5 heartbeat if later executed:
 
 The D6 provider-degraded guard was deployed separately as a scheduler-only mitigation and is recorded in `docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md` and `docs/reports/cloud-resource-contention-remediation-2026-06-11.md`.
 The D6 non-core queue metadata write is recorded above and is separate from D5 scheduler embed.
+
+## 2026-06-12 03:17 CST Decision Update
+
+A follow-up D6 scheduler-only mitigation was applied because the standalone scheduler was still producing `fetch_board_breadth_frame` provider warnings every 90-135 seconds. The hard-coded 60 second market-regime provider degraded cooldown was replaced with a declared 300 second setting and deployed only to `runtime-scheduler`.
+
+Scope:
+
+- Rebuilt and recreated `tquant-runtime-scheduler-mysql` only.
+- Did not change `.env`.
+- Did not restart app/API, core `runtime-worker`, MySQL, Redis, Go services, frontend/nginx, systemd, or nginx.
+- Did not write database rows or change schema/indexes.
+- Did not execute D5 scheduler embed and did not stop the standalone scheduler.
+
+Immediate evidence:
+
+| Area | Evidence |
+|---|---|
+| Config | scheduler reports `market_regime_provider_degraded_cooldown_seconds=300.0` |
+| Warning cadence | warning count stayed at `8` from `03:11` to `03:15 CST`, then a single recovery probe appeared after roughly 5 minutes |
+| `/readyz` | `200`, `0.003822s` immediately after scheduler-only rollout |
+| Latest collector | `status=warning`, `d5_gate.ready=false`, blockers `full_trading_day_observation_incomplete`, `scheduler_provider_warnings_present` |
+| Resource | host memory available `1382MiB`; swap used `33.06%`; worker `273.5MiB / 768MiB`; MySQL `857.3MiB / 1.5GiB` |
+
+Decision:
+
+1. Continue keeping `runtime-scheduler` standalone.
+2. Do not execute D5 embedded scheduler yet.
+3. Continue full trading-day observation. The provider warning blocker can only be cleared after a fresh observation window proves the warnings are no longer sustained under trading-day load.
