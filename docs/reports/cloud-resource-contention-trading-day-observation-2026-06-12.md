@@ -10,6 +10,10 @@ D5 embedded scheduler is not executed yet.
 
 Reason: the worker recycle guard is now live and the current worker RSS is low, but this is still a short post-rollout window. The plan requires a longer stable window, preferably a full trading day, before moving standalone scheduler work into runtime-worker.
 
+Latest read-only gate snapshot: `docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md`.
+
+At `2026-06-12 01:14:00 CST`, the platform is online and no P0 blocker was observed, but D5 remains blocked because the observation is not a full trading day and there are still scheduler provider warnings, queued old `data_quality_sla_refresh` tasks, and duplicate A-key / strategy-tracking successes inside the last two-hour query window.
+
 ## Must Keep Running
 
 | Service / capability | Requirement |
@@ -39,6 +43,26 @@ Record all sections below at these Beijing-time checkpoints:
 | 15:30 | close-refresh cooldown | no |
 
 ## Read-Only Commands
+
+Preferred repeatable collector:
+
+```bash
+cd /Users/j/Documents/gupiao
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 2h \
+  --json-output docs/reports/cloud-resource-gate-observation-2026-06-12-latest.json \
+  --markdown-output docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md
+```
+
+Expected:
+
+- Read-only collection only.
+- `d5_gate.ready=false` means do not embed scheduler.
+- `d5_gate.ready=true` requires `--full-trading-day-complete` and still needs a maintenance-window decision before any online write.
 
 ### Host And Containers
 
@@ -82,13 +106,36 @@ All criteria must pass before enabling embedded scheduler:
 
 | Criterion | Required evidence | Current status |
 |---|---|---|
-| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | pending full-day observation |
-| Worker headroom | worker RSS remains controlled across task cycles; no restart loop | pending full-day observation |
-| Scheduler pressure | provider/circuit warnings do not cause sustained CPU/RSS pressure | pending full-day observation |
-| Queue health | no sustained core backlog; no repeated A-key/strategy-tracking duplicates after successful same-day task | pending full-day observation |
-| API/page health | `/readyz` 200; core pages 200; protected APIs fast 401 when unauthenticated | pending full-day observation |
+| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | short-window pass; `tquant-mysql` `656.1MiB / 1.5GiB`; `Threads_connected=10`; `Threads_running=2`; `Slow_queries=16` |
+| Worker headroom | worker RSS remains controlled across task cycles; no restart loop | short-window pass; `tquant-runtime-worker-mysql` `218MiB / 768MiB` (`28.38%`) |
+| Scheduler pressure | provider/circuit warnings do not cause sustained CPU/RSS pressure | not passed; scheduler provider warning lines still present |
+| Queue health | no sustained core backlog; no repeated A-key/strategy-tracking duplicates after successful same-day task | not passed; old queued `data_quality_sla_refresh=2`; last two-hour window still includes `strategy_tracking_snapshot_refresh=56`, `a_key_level_materialization_refresh=26` from pre-dedupe period |
+| API/page health | `/readyz` 200; core pages 200; protected APIs fast 401 when unauthenticated | short-window pass; `/readyz` 200; all checked `/next/*` pages 200; protected APIs 401 |
 | Strategy semantics | low-buy read path and production scoring tests pass | passed locally before this template |
 | Authorization | user explicitly authorizes D5 maintenance action | already broadly authorized, but gate still pending |
+
+## Latest Read-Only Snapshot
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load average `0.27, 0.33, 0.29`; memory available `1571MiB`; swap used `794MiB / 1987MiB` (`39.96%`) | warning |
+| Disk | root `34G / 59G` (`60%`); inode `12%` | pass |
+| app/API | `tquant-app-mysql` `45.26MiB / 768MiB`; `/readyz` `200` in `0.004601s` | pass |
+| runtime-worker | `218MiB / 768MiB` (`28.38%`) | pass |
+| runtime-scheduler | `353.7MiB / 640MiB` (`55.27%`) | warning: provider logs still present |
+| MySQL | `656.1MiB / 1.5GiB`; `Threads_connected=10`; `Threads_running=2`; `Slow_queries=16` | warning: slow query count exists |
+| Redis | `5.078MiB / 128MiB` | pass |
+| frontend-next | `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` | pass |
+| protected APIs | `/api/monitor/snapshot`, `/api/screeners/low-buy/priority-board`, `/api/runtime-tasks/summary` all `401` quickly | pass |
+| queue | queued `data_quality_sla_refresh=2`; duplicate-success window still includes pre-dedupe A-key and strategy-tracking counts | warning |
+
+Automated evaluation:
+
+```text
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, duplicate_success_window:strategy_tracking_snapshot_refresh=56, duplicate_success_window:a_key_level_materialization_refresh=26
+```
 
 ## D5 Command Not Executed
 
