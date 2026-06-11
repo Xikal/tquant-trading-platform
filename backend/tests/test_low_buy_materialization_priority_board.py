@@ -91,6 +91,92 @@ def test_refresh_latest_materialization_warms_priority_board_after_publish(monke
     assert result["priority_board_read_models"]["ok"] is True
 
 
+def test_refresh_latest_materialization_skips_non_production_strategies_without_full_failure(monkeypatch):
+    scanned: list[list[str]] = []
+
+    monkeypatch.setattr(
+        "app.services.low_buy.go_scan_worker.run_go_scan_worker",
+        lambda **kwargs: scanned.append(list(kwargs["strategies"])) or {"ok": True, "fallback_reason": ""},
+    )
+    monkeypatch.setattr(
+        materialization,
+        "_publish_latest_materialization_state",
+        lambda strategies: {
+            "status": "success",
+            "expected_trade_date": "2026-06-05",
+            "published_trade_date": "2026-06-05",
+            "daily_bar_count": 5000,
+            "min_daily_bar_count": 4500,
+            "post_close_daily_bars_ready": True,
+            "missing_strategies": [],
+            "required_strategies": list(strategies),
+        },
+    )
+    monkeypatch.setattr(
+        materialization,
+        "warm_priority_board_read_models",
+        lambda **_kwargs: {"ok": True, "warmed": [], "skipped": []},
+    )
+    monkeypatch.setattr(
+        materialization,
+        "warm_main_force_shadow_observations",
+        lambda **_kwargs: {"ok": True, "enabled": False},
+    )
+
+    result = materialization.refresh_latest_low_buy_materialization(
+        strategies=["first_board", "classic_retrace", "deep_pullback"],
+        prefer_go=True,
+    )
+
+    assert scanned == [["first_board"]]
+    assert result["ok"] is True
+    assert result["missing_required_strategies"] == []
+    assert result["is_partial"] is True
+    assert result["stale_reason"] == "skipped_non_production_strategies"
+    assert {item["strategy"] for item in result["skipped_strategies"]} == {"classic_retrace", "deep_pullback"}
+
+
+def test_refresh_latest_materialization_fails_when_required_strategy_missing(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.low_buy.go_scan_worker.run_go_scan_worker",
+        lambda **_kwargs: {"ok": True, "fallback_reason": ""},
+    )
+    monkeypatch.setattr(
+        materialization,
+        "_publish_latest_materialization_state",
+        lambda _strategies: {
+            "status": "pending",
+            "expected_trade_date": "2026-06-05",
+            "published_trade_date": "",
+            "daily_bar_count": 5000,
+            "min_daily_bar_count": 4500,
+            "post_close_daily_bars_ready": True,
+            "missing_strategies": ["first_board"],
+        },
+    )
+    monkeypatch.setattr(
+        materialization,
+        "warm_priority_board_read_models",
+        lambda **_kwargs: {"ok": True, "warmed": [], "skipped": []},
+    )
+    monkeypatch.setattr(
+        materialization,
+        "warm_main_force_shadow_observations",
+        lambda **_kwargs: {"ok": True, "enabled": False},
+    )
+
+    result = materialization.refresh_latest_low_buy_materialization(
+        strategies=["first_board", "classic_retrace"],
+        prefer_go=True,
+    )
+
+    assert result["ok"] is False
+    assert result["missing_required_strategies"] == ["first_board"]
+    assert result["publish_status"]["status"] == "pending"
+    assert result["publish_status"]["published_trade_date"] == ""
+    assert result["stale_reason"] == "missing_required_strategies"
+
+
 def test_refresh_latest_materialization_reports_incomplete_when_priority_board_warmup_fails(monkeypatch):
     monkeypatch.setattr(
         "app.services.low_buy.go_scan_worker.run_go_scan_worker",

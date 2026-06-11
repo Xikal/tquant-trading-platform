@@ -14,7 +14,12 @@ from app.services.latest_data_status import (
 )
 from app.core.config import get_settings
 from app.services.low_buy.strategy_lanes import STRATEGY_VARIANTS
-from app.services.low_buy.strategy_policy import OBSERVATION_LAYER_STRATEGIES, PRODUCTION_PRIORITY_STRATEGIES
+from app.services.low_buy.strategy_policy import (
+    OBSERVATION_LAYER_STRATEGIES,
+    PRODUCTION_PRIORITY_STRATEGIES,
+    get_strategy_tier,
+    participates_in_priority_board,
+)
 from app.services.tasks import RuntimeTaskQueue
 
 DEFAULT_LIMIT = 40
@@ -100,7 +105,10 @@ def refresh_latest_low_buy_materialization(
     strategies: list[str] | None = None,
     prefer_go: bool = True,
 ) -> dict[str, Any]:
-    required = sorted(strategies or (PRODUCTION_PRIORITY_STRATEGIES | OBSERVATION_LAYER_STRATEGIES))
+    requested = sorted(strategies or (PRODUCTION_PRIORITY_STRATEGIES | OBSERVATION_LAYER_STRATEGIES))
+    required = _production_required_strategies(requested)
+    if not required:
+        return _no_required_production_strategy_result(requested)
     if prefer_go:
         from app.services.low_buy.go_scan_worker import run_go_scan_worker
 
@@ -112,7 +120,8 @@ def refresh_latest_low_buy_materialization(
         )
         if go_result.get("ok"):
             publish_status = _publish_latest_materialization_state(required)
-            missing = list(publish_status.get("missing_strategies") or [])
+            publish_status = _annotate_materialization_requirements(publish_status, requested)
+            missing = list(publish_status.get("missing_required_strategies") or [])
             priority_board_read_models = _warm_priority_board_after_publish(publish_status)
             ok = (
                 not missing
@@ -125,7 +134,11 @@ def refresh_latest_low_buy_materialization(
                 "source": "go_scan_worker",
                 "publish_status": publish_status,
                 "published_trade_date": str(publish_status.get("published_trade_date") or ""),
-                "missing_strategies": missing,
+                "missing_strategies": list(publish_status.get("missing_strategies") or []),
+                "missing_required_strategies": missing,
+                "skipped_strategies": list(publish_status.get("skipped_strategies") or []),
+                "is_partial": bool(publish_status.get("is_partial")),
+                "stale_reason": str(publish_status.get("stale_reason") or ""),
                 "priority_board_read_models": priority_board_read_models,
                 "main_force_shadow": warm_main_force_shadow_observations(
                     strategies=required,
@@ -139,6 +152,7 @@ def refresh_latest_low_buy_materialization(
         limit=limit,
         scan_limit=scan_limit,
         strategies=required,
+        requested_strategies=requested,
         fallback_reason=None if not prefer_go else go_result.get("fallback_reason", "go_scan_worker_unavailable"),
     )
 
@@ -415,6 +429,7 @@ def _refresh_latest_low_buy_materialization_python(
     limit: int,
     scan_limit: int,
     strategies: list[str],
+    requested_strategies: list[str] | None = None,
     fallback_reason: str | None = None,
 ) -> dict[str, Any]:
     from app.services.low_buy_screener import LowBuyScreenerService
@@ -438,7 +453,8 @@ def _refresh_latest_low_buy_materialization_python(
     with SessionLocal() as db:
         status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()
-    missing = list(status.get("missing_strategies") or [])
+    status = _annotate_materialization_requirements(status, requested_strategies or strategies)
+    missing = list(status.get("missing_required_strategies") or [])
     priority_board_read_models = _warm_priority_board_after_publish(status)
     ok = (
         not skipped
@@ -454,7 +470,11 @@ def _refresh_latest_low_buy_materialization_python(
         "skipped": skipped,
         "publish_status": status,
         "published_trade_date": str(status.get("published_trade_date") or ""),
-        "missing_strategies": missing,
+        "missing_strategies": list(status.get("missing_strategies") or []),
+        "missing_required_strategies": missing,
+        "skipped_strategies": list(status.get("skipped_strategies") or []),
+        "is_partial": bool(status.get("is_partial")),
+        "stale_reason": str(status.get("stale_reason") or ""),
         "priority_board_read_models": priority_board_read_models,
     }
 
@@ -464,6 +484,78 @@ def _publish_latest_materialization_state(strategies: list[str]) -> dict[str, An
         status = publish_latest_trade_date_if_ready(db, strategies=strategies)
         db.commit()
         return status
+
+
+def _annotate_materialization_requirements(status: dict[str, Any], strategies: list[str]) -> dict[str, Any]:
+    required = _production_required_strategies(strategies)
+    requested = sorted({str(item) for item in strategies if str(item)})
+    missing_all = sorted({str(item) for item in status.get("missing_strategies") or [] if str(item)})
+    missing_required = [strategy for strategy in missing_all if strategy in required]
+    skipped = [
+        {"strategy": strategy, "tier": get_strategy_tier(strategy).value, "reason": "not_production_priority_strategy"}
+        for strategy in requested
+        if strategy not in required
+    ]
+    annotated = dict(status)
+    annotated["required_strategies"] = required
+    annotated["missing_strategies"] = missing_all
+    annotated["missing_required_strategies"] = missing_required
+    annotated["skipped_strategies"] = skipped
+    annotated["is_partial"] = bool(skipped or missing_required)
+    if missing_required:
+        annotated["stale_reason"] = "missing_required_strategies"
+        annotated["status"] = "pending"
+        annotated["published_trade_date"] = ""
+    elif skipped:
+        annotated["stale_reason"] = "skipped_non_production_strategies"
+        if annotated.get("status") == "pending" and _status_daily_bars_ready(annotated):
+            annotated["status"] = "success"
+            annotated["published_trade_date"] = str(annotated.get("expected_trade_date") or "")
+    else:
+        annotated.setdefault("stale_reason", "")
+    return annotated
+
+
+def _production_required_strategies(strategies: list[str]) -> list[str]:
+    candidates = sorted({str(item) for item in strategies if str(item)})
+    return [strategy for strategy in candidates if participates_in_priority_board(strategy)]
+
+
+def _no_required_production_strategy_result(strategies: list[str]) -> dict[str, Any]:
+    requested = sorted({str(item) for item in strategies if str(item)})
+    skipped = [
+        {"strategy": strategy, "tier": get_strategy_tier(strategy).value, "reason": "not_production_priority_strategy"}
+        for strategy in requested
+    ]
+    return {
+        "ok": True,
+        "source": "skipped",
+        "status": "skipped_no_required_production_strategies",
+        "refreshed": [],
+        "skipped": skipped,
+        "publish_status": {
+            "status": "skipped",
+            "required_strategies": [],
+            "missing_strategies": [],
+            "missing_required_strategies": [],
+            "skipped_strategies": skipped,
+            "is_partial": bool(skipped),
+            "stale_reason": "skipped_non_production_strategies",
+        },
+        "published_trade_date": "",
+        "missing_strategies": [],
+        "missing_required_strategies": [],
+        "skipped_strategies": skipped,
+        "is_partial": bool(skipped),
+        "stale_reason": "skipped_non_production_strategies",
+        "priority_board_read_models": {"ok": True, "reason": "no_required_production_strategies", "warmed": [], "skipped": []},
+    }
+
+
+def _status_daily_bars_ready(status: dict[str, Any]) -> bool:
+    return int(status.get("daily_bar_count") or 0) >= int(status.get("min_daily_bar_count") or 0) and bool(
+        status.get("post_close_daily_bars_ready")
+    )
 
 
 def _allowed_main_force_strategies(raw: str) -> set[str]:

@@ -15,7 +15,7 @@ RUN apt-get update \
 RUN pip install --retries 8 -r /tmp/backend-requirements.txt
 
 COPY backend /app/backend
-COPY frontend-dist /app/frontend/dist
+COPY frontend-next-dist /app/frontend-next/dist
 
 EXPOSE 8000
 

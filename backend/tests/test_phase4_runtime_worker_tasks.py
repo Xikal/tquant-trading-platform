@@ -9,7 +9,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
-from app.models.entities import MLSignalSample
+from app.models.entities import MLSignalSample, RuntimeTask
+from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.services.tasks import RuntimeTaskQueue
 from app.models.schema_defs.market import IntradayMarketPulse
 from app.workers import runtime_worker
 
@@ -224,6 +226,39 @@ def test_runtime_worker_low_buy_materialization_requires_priority_board_warmup(m
         raise AssertionError("runtime worker must fail incomplete priority board warmup")
 
 
+def test_runtime_worker_allows_low_buy_non_production_strategy_skips(monkeypatch):
+    db = _db()
+
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.refresh_latest_low_buy_materialization",
+        lambda **_kwargs: {
+            "ok": True,
+            "published_trade_date": "2026-06-05",
+            "missing_strategies": [],
+            "missing_required_strategies": [],
+            "skipped_strategies": [
+                {
+                    "strategy": "classic_retrace",
+                    "tier": "research",
+                    "reason": "not_production_priority_strategy",
+                }
+            ],
+            "is_partial": True,
+            "priority_board_read_models": {"ok": True, "warmed": [], "skipped": []},
+        },
+    )
+
+    result = runtime_worker._execute_task(
+        "low_buy_materialization_refresh",
+        {"strategies": ["first_board", "classic_retrace"]},
+        db,
+    )
+
+    assert result["ok"] is True
+    assert result["missing_required_strategies"] == []
+    assert result["skipped_strategies"][0]["strategy"] == "classic_retrace"
+
+
 def test_runtime_worker_routes_market_review_report_to_market_service(monkeypatch):
     db = _db()
     calls = []
@@ -266,6 +301,50 @@ def test_runtime_worker_disables_paper_review_report():
             {"report_slot": "midday", "target_date": "2026-06-03"},
             db,
         )
+
+
+def test_runtime_worker_skips_removed_paper_task_without_failure(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda _event: None)
+
+    created = queue.enqueue(
+        RuntimeTaskCreate(
+            task_type="paper_review_report",
+            payload={"report_slot": "midday", "target_date": "2026-06-03"},
+            idempotency_key="paper_review_report:2026-06-03",
+            max_attempts=3,
+        )
+    )
+
+    class _SessionFactory:
+        def __call__(self):
+            return db
+
+    monkeypatch.setattr(runtime_worker, "SessionLocal", _SessionFactory())
+    monkeypatch.setattr(runtime_worker, "_record_worker_heartbeat", lambda _db_arg, *, worker_id: None)
+
+    did_work = runtime_worker.RuntimeWorker(worker_id="runtime-test").run_once()
+    row = db.get(RuntimeTask, created.id)
+    summary = queue.summary()
+
+    assert did_work is True
+    assert row is not None
+    assert row.status == "skipped"
+    assert row.attempt_count == 1
+    assert row.run_after is None
+    assert row.error_message == ""
+    assert queue.claim_next(worker_id="runtime-test", task_types=["paper_review_report"]) is None
+    assert summary.failed == 0
+    assert {item.status: item.count for item in summary.status_counts}["skipped"] == 1
+    assert queue.get(created.id).result == {
+        "ok": True,
+        "skipped": True,
+        "reason": "removed_feature",
+        "feature": "paper_trading",
+        "task_type": "paper_review_report",
+        "status": "skipped_removed_feature",
+    }
 
 
 def test_runtime_worker_builds_low_buy_close_review_when_requested(monkeypatch):

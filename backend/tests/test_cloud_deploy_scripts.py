@@ -328,6 +328,7 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
     builder_script = read_repo_file("scripts/build_prebuilt_images.sh")
     deploy_example = read_repo_file(".env.deploy.local.example")
+    prebuilt_dockerfile = read_repo_file("Dockerfile.prebuilt")
 
     assert 'DEPLOY_PREBUILT_IMAGES_ENABLED="${DEPLOY_PREBUILT_IMAGES_ENABLED:-auto}"' in deploy_script
     assert 'DEPLOY_PREBUILT_WEB_IMAGE_REF="${DEPLOY_PREBUILT_WEB_IMAGE_REF:-}"' in deploy_script
@@ -378,6 +379,10 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     assert "DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" in builder_script
     assert "quick_cloud_deploy.sh" not in builder_script
     assert "deploy_cloud_server.sh" not in builder_script
+
+    assert "COPY frontend-next-dist /app/frontend-next/dist" in prebuilt_dockerfile
+    assert "/app/frontend/dist" not in prebuilt_dockerfile
+    assert "frontend-dist" not in prebuilt_dockerfile
 
     assert "DEPLOY_PREBUILT_IMAGES_ENABLED=auto" in deploy_example
     assert "DEPLOY_PREBUILT_WEB_IMAGE_REF=registry.example.com/tquant-web:<sha>" in deploy_example

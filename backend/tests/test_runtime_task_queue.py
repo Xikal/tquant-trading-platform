@@ -110,6 +110,46 @@ def test_runtime_task_queue_retry_sets_future_run_after(monkeypatch):
     assert queue.claim_next(worker_id="next-worker") is None
 
 
+def test_runtime_task_queue_skipped_is_terminal_and_not_failed(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    published = []
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: published.append(event.event_type))
+
+    created = queue.enqueue(
+        RuntimeTaskCreate(
+            task_type="paper_review_report",
+            payload={"target_date": "2026-06-03"},
+            idempotency_key="paper_review_report:2026-06-03",
+            max_attempts=3,
+        )
+    )
+    claimed = queue.claim_next(worker_id="runtime-test", task_types=["paper_review_report"])
+    assert claimed is not None
+    before_skip = datetime.utcnow()
+
+    skipped = queue.mark_skipped(
+        created.id,
+        "paper task removed",
+        result={"reason": "removed_feature", "feature": "paper_trading"},
+    )
+    row = db.get(RuntimeTask, created.id)
+    summary = queue.summary()
+
+    assert skipped.status == "skipped"
+    assert row is not None
+    assert row.status == "skipped"
+    assert row.error_message == ""
+    assert row.run_after is None
+    assert row.active_idempotency_key is None
+    assert row.finished_at is not None and row.finished_at >= before_skip
+    assert skipped.result["reason"] == "removed_feature"
+    assert queue.claim_next(worker_id="runtime-test", task_types=["paper_review_report"]) is None
+    assert summary.failed == 0
+    assert {item.status: item.count for item in summary.status_counts}["skipped"] == 1
+    assert published == ["queued", "started", "skipped"]
+
+
 def test_runtime_task_queue_pauses_configured_low_priority_tasks(monkeypatch):
     db = _db()
     queue = RuntimeTaskQueue(db)

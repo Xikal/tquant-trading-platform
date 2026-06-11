@@ -28,7 +28,7 @@ from app.services.runtime_worker_health import platform_component_heartbeats
 from app.services.realtime import publish_runtime_task_event
 
 
-TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "skipped"}
 ARTIFACT_KEYS = {
     "artifact_path",
     "artifact_uri",
@@ -324,6 +324,32 @@ class RuntimeTaskQueue:
         row.progress_pct = 100.0
         row.finished_at = datetime.utcnow()
         event = self.add_event(task_id, "succeeded", "任务执行完成", result or {})
+        self.db.commit()
+        publish_runtime_task_event(event)
+        self.db.refresh(row)
+        return _task_out(row)
+
+    def mark_skipped(
+        self,
+        task_id: int,
+        message: str,
+        *,
+        result: dict[str, Any] | None = None,
+    ) -> RuntimeTaskOut:
+        row = self._get_row(task_id)
+        payload = dict(result or {})
+        payload.setdefault("ok", True)
+        payload.setdefault("skipped", True)
+        row.status = "skipped"
+        row.active_idempotency_key = None
+        row.locked_by = ""
+        row.locked_at = None
+        row.run_after = None
+        row.result_json = _json_dumps(payload)
+        row.error_message = ""
+        row.progress_pct = 100.0
+        row.finished_at = datetime.utcnow()
+        event = self.add_event(task_id, "skipped", (message or "任务已跳过")[:240], payload)
         self.db.commit()
         publish_runtime_task_event(event)
         self.db.refresh(row)

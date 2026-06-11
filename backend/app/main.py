@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import time as dt_time
 import logging
 import math
 from pathlib import Path
+import threading
 import time
 from uuid import uuid4
 
@@ -66,6 +68,10 @@ _SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 }
 _SPA_INDEX_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate"
+_READYZ_DB_TIMEOUT_SECONDS = 1.0
+_READYZ_DB_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="readyz-db")
+_readyz_db_probe_lock = threading.Lock()
+_readyz_db_probe: Future[None] | None = None
 
 
 @asynccontextmanager
@@ -342,11 +348,10 @@ def readyz(response: Response):
     }
     errors: list[str] = []
 
-    try:
-        ping_database()
-        checks["database"] = True
-    except Exception as exc:
-        errors.append(f"database: {exc}")
+    database_ok, database_error = _ping_database_with_timeout(timeout_seconds=_READYZ_DB_TIMEOUT_SECONDS)
+    checks["database"] = database_ok
+    if not database_ok:
+        errors.append(f"database: {database_error}")
 
     if serve_frontend_static and not checks["frontend_next_dist"]:
         errors.append("frontend_next_dist: missing frontend-next/dist/index.html")
@@ -365,6 +370,25 @@ def readyz(response: Response):
         )
 
     return ReadinessResponse(status="ok", app=settings.app_name, checks=checks, errors=errors)
+
+
+def _ping_database_with_timeout(*, timeout_seconds: float) -> tuple[bool, str]:
+    global _readyz_db_probe
+    effective_timeout = max(float(timeout_seconds), 0.05)
+    with _readyz_db_probe_lock:
+        if _readyz_db_probe is None or _readyz_db_probe.done():
+            _readyz_db_probe = _READYZ_DB_EXECUTOR.submit(ping_database)
+        future = _readyz_db_probe
+    try:
+        future.result(timeout=effective_timeout)
+        return True, ""
+    except TimeoutError:
+        return False, f"timeout_after_{effective_timeout:.2f}s"
+    except Exception as exc:
+        with _readyz_db_probe_lock:
+            if future is _readyz_db_probe:
+                _readyz_db_probe = None
+        return False, str(exc)
 
 
 @app.get("/metrics", include_in_schema=False)

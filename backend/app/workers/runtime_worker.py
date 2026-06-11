@@ -57,6 +57,7 @@ PAPER_TASK_TYPES = {
     "paper_portfolio_execution_preview",
     "paper_ledger_reconcile_preview",
 }
+RUNTIME_WORKER_CLAIM_TASK_TYPES = tuple(sorted({*RUNTIME_WORKER_TASK_TYPES, *PAPER_TASK_TYPES}))
 LONG_TASK_HEARTBEAT_SECONDS = 30.0
 
 
@@ -76,7 +77,7 @@ class RuntimeWorker:
         with SessionLocal() as db:
             _record_worker_heartbeat(db, worker_id=self.worker_id)
             queue = RuntimeTaskQueue(db)
-            task = queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_TASK_TYPES)
+            task = queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_CLAIM_TASK_TYPES)
             if task is None:
                 return False
             task_id = int(task.id)
@@ -90,14 +91,21 @@ class RuntimeWorker:
                     message="任务已被 Runtime Worker 接收",
                     payload={"worker_id": self.worker_id, "task_type": task_type},
                 )
-                result = _execute_task(task_type, _json_payload(task.payload_json), db)
-                queue.update_progress(
-                    task_id,
-                    progress_pct=95.0,
-                    message="任务计算完成，准备写入结果",
-                    payload={"worker_id": self.worker_id, "task_type": task_type},
-                )
-                queue.mark_succeeded(task_id, result)
+                if is_removed_paper_task(task_type):
+                    queue.mark_skipped(
+                        task_id,
+                        f"{task_type} skipped: paper trading feature has been removed",
+                        result=removed_paper_task_result(task_type),
+                    )
+                else:
+                    result = _execute_task(task_type, _json_payload(task.payload_json), db)
+                    queue.update_progress(
+                        task_id,
+                        progress_pct=95.0,
+                        message="任务计算完成，准备写入结果",
+                        payload={"worker_id": self.worker_id, "task_type": task_type},
+                    )
+                    queue.mark_succeeded(task_id, result)
             except Exception as exc:
                 logger.exception("runtime task failed: id=%s type=%s", task_id, task_type)
                 db.rollback()
@@ -490,7 +498,7 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
 
 def _ensure_task_enabled(task_type: str) -> None:
     settings = get_settings()
-    if task_type in PAPER_TASK_TYPES or str(task_type).startswith("paper_"):
+    if is_removed_paper_task(task_type):
         raise RuntimeError(f"{task_type} is disabled: paper trading feature has been removed")
     if task_type in RESEARCH_TASK_TYPES and not settings.tquant_research_jobs_enabled:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_RESEARCH_JOBS_ENABLED=true")
@@ -498,6 +506,22 @@ def _ensure_task_enabled(task_type: str) -> None:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_ML_JOBS_ENABLED=true")
     if task_type in FACTOR_TASK_TYPES and not settings.tquant_factor_jobs_enabled:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_FACTOR_JOBS_ENABLED=true")
+
+
+def is_removed_paper_task(task_type: str) -> bool:
+    normalized = str(task_type or "").strip()
+    return normalized in PAPER_TASK_TYPES or normalized.startswith("paper_")
+
+
+def removed_paper_task_result(task_type: str) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "skipped": True,
+        "reason": "removed_feature",
+        "feature": "paper_trading",
+        "task_type": str(task_type or ""),
+        "status": "skipped_removed_feature",
+    }
 
 
 def _json_payload(raw: str) -> dict[str, Any]:
@@ -539,11 +563,13 @@ def _start_task_heartbeat(*, worker_id: str, stop_event: threading.Event) -> thr
 
 def _ensure_low_buy_materialization_complete(result: dict[str, Any]) -> None:
     if result.get("ok") is not True:
-        missing = result.get("missing_strategies") or []
+        missing_required = result.get("missing_required_strategies") or result.get("missing_strategies") or []
+        skipped_strategies = result.get("skipped_strategies") or []
         skipped = result.get("skipped") or []
         raise RuntimeError(
             "low_buy_materialization_refresh incomplete: "
-            f"missing_strategies={missing}; skipped={skipped}"
+            f"missing_required_strategies={missing_required}; "
+            f"skipped_strategies={skipped_strategies}; skipped={skipped}"
         )
     priority_board = result.get("priority_board_read_models") or {}
     if isinstance(priority_board, dict) and priority_board.get("ok") is False:

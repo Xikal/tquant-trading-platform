@@ -3,8 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app import main
+
+
+@pytest.fixture(autouse=True)
+def _clear_readyz_db_probe_state():
+    with main._readyz_db_probe_lock:
+        main._readyz_db_probe = None
+    yield
+    with main._readyz_db_probe_lock:
+        main._readyz_db_probe = None
 
 
 def _write_next_dist(root: Path, marker: str = "next-page", asset_name: str = "next.js") -> None:
@@ -142,3 +152,32 @@ def test_api_only_readyz_does_not_require_static_frontend_dist(monkeypatch, tmp_
     assert response.checks["frontend_dist"] is True
     assert response.checks["frontend_next_dist"] is True
     assert response.errors == []
+
+
+def test_readyz_returns_degraded_quickly_when_database_ping_times_out(monkeypatch, tmp_path):
+    import time
+
+    next_dist = tmp_path / "frontend-next" / "dist"
+    _write_next_dist(next_dist, "next-ready")
+    monkeypatch.setattr(main, "FRONTEND_NEXT_INDEX_FILE", next_dist / "index.html")
+    monkeypatch.setattr(main, "_READYZ_DB_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(main, "ping_database", lambda: time.sleep(0.2))
+
+    class _AnalyticsStatus:
+        ready = True
+        enabled = False
+        error = ""
+
+    monkeypatch.setattr(main, "analytics_dependency_status", lambda: _AnalyticsStatus())
+    response_stub = type("ResponseStub", (), {"status_code": 200})()
+    started = time.monotonic()
+
+    response = main.readyz(response_stub)
+
+    assert time.monotonic() - started < 0.15
+    assert response_stub.status_code == 503
+    assert response.status == "degraded"
+    assert response.checks["database"] is False
+    assert response.checks["frontend_next_dist"] is True
+    assert response.checks["analytics_dependencies"] is True
+    assert response.errors == ["database: timeout_after_0.05s"]
