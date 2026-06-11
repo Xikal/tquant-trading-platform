@@ -58,6 +58,7 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "DB_MAX_OVERFLOW": "2",
                 "RUNTIME_BACKGROUND_ROLE": "worker",
                 "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
+                "RUNTIME_WORKER_EMBED_SCHEDULER": "false",
             },
             "pool_budget": 4,
         },
@@ -169,6 +170,49 @@ def test_platform_budget_report_warns_when_worker_pause_env_is_missing(tmp_path:
     assert result.returncode == 0
     payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
     assert "low_priority_pause_env_missing=analytics_worker" in payload["evaluation"]["warnings"]
+
+
+def test_core_resource_profile_warns_when_low_priority_not_paused(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["runtime_worker"]["env"]["RUNTIME_LOW_PRIORITY_TASKS_PAUSED"] = "false"  # type: ignore[index]
+    roles["runtime_scheduler"]["env"]["RUNTIME_LOW_PRIORITY_TASKS_PAUSED"] = "false"  # type: ignore[index]
+
+    result = run_budget_report(fixture, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "warning"
+    assert (
+        "core_resource_profile:runtime_worker:RUNTIME_LOW_PRIORITY_TASKS_PAUSED=false"
+        in payload["evaluation"]["warnings"]
+    )
+    assert (
+        "core_resource_profile:runtime_scheduler:RUNTIME_LOW_PRIORITY_TASKS_PAUSED=false"
+        in payload["evaluation"]["warnings"]
+    )
+
+
+def test_embedded_scheduler_mode_allows_standalone_scheduler_to_be_absent(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["runtime_worker"]["env"]["RUNTIME_WORKER_EMBED_SCHEDULER"] = "true"  # type: ignore[index]
+    roles["runtime_scheduler"]["container_present"] = False  # type: ignore[index]
+    roles["runtime_scheduler"]["env"] = {}  # type: ignore[index]
+    roles["runtime_scheduler"]["pool_budget"] = 0  # type: ignore[index]
+    fixture["pool_budget"] = {"total": 20, "target": 40}
+
+    result = run_budget_report(fixture, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "ok"
+    assert "container_missing=runtime_scheduler" not in payload["evaluation"]["warnings"]
+    assert "low_priority_pause_env_missing=runtime_scheduler" not in payload["evaluation"]["warnings"]
+    assert not any(
+        str(item).startswith("core_resource_profile:runtime_scheduler")
+        for item in payload["evaluation"]["warnings"]
+    )
 
 
 def test_platform_budget_verifier_is_read_only() -> None:

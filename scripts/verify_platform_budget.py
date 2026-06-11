@@ -27,6 +27,8 @@ POOL_ENV_KEYS = (
     "RUNTIME_BACKGROUND_ROLE",
     "RUNTIME_BACKGROUND_JOBS_ENABLED",
     "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED",
+    "RUNTIME_WORKER_EMBED_SCHEDULER",
+    "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED",
     "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED",
     "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED",
     "RUNTIME_LOW_BUY_FULL_SCAN_INTERVAL_SECONDS",
@@ -43,6 +45,8 @@ POOL_ENV_KEYS = (
     "TQUANT_ANALYTICS_ENABLED",
     "TQUANT_DUCKDB_THREADS",
     "BACKTEST_PARQUET_DAILY_BARS_ENABLED",
+    "PLATFORM_AUTOPILOT_ENABLED",
+    "MARKET_REVIEW_ENABLED",
 )
 SAFE_COMPOSE_ENV_KEYS = set(POOL_ENV_KEYS) | {
     "DB_POOL_TIMEOUT",
@@ -52,6 +56,17 @@ SAFE_COMPOSE_ENV_KEYS = set(POOL_ENV_KEYS) | {
 DEFAULT_THRESHOLDS = {
     "mysql_max_connections": 120,
     "pool_budget": 40,
+}
+
+TRUE_VALUES = {"1", "true", "yes", "on"}
+
+CORE_RESOURCE_PROFILE_EXPECTATIONS = {
+    "runtime_worker": {
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
+    },
+    "runtime_scheduler": {
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
+    },
 }
 
 
@@ -141,9 +156,34 @@ def pool_int(env: dict[str, str], key: str) -> int:
     return int(value) if str(value).isdigit() else 0
 
 
+def is_enabled(value: Any) -> bool:
+    return str(value or "").strip().lower() in TRUE_VALUES
+
+
+def embedded_scheduler_enabled(report: dict[str, Any]) -> bool:
+    worker_env = report.get("roles", {}).get("runtime_worker", {}).get("env", {})
+    return is_enabled(worker_env.get("RUNTIME_WORKER_EMBED_SCHEDULER"))
+
+
+def evaluate_core_resource_profile(report: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    roles = report.get("roles", {})
+    embedded_scheduler = embedded_scheduler_enabled(report)
+    for role_name, expected in CORE_RESOURCE_PROFILE_EXPECTATIONS.items():
+        if embedded_scheduler and role_name == "runtime_scheduler":
+            continue
+        env = roles.get(role_name, {}).get("env", {})
+        for key, expected_value in expected.items():
+            actual = env.get(key, "missing")
+            if str(actual).strip().lower() != expected_value:
+                warnings.append(f"core_resource_profile:{role_name}:{key}={actual}")
+    return warnings
+
+
 def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, Any]:
     warnings: list[str] = []
     blocking: list[str] = []
+    embedded_scheduler = embedded_scheduler_enabled(report)
 
     mysql = report.get("mysql", {})
     max_connections = mysql.get("max_connections")
@@ -160,9 +200,13 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
     if str(web_env.get("TQUANT_ANALYTICS_ENABLED", "")).lower() not in {"false", "0", ""}:
         blocking.append("web_analytics_enabled")
 
+    warnings.extend(evaluate_core_resource_profile(report))
+
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})
         if role.get("container_present") is False and role_name in OPTIONAL_CONTAINER_ROLES:
+            continue
+        if role_name == "runtime_scheduler" and embedded_scheduler and role.get("container_present") is False:
             continue
         if role_name != "web" and "RUNTIME_LOW_PRIORITY_TASKS_PAUSED" not in env:
             warnings.append(f"low_priority_pause_env_missing={role_name}")
