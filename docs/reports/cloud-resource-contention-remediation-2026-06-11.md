@@ -798,6 +798,29 @@ sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --no-build --for
 
 Rollback is not recommended unless worker recycle causes task loss, restart loops, or a regression in core task completion. No such regression is visible in the current verification window.
 
+## D6 MySQL Runtime Root Cause Review - 2026-06-12 01:20 CST
+
+Detailed report: `docs/reports/mysql-runtime-root-cause-review-2026-06-12.md`.
+
+This D6 pass was read-only and did not execute `.env` changes, container restarts, DB writes, schema/index changes, cleanup, nginx/systemd changes, deployment, or cutover.
+
+Current conclusion:
+
+| Decision | Status | Reason |
+|---|---|---|
+| Execute D5 embedded scheduler | no | scheduler provider warnings remain active, swap is still non-zero, and MySQL slow-query evidence should be addressed before moving scheduler pressure into runtime-worker |
+| Treat MySQL connections as root cause | no | `Threads_connected=9`, `Threads_running=2`, `max_connections=120` showed connection headroom |
+| Treat daily bar read paths as P1 | yes | `daily_bar_snapshots` is the largest table and dominates slow digest time; coverage/group-by paths scan large ranges |
+| Treat runtime task observability as P2 | yes | broad `runtime_tasks` summary/diagnostic queries examined about `45k` rows in the sample |
+| Keep standalone scheduler for now | yes | provider timeout/circuit-open bursts should stay isolated until a complete trading-day gate passes |
+
+Recommended next implementation work stays in D6, not D5:
+
+1. Add or reuse a daily-bar coverage read model for latest complete trade date, recent complete dates, and stock count by trade date.
+2. Add provider degraded cooldown/read-through behavior so scheduler tasks prefer stale cached market snapshots when all live providers are circuit-open.
+3. Narrow runtime task summary/read-model queries after EXPLAIN on exact production SQL.
+4. Defer any schema/index changes or historical task cleanup until a separate DB-write authorization window.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |
