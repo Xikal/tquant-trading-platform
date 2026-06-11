@@ -356,6 +356,7 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     assert "--prebuilt-images" in quick_script
     assert "--prebuilt-web-image <ref>" in quick_script
     assert "--with-analytics-worker" in quick_script
+    assert "--embed-runtime-scheduler" in quick_script
     assert "prebuilt_images=${DEPLOY_PREBUILT_IMAGES_ENABLED}" in quick_script
     assert "export DEPLOY_PREBUILT_IMAGES_ENABLED" in quick_script
     assert "export DEPLOY_PREBUILT_WEB_IMAGE_REF" in quick_script
@@ -363,6 +364,7 @@ def test_deploy_scripts_support_prebuilt_image_pull_restart_mode() -> None:
     assert "export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF" in quick_script
     assert "export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" in quick_script
     assert "export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" in quick_script
+    assert "export DEPLOY_EMBED_RUNTIME_SCHEDULER" in quick_script
 
     assert "Build local prebuilt images for cloud pull+restart deploys. It never deploys." in builder_script
     assert 'IMAGE_REGISTRY="${IMAGE_REGISTRY:-}"' in builder_script
@@ -990,6 +992,26 @@ def test_cloud_deploy_starts_runtime_scheduler_container() -> None:
     assert "DEPLOY_WITH_ANALYTICS_WORKER" in deploy_script
     assert "--profile analytics" in deploy_script
     assert "tquant-runtime-scheduler-mysql" in quick_script
+
+
+def test_deploy_supports_explicit_embedded_runtime_scheduler_mode() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    maintenance_script = read_repo_file("scripts/plan_platform_maintenance_window.py")
+
+    assert 'DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"' in deploy_script
+    assert "embedded_scheduler_enabled()" in deploy_script
+    assert "DEPLOY_EMBED_RUNTIME_SCHEDULER=1" in quick_script
+    assert "--embed-runtime-scheduler" in quick_script
+    assert "RUNTIME_WORKER_EMBED_SCHEDULER" in deploy_script
+    assert "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED" in deploy_script
+    assert "runtime_scheduler:embedded" in deploy_script
+    assert "runtime_scheduler:embedded" in quick_script
+    assert "web_image_containers()" in deploy_script
+    assert "web_image_containers()" in quick_script
+    assert "stop_embedded_runtime_scheduler" in deploy_script
+    assert "RUNTIME_WORKER_EMBED_SCHEDULER" in maintenance_script
+    assert "tquant-runtime-scheduler-mysql" in deploy_script
 
 
 def test_runtime_data_fallback_runbook_and_startup_guard_exist() -> None:

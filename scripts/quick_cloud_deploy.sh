@@ -60,6 +60,7 @@ DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
+DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"
 VERIFY_WEB_IMAGE_SYNC=1
 RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
 RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
@@ -151,6 +152,9 @@ Options:
                  Image ref to tag as tquant-analytics:mysql when --prebuilt-images is enabled.
   --with-analytics-worker
                  Start and verify the optional analytics-worker profile.
+  --embed-runtime-scheduler
+                 Verify/deploy with runtime-worker embedded scheduler. The standalone
+                 runtime-scheduler container is allowed to be absent only with this flag.
   --prebuilt-go-bff-image <ref>
                  Image ref to tag as tquant-go-bff:mysql when --prebuilt-images is enabled.
   --prebuilt-go-market-read-image <ref>
@@ -274,6 +278,10 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_WITH_ANALYTICS_WORKER=1
       shift
       ;;
+    --embed-runtime-scheduler)
+      DEPLOY_EMBED_RUNTIME_SCHEDULER=1
+      shift
+      ;;
     --prebuilt-go-bff-image)
       DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${2:?missing prebuilt go bff image ref}"
       shift 2
@@ -386,6 +394,7 @@ export DEPLOY_PREBUILT_GO_BFF_IMAGE_REF
 export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
 export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
 export DEPLOY_WITH_ANALYTICS_WORKER
+export DEPLOY_EMBED_RUNTIME_SCHEDULER
 export REMOTE_NODE_BASE_IMAGE REMOTE_RUST_BASE_IMAGE REMOTE_PYTHON_BASE_IMAGE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
@@ -690,7 +699,7 @@ verify_remote() {
   if [[ "$DEPLOY_TARGET_SCOPE" == "frontend-next" ]]; then
     VERIFY_WEB_IMAGE_SYNC=0
   fi
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" VERIFY_WEB_IMAGE_SYNC="$VERIFY_WEB_IMAGE_SYNC" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" bash -s <<'REMOTE'
 set -euo pipefail
 dump_container_diagnostics() {
   local name="$1"
@@ -721,6 +730,18 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
+embedded_scheduler_enabled() {
+  case "$(printf '%s' "${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+web_image_containers() {
+  printf 'tquant-app-mysql tquant-runtime-worker-mysql'
+  if ! embedded_scheduler_enabled; then
+    printf ' tquant-runtime-scheduler-mysql'
+  fi
+}
 curl_retry() {
   local output_path="$1"
   local url="$2"
@@ -736,9 +757,14 @@ curl_retry() {
   done
   return 1
 }
-for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
+for name in tquant-app-mysql tquant-runtime-worker-mysql tquant-go-bff-gateway tquant-go-market-read-service tquant-go-scan-worker; do
   wait_for_container "$name"
 done
+if embedded_scheduler_enabled; then
+  echo "runtime_scheduler:embedded"
+else
+  wait_for_container tquant-runtime-scheduler-mysql
+fi
 sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
 if with_analytics_worker; then
   wait_for_container tquant-analytics-worker-mysql
@@ -747,7 +773,7 @@ else
 fi
 if test "${VERIFY_WEB_IMAGE_SYNC:-1}" = "1"; then
   EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-  for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+  for container in $(web_image_containers); do
     ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
     test "$ACTUAL_WEB_IMAGE" = "$EXPECTED_WEB_IMAGE"
   done
@@ -910,6 +936,7 @@ CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE="$CLOUD_AUTH_ALLOW_INSECURE_HTTP_COOKIE" \
 FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED="$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED" \
 FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
 DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
+DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" \
 VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \

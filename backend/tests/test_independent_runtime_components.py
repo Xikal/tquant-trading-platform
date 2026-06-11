@@ -100,7 +100,10 @@ def test_runtime_analytics_and_backtest_claim_scopes_are_bounded() -> None:
     assert '"low_buy_execution_backtest"' in heavy_research_tasks
     assert '"analysis_batch"' in heavy_research_tasks
     assert '"paper_smart_t_backtest"' not in heavy_research_tasks
-    assert "queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_TASK_TYPES)" in runtime_worker
+    assert "RUNTIME_WORKER_CLAIM_TASK_TYPES" in runtime_worker
+    assert "queue.claim_next(worker_id=self.worker_id, task_types=RUNTIME_WORKER_CLAIM_TASK_TYPES)" in runtime_worker
+    assert "PAPER_TASK_TYPES" in runtime_worker
+    assert "skipped_removed_feature" in runtime_worker
     assert "analytics_task_registry()" in analytics_worker
     assert "RuntimeTaskWorker" in analytics_worker
     assert "register_analytics_handlers" in analytics_registry

@@ -69,6 +69,8 @@ def test_maintenance_plan_generates_ordered_manual_steps(tmp_path: Path) -> None
         "preflight_resource_readiness",
         "resource_limits_dry_run",
         "resource_limits_apply",
+        "embedded_runtime_scheduler_dry_run",
+        "embedded_runtime_scheduler_apply",
         "post_resource_verify",
         "analytics_manifest_preflight",
         "analytics_manifest_enqueue",
@@ -80,7 +82,11 @@ def test_maintenance_plan_generates_ordered_manual_steps(tmp_path: Path) -> None
     assert plan["safety"]["does_deploy"] is False
     assert plan["safety"]["does_cutover"] is False
     assert plan["safety"]["does_clean_mysql_source_tables"] is False
-    assert plan["safety"]["operator_apply_steps"] == ["resource_limits_apply", "analytics_manifest_enqueue"]
+    assert plan["safety"]["operator_apply_steps"] == [
+        "resource_limits_apply",
+        "embedded_runtime_scheduler_apply",
+        "analytics_manifest_enqueue",
+    ]
     assert plan["execution"]["operator_working_directory"] == "/Users/j/Documents/gupiao"
     assert plan["execution"]["remote_host"] == "43.143.243.97"
     assert plan["execution"]["remote_project_dir"] == "/home/ubuntu/gupiao-upload"
@@ -97,6 +103,15 @@ def test_maintenance_plan_generates_ordered_manual_steps(tmp_path: Path) -> None
     assert any("/home/ubuntu/mysql-backups/slow-log/mysql-slow-$TS.log" in command for command in apply_step["commands"])
     assert any("sudo logrotate -f /etc/logrotate.d/tquant-mysql-slow-log" in command for command in apply_step["commands"])
     assert "sudo docker compose -f docker-compose.mysql.yml restart mysql" not in apply_step["commands"]
+    assert all("analytics-worker" not in command for command in apply_step["commands"])
+    embedded_dry_run = next(item for item in plan["steps"] if item["id"] == "embedded_runtime_scheduler_dry_run")
+    assert any("RUNTIME_WORKER_EMBED_SCHEDULER" in command for command in embedded_dry_run["commands"])
+    assert any("verify_platform_budget.py" in command for command in embedded_dry_run["commands"])
+    embedded_apply = next(item for item in plan["steps"] if item["id"] == "embedded_runtime_scheduler_apply")
+    assert any("RUNTIME_WORKER_EMBED_SCHEDULER" in command for command in embedded_apply["commands"])
+    assert any("RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED" in command for command in embedded_apply["commands"])
+    assert any("sudo docker rm -f tquant-runtime-scheduler-mysql" in command for command in embedded_apply["commands"])
+    assert "runtime-scheduler" in embedded_apply["rollback"]
     preflight_step = next(item for item in plan["steps"] if item["id"] == "preflight_resource_readiness")
     assert any("test -f scripts/install_platform_resource_limits.py" in command for command in preflight_step["commands"])
     assert any("--ssh-host 43.143.243.97" in command for command in preflight_step["commands"])

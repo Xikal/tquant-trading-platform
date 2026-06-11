@@ -57,6 +57,7 @@ DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${DEPLOY_PREBUILT_GO_BFF_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF:-}"
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
+DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
@@ -422,6 +423,7 @@ remote_deploy_from_git() {
     DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
     DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
+    DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
@@ -491,12 +493,28 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
+embedded_scheduler_enabled() {
+  case "$(printf '%s' "${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 runtime_worker_services() {
-  printf 'runtime-scheduler runtime-worker'
+  if embedded_scheduler_enabled; then
+    printf 'runtime-worker'
+  else
+    printf 'runtime-scheduler runtime-worker'
+  fi
 }
 app_runtime_services() {
   printf 'app '
   runtime_worker_services
+}
+web_image_containers() {
+  printf 'tquant-app-mysql tquant-runtime-worker-mysql'
+  if ! embedded_scheduler_enabled; then
+    printf ' tquant-runtime-scheduler-mysql'
+  fi
 }
 analytics_worker_services() {
   if with_analytics_worker; then
@@ -505,6 +523,11 @@ analytics_worker_services() {
 }
 stop_removed_backtest_worker() {
   sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
+}
+stop_embedded_runtime_scheduler() {
+  if embedded_scheduler_enabled; then
+    sudo docker rm -f tquant-runtime-scheduler-mysql 2>/dev/null || true
+  fi
 }
 
 use_prebuilt_app_images() {
@@ -755,6 +778,10 @@ upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
 upsert_env_value FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED "$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED"
 upsert_env_value FRONTEND_NEXT_CUTOVER_PATHS "$FRONTEND_NEXT_CUTOVER_PATHS"
 upsert_env_value MARKET_CLOSE_REVIEW_TIME "${MARKET_CLOSE_REVIEW_TIME:-15:05}"
+if embedded_scheduler_enabled; then
+  upsert_env_value RUNTIME_WORKER_EMBED_SCHEDULER true
+  upsert_env_value RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED false
+fi
 if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
   upsert_env_value DEBIAN_APT_MIRROR "$REMOTE_DEBIAN_APT_MIRROR"
 fi
@@ -799,6 +826,7 @@ if has_unit worker && test "$DEPLOY_SCOPE" != all; then
     fi
   fi
   stop_removed_backtest_worker
+  stop_embedded_runtime_scheduler
   if with_analytics_worker; then
     sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate $(runtime_worker_services) analytics-worker
   else
@@ -828,13 +856,15 @@ if test "$DEPLOY_SCOPE" = all; then
     if with_analytics_worker; then
       sudo docker rm -f tquant-analytics-worker-mysql 2>/dev/null || true
       stop_removed_backtest_worker
+      stop_embedded_runtime_scheduler
       sudo docker compose --profile analytics -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate $(app_runtime_services) analytics-worker
     else
       stop_removed_backtest_worker
+      stop_embedded_runtime_scheduler
       sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate $(app_runtime_services)
     fi
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+    for container in $(web_image_containers); do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
       if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
         echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
@@ -848,6 +878,7 @@ if test "$DEPLOY_SCOPE" = all; then
       docker_compose_build "$RUNTIME_COMPOSE_FILE" $(runtime_worker_services)
     fi
     stop_removed_backtest_worker
+    stop_embedded_runtime_scheduler
     if with_analytics_worker; then
       sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate $(runtime_worker_services) analytics-worker
     else
@@ -921,7 +952,7 @@ PY
   sudo docker compose -f "$GO_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
   if test "$DEPLOY_SCOPE" = all && test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" != "separated"; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+    for container in $(web_image_containers); do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
       if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
         echo "$container changed away from web image after Go service deploy" >&2
@@ -1074,6 +1105,7 @@ REMOTE
     DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="$DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF" \
     DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="$DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF" \
     DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
+    DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" \
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
@@ -1144,12 +1176,28 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
+embedded_scheduler_enabled() {
+  case "$(printf '%s' "${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 runtime_worker_services() {
-  printf 'runtime-scheduler runtime-worker'
+  if embedded_scheduler_enabled; then
+    printf 'runtime-worker'
+  else
+    printf 'runtime-scheduler runtime-worker'
+  fi
 }
 app_runtime_services() {
   printf 'app '
   runtime_worker_services
+}
+web_image_containers() {
+  printf 'tquant-app-mysql tquant-runtime-worker-mysql'
+  if ! embedded_scheduler_enabled; then
+    printf ' tquant-runtime-scheduler-mysql'
+  fi
 }
 analytics_worker_services() {
   if with_analytics_worker; then
@@ -1158,6 +1206,11 @@ analytics_worker_services() {
 }
 stop_removed_backtest_worker() {
   sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
+}
+stop_embedded_runtime_scheduler() {
+  if embedded_scheduler_enabled; then
+    sudo docker rm -f tquant-runtime-scheduler-mysql 2>/dev/null || true
+  fi
 }
 
 use_prebuilt_app_images() {
@@ -1393,6 +1446,10 @@ upsert_env_value WEB_RUNTIME_BACKGROUND_JOBS_ENABLED false
 upsert_env_value FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED "$FRONTEND_NEXT_MONITOR_CUTOVER_ENABLED"
 upsert_env_value FRONTEND_NEXT_CUTOVER_PATHS "$FRONTEND_NEXT_CUTOVER_PATHS"
 upsert_env_value MARKET_CLOSE_REVIEW_TIME "${MARKET_CLOSE_REVIEW_TIME:-15:05}"
+if embedded_scheduler_enabled; then
+  upsert_env_value RUNTIME_WORKER_EMBED_SCHEDULER true
+  upsert_env_value RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED false
+fi
 if test -n "$REMOTE_DEBIAN_APT_MIRROR"; then
   upsert_env_value DEBIAN_APT_MIRROR "$REMOTE_DEBIAN_APT_MIRROR"
 fi
@@ -1437,6 +1494,7 @@ if has_unit worker && test "$DEPLOY_SCOPE" != all; then
     fi
   fi
   stop_removed_backtest_worker
+  stop_embedded_runtime_scheduler
   if with_analytics_worker; then
     sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate $(runtime_worker_services) analytics-worker
   else
@@ -1466,13 +1524,15 @@ if test "$DEPLOY_SCOPE" = all; then
     if with_analytics_worker; then
       sudo docker rm -f tquant-analytics-worker-mysql 2>/dev/null || true
       stop_removed_backtest_worker
+      stop_embedded_runtime_scheduler
       sudo docker compose --profile analytics -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate $(app_runtime_services) analytics-worker
     else
       stop_removed_backtest_worker
+      stop_embedded_runtime_scheduler
       sudo docker compose -f "$CLOUD_COMPOSE_FILE" up -d --no-build --force-recreate $(app_runtime_services)
     fi
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+    for container in $(web_image_containers); do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
       if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
         echo "$container is still running $ACTUAL_WEB_IMAGE; expected $EXPECTED_WEB_IMAGE" >&2
@@ -1486,6 +1546,7 @@ if test "$DEPLOY_SCOPE" = all; then
       docker_compose_build "$RUNTIME_COMPOSE_FILE" $(runtime_worker_services)
     fi
     stop_removed_backtest_worker
+    stop_embedded_runtime_scheduler
     if with_analytics_worker; then
       sudo docker compose --profile analytics -f "$RUNTIME_COMPOSE_FILE" up -d --no-deps --no-build --force-recreate $(runtime_worker_services) analytics-worker
     else
@@ -1559,7 +1620,7 @@ PY
   sudo docker compose -f "$GO_COMPOSE_FILE" up -d --no-build --force-recreate go-bff-gateway go-market-read-service go-scan-worker
   if test "$DEPLOY_SCOPE" = all && test "${DEPLOY_COMPOSE_TOPOLOGY:-monolith}" != "separated"; then
     EXPECTED_WEB_IMAGE=$(sudo docker image inspect tquant-web:mysql --format '{{.Id}}')
-    for container in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+    for container in $(web_image_containers); do
       ACTUAL_WEB_IMAGE=$(sudo docker inspect "$container" --format '{{.Image}}')
       if test "$ACTUAL_WEB_IMAGE" != "$EXPECTED_WEB_IMAGE"; then
         echo "$container changed away from web image after Go service deploy" >&2
@@ -1632,7 +1693,7 @@ fi"
 
 verify_remote() {
   log "wait for container health"
-  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
+  cloud_ssh env CLOUD_APP_PORT="$CLOUD_APP_PORT" CLOUD_PROJECT_DIR="$CLOUD_PROJECT_DIR" DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" bash -s <<'REMOTE'
 set -euo pipefail
 dump_container_diagnostics() {
   local name="$1"
@@ -1663,9 +1724,20 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
-for name in tquant-app-mysql tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+embedded_scheduler_enabled() {
+  case "$(printf '%s' "${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+for name in tquant-app-mysql tquant-runtime-worker-mysql; do
   wait_for_container "$name"
 done
+if embedded_scheduler_enabled; then
+  echo "runtime_scheduler:embedded"
+else
+  wait_for_container tquant-runtime-scheduler-mysql
+fi
 sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
 if with_analytics_worker; then
   wait_for_container tquant-analytics-worker-mysql
@@ -1795,7 +1867,7 @@ REMOTE
 
 verify_worker_remote() {
   log "verify worker deployment"
-  cloud_ssh env DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" bash -s <<'REMOTE'
+  cloud_ssh env DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" bash -s <<'REMOTE'
 set -euo pipefail
 with_analytics_worker() {
   case "$(printf '%s' "${DEPLOY_WITH_ANALYTICS_WORKER:-0}" | tr '[:upper:]' '[:lower:]')" in
@@ -1803,11 +1875,24 @@ with_analytics_worker() {
     *) return 1 ;;
   esac
 }
-for name in tquant-runtime-scheduler-mysql tquant-runtime-worker-mysql; do
+embedded_scheduler_enabled() {
+  case "$(printf '%s' "${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+for name in tquant-runtime-worker-mysql; do
   STATUS=$(sudo docker inspect "$name" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
   echo "$name health:$STATUS"
   case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
 done
+if embedded_scheduler_enabled; then
+  echo "runtime_scheduler:embedded"
+else
+  STATUS=$(sudo docker inspect tquant-runtime-scheduler-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
+  echo "tquant-runtime-scheduler-mysql health:$STATUS"
+  case "$STATUS" in healthy|running) ;; *) exit 1 ;; esac
+fi
 sudo docker rm -f tquant-backtest-worker-mysql 2>/dev/null || true
 if with_analytics_worker; then
   STATUS=$(sudo docker inspect tquant-analytics-worker-mysql --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo none)
