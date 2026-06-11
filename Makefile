@@ -3,13 +3,15 @@ SHELL := /bin/bash
 .PHONY: frontend-build native-build native-sync backend-compile version-sync version-check qa ui-smoke warning-budget full-regression full-regression-release full-regression-cloud prod-preflight runtime-snapshot rust-bench go-rust-acceptance deploy-cloud deploy-cloud-web deploy-cloud-next deploy-cloud-api deploy-cloud-db deploy-cloud-go deploy-cloud-full deploy-cloud-fast deploy-cloud-verify public-up public-down docker-sqlite-up docker-sqlite-down docker-mysql-up docker-mysql-down
 
 frontend-build:
-	cd frontend && npm run build
+	cd frontend-next && npm run build
 
 native-build:
-	cd frontend && npm run build:native
+	@echo "native-build retired with legacy frontend/; use archive/frontend-retired-2026-06-11 to restore if needed."
+	@exit 2
 
 native-sync:
-	cd frontend && npm run cap:sync
+	@echo "native-sync retired with legacy frontend/; use archive/frontend-retired-2026-06-11 to restore if needed."
+	@exit 2
 
 backend-compile:
 	cd backend && .venv/bin/python -m compileall app

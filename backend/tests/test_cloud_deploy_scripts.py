@@ -533,8 +533,9 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
         'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next', 1
     )[0]
     assert "deploy_scope_has_unit frontend-legacy" not in make_package
-    assert "--exclude='frontend/node_modules'" in make_package
-    assert "--exclude='frontend/dist'" in make_package
+    assert "--exclude='frontend'" in make_package
+    assert "--exclude='frontend/node_modules'" not in make_package
+    assert "--exclude='frontend/dist'" not in make_package
     assert package_branch.index("publish_frontend_next() {") < package_branch.index("if has_unit frontend-next")
     assert package_branch.index("refresh_gateway_if_present() {") < package_branch.index("if has_unit ops")
     assert "test -f frontend-next/dist/index.html" in publish_function
@@ -704,9 +705,9 @@ def test_delta_package_helper_builds_manifest_delta_and_safe_delete_manifest(tmp
     (root / "docker-compose.mysql.yml").write_text("services: {}\n", encoding="utf-8")
     (root / "backend/app/main.py").parent.mkdir(parents=True)
     (root / "backend/app/main.py").write_text("print('main')\n", encoding="utf-8")
-    (root / "frontend/src/main.tsx").parent.mkdir(parents=True)
-    (root / "frontend/package.json").write_text("{}\n", encoding="utf-8")
-    (root / "frontend/src/main.tsx").write_text("console.log('main')\n", encoding="utf-8")
+    (root / "frontend-next/src/index.tsx").parent.mkdir(parents=True)
+    (root / "frontend-next/package.json").write_text("{}\n", encoding="utf-8")
+    (root / "frontend-next/src/index.tsx").write_text("console.log('main')\n", encoding="utf-8")
     (root / "scripts").mkdir()
     (root / "scripts/install_https_nginx.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
     (root / "scripts/deploy_delta_package.py").write_text("helper\n", encoding="utf-8")

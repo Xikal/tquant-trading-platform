@@ -84,8 +84,8 @@ def build_test_coverage_matrix(root: Path) -> dict[str, Any]:
             root,
             "frontend_family_display",
             "前端高密度展示",
-            "frontend/src/features/workspace-shared/FamilyStrip.test.tsx",
-            ("renders compact family tiles with data quality hints",),
+            "frontend-next/tests/e2e/analysis-playbook.spec.ts",
+            ("family_sections", "data_quality_text", "/next/playbook"),
         ),
     ]
     covered = [row for row in rows if row["status"] == "covered"]

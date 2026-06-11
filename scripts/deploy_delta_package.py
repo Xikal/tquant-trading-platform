@@ -27,8 +27,9 @@ EXCLUDE_PREFIXES = (
     "backend/.venv/",
     "backend/__pycache__/",
     "backend/.pytest_cache/",
-    "frontend/node_modules/",
-    "frontend/dist/",
+    "frontend/",
+    "frontend-next/node_modules/",
+    "frontend-next/dist/",
 )
 EXCLUDE_EXACT = {
     ".git",
@@ -42,13 +43,14 @@ EXCLUDE_EXACT = {
     "backups",
     "backend/.env",
     "backend/data/runtime.env",
-    "frontend/node_modules",
-    "frontend/dist",
+    "frontend",
+    "frontend-next/node_modules",
+    "frontend-next/dist",
 }
 EXCLUDE_PATTERNS = (
     "backend/data/*.db",
     "backend/data/*.sqlite",
-    "frontend/*.tsbuildinfo",
+    "frontend-next/*.tsbuildinfo",
     "rust/*/target",
     "rust/*/target/*",
     "*.pyc",
@@ -92,9 +94,9 @@ CRITICAL_EXACT = {
     "backend/alembic.ini",
     "docs/contracts/openapi.json",
     "docs/contracts/openapi.hash",
-    "frontend/package.json",
-    "frontend/package-lock.json",
-    "frontend/src/generated/api-types.ts",
+    "frontend-next/package.json",
+    "frontend-next/package-lock.json",
+    "frontend-next/src/generated/api-types.ts",
     "scripts/deploy_cloud_server.sh",
     "scripts/deploy_delta_package.py",
     "scripts/quick_cloud_deploy.sh",
@@ -105,14 +107,14 @@ CRITICAL_EXACT = {
 }
 CRITICAL_PREFIXES = (
     "backend/alembic/",
-    "frontend/src/generated/",
+    "frontend-next/src/generated/",
     "docs/contracts/openapi.",
     "backend/app/workers/",
 )
 CRITICAL_PATTERNS = (
     "docker-compose.*.yml",
     "backend/requirements*.txt",
-    "frontend/package-lock.json",
+    "frontend-next/package-lock.json",
 )
 DEFAULT_MAX_CHANGE_RATIO = 0.35
 

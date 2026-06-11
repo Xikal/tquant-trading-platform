@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 
-cd "$ROOT_DIR/frontend"
+cd "$ROOT_DIR/frontend-next"
 npm run build
 
 cd "$ROOT_DIR/backend"

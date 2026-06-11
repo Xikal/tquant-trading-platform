@@ -20,9 +20,8 @@ docs/**
 !docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json
 !docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/
 !docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json
+# Retired legacy frontend. Keep excluded if an untracked archive is recreated.
 frontend
-frontend/node_modules
-frontend/dist
 frontend-next/node_modules
 frontend-next/dist
 frontend-next/test-results

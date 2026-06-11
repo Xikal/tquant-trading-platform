@@ -96,7 +96,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 ### 前端
 
 ```bash
-cd frontend
+cd frontend-next
 npm run dev
 ```
 
@@ -110,7 +110,7 @@ Independent Web, runtime-worker, scheduler and analytics-worker operation is doc
 
 ## 5.1 单端口生产化运行
 
-后端现在会直接托管 `frontend/dist`，所以构建前端后，可以只启动后端：
+后端现在会直接托管 `frontend-next/dist`，所以构建前端后，可以只启动后端：
 
 ```bash
 ./scripts/run_local_prod.sh
@@ -717,7 +717,7 @@ APPLY=1 KEEP_BACKUPS=1 ./scripts/cloud_server_cleanup.sh
 
 本地可清理：
 
-- `frontend/dist`
+- `frontend-next/dist`
 - `.runtime/ui-smoke`
 - 过期 `backups/t_quant-*.gz`
 - 旧回测报告导出文件

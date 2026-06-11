@@ -18,7 +18,7 @@ rm -f "$QA_DB_PATH" "$QA_DB_PATH-shm" "$QA_DB_PATH-wal"
 
 rm -f "$RUNTIME_ENV_PATH"
 
-cd "$ROOT_DIR/frontend"
+cd "$ROOT_DIR/frontend-next"
 npm run build >/dev/null
 
 cd "$ROOT_DIR/backend"

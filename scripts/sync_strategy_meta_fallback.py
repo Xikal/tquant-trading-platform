@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
-OUTPUT = ROOT / "frontend" / "src" / "generated" / "strategyMetaFallback.ts"
+OUTPUT = ROOT / "frontend-next" / "src" / "generated" / "strategyMetaFallback.ts"
 VENV_PYTHON = BACKEND / ".venv" / "bin" / "python"
 VENV_SITE = sorted((BACKEND / ".venv" / "lib").glob("python*/site-packages"))
 

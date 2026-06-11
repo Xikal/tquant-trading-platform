@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY_PATHS = ("/backtests", "/research")
-SCAN_ROOTS = ("frontend/src", "backend/app", "scripts")
+SCAN_ROOTS = ("backend/app", "scripts")
 DEFAULT_EXCLUDES = {
     ".git",
     ".venv",
@@ -29,7 +29,6 @@ ALLOWED_REFERENCE_FILES = {
     "scripts/audit_legacy_routes.py",
 }
 ALLOWED_REFERENCE_PREFIXES = (
-    "frontend/src/api/",
 )
 
 

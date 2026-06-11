@@ -1,0 +1,296 @@
+===== stability sample 1 Thu Jun 11 21:54:06 CST 2026 =====
+ 21:54:06 up 3 days, 10:38, 548 users,  load average: 1.43, 1.41, 1.36
+               total        used        free      shared  buff/cache   available
+Mem:            3723        3099         341           2         559         623
+Swap:           1987         612        1375
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+Filesystem     Inodes IUsed IFree IUse% Mounted on
+/dev/vda2        3.8M  394K  3.4M   11% /
+[compose ps]
+NAME                             IMAGE                                         COMMAND                  SERVICE                  CREATED          STATUS                       PORTS
+tquant-app-mysql                 tquant-web:mysql                              "sh -c 'exec gunicor…"   app                      10 minutes ago   Up 10 minutes (healthy)      0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                           "bff-gateway"            go-bff-gateway           9 minutes ago    Up 9 minutes (healthy)       8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                   "market-read-service"    go-market-read-service   9 minutes ago    Up 9 minutes (healthy)       8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                   "scan-worker"            go-scan-worker           9 minutes ago    Up 9 minutes (healthy)       8093/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4        "docker-entrypoint.s…"   mysql                    2 days ago       Up About an hour (healthy)   3306/tcp, 33060/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine   "docker-entrypoint.s…"   redis                    2 days ago       Up 2 days (healthy)          6379/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                              "python -m app.worke…"   runtime-scheduler        10 minutes ago   Up 10 minutes (healthy)      8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                              "python -m app.worke…"   runtime-worker           10 minutes ago   Up 10 minutes (healthy)      8000/tcp
+[stats]
+NAME                             CPU %     MEM USAGE / LIMIT   MEM %     PIDS
+tquant-frontend-web              0.00%     4.066MiB / 128MiB   3.18%     5
+tquant-go-bff-gateway            0.00%     1.48MiB / 128MiB    1.16%     5
+tquant-go-market-read-service    0.00%     7.383MiB / 128MiB   5.77%     7
+tquant-go-scan-worker            0.00%     2.535MiB / 128MiB   1.98%     5
+tquant-runtime-scheduler-mysql   0.00%     334.6MiB / 640MiB   52.29%    26
+tquant-app-mysql                 0.11%     194.4MiB / 768MiB   25.31%    7
+tquant-runtime-worker-mysql      78.99%    573.9MiB / 768MiB   74.73%    11
+tquant-redis                     0.66%     10.34MiB / 128MiB   8.08%     7
+tquant-mysql                     21.98%    1019MiB / 1GiB      99.52%    45
+[readyz]
+{"status":"ok","app":"维斯量化交易平台","checks":{"database":true,"frontend_next_dist":true,"frontend_dist":true,"analytics_dependencies":true},"errors":[]}
+[runtime summary]
+===== stability sample fixed 1 Thu Jun 11 21:54:41 CST 2026 =====
+ 21:54:41 up 3 days, 10:38, 549 users,  load average: 1.48, 1.43, 1.37
+               total        used        free      shared  buff/cache   available
+Mem:            3723        3038         328           2         633         684
+Swap:           1987         599        1388
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+Filesystem     Inodes IUsed IFree IUse% Mounted on
+/dev/vda2        3.8M  394K  3.4M   11% /
+[compose ps]
+NAME                             IMAGE                                         COMMAND                  SERVICE                  CREATED          STATUS                       PORTS
+tquant-app-mysql                 tquant-web:mysql                              "sh -c 'exec gunicor…"   app                      10 minutes ago   Up 10 minutes (healthy)      0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                           "bff-gateway"            go-bff-gateway           10 minutes ago   Up 10 minutes (healthy)      8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                   "market-read-service"    go-market-read-service   10 minutes ago   Up 10 minutes (healthy)      8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                   "scan-worker"            go-scan-worker           10 minutes ago   Up 10 minutes (healthy)      8093/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4        "docker-entrypoint.s…"   mysql                    2 days ago       Up About an hour (healthy)   3306/tcp, 33060/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine   "docker-entrypoint.s…"   redis                    2 days ago       Up 2 days (healthy)          6379/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                              "python -m app.worke…"   runtime-scheduler        10 minutes ago   Up 10 minutes (healthy)      8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                              "python -m app.worke…"   runtime-worker           10 minutes ago   Up 10 minutes (healthy)      8000/tcp
+[stats]
+NAME                             CPU %     MEM USAGE / LIMIT   MEM %     PIDS
+tquant-frontend-web              0.00%     4.141MiB / 128MiB   3.23%     5
+tquant-go-bff-gateway            0.00%     1.555MiB / 128MiB   1.21%     5
+tquant-go-market-read-service    0.00%     7.449MiB / 128MiB   5.82%     7
+tquant-go-scan-worker            2.44%     2.781MiB / 128MiB   2.17%     5
+tquant-runtime-scheduler-mysql   0.19%     334.2MiB / 640MiB   52.22%    26
+tquant-app-mysql                 0.12%     196.3MiB / 768MiB   25.56%    7
+tquant-runtime-worker-mysql      86.33%    651MiB / 768MiB     84.77%    11
+tquant-redis                     0.54%     6.312MiB / 128MiB   4.93%     7
+tquant-mysql                     15.00%    1022MiB / 1GiB      99.77%    45
+[readyz]
+{"status":"ok","app":"维斯量化交易平台","checks":{"database":true,"frontend_next_dist":true,"frontend_dist":true,"analytics_dependencies":true},"errors":[]}
+[runtime summary]
+===== stability sample stable 1 Thu Jun 11 21:55:14 CST 2026 =====
+ 21:55:14 up 3 days, 10:39, 550 users,  load average: 1.33, 1.39, 1.36
+               total        used        free      shared  buff/cache   available
+Mem:            3723        3205         168           2         626         517
+Swap:           1987         646        1341
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+Filesystem     Inodes IUsed IFree IUse% Mounted on
+/dev/vda2        3.8M  394K  3.4M   11% /
+[compose ps]
+NAME                             IMAGE                                         COMMAND                  SERVICE                  CREATED          STATUS                       PORTS
+tquant-app-mysql                 tquant-web:mysql                              "sh -c 'exec gunicor…"   app                      11 minutes ago   Up 11 minutes (healthy)      0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                           "bff-gateway"            go-bff-gateway           11 minutes ago   Up 10 minutes (healthy)      8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                   "market-read-service"    go-market-read-service   11 minutes ago   Up 11 minutes (healthy)      8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                   "scan-worker"            go-scan-worker           11 minutes ago   Up 10 minutes (healthy)      8093/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4        "docker-entrypoint.s…"   mysql                    2 days ago       Up About an hour (healthy)   3306/tcp, 33060/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine   "docker-entrypoint.s…"   redis                    2 days ago       Up 2 days (healthy)          6379/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                              "python -m app.worke…"   runtime-scheduler        11 minutes ago   Up 11 minutes (healthy)      8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                              "python -m app.worke…"   runtime-worker           11 minutes ago   Up 11 minutes (healthy)      8000/tcp
+[stats]
+NAME                             CPU %     MEM USAGE / LIMIT   MEM %     PIDS
+tquant-frontend-web              0.00%     4.172MiB / 128MiB   3.26%     5
+tquant-go-bff-gateway            0.00%     1.594MiB / 128MiB   1.25%     5
+tquant-go-market-read-service    0.00%     7.453MiB / 128MiB   5.82%     7
+tquant-go-scan-worker            0.00%     2.789MiB / 128MiB   2.18%     5
+tquant-runtime-scheduler-mysql   0.00%     334.3MiB / 640MiB   52.23%    26
+tquant-app-mysql                 0.14%     196.1MiB / 768MiB   25.54%    7
+tquant-runtime-worker-mysql      55.01%    767.9MiB / 768MiB   99.99%    12
+tquant-redis                     0.50%     6.402MiB / 128MiB   5.00%     7
+tquant-mysql                     0.47%     1023MiB / 1GiB      99.88%    45
+[readyz]
+{"status":"ok","app":"维斯量化交易平台","checks":{"database":true,"frontend_next_dist":true,"frontend_dist":true,"analytics_dependencies":true},"errors":[]}
+[runtime summary]
+{"queued": 3, "running": 1, "failed": 1910, "retrying": 0, "succeeded_recent": 2515, "longest_wait_seconds": 111225, "oldest_queued_at": "2026-06-10T07:01:31", "claimable_queued": 3}
+status_counts=[{"status": "cancelled", "count": 28}, {"status": "failed", "count": 1910}, {"status": "queued", "count": 3}, {"status": "running", "count": 1}, {"status": "succeeded", "count": 43751}]
+[mysql status]
+Slow_queries	35
+Threads_connected	9
+Threads_running	2
+Uptime	5168
+innodb_buffer_pool_size	536870912
+max_connections	120
+[redis status]
+connected_clients:5
+used_memory_human:1.32M
+used_memory_peak_human:14.37M
+evicted_keys:0
+db0:keys=7,expires=7,avg_ttl=57943,subexpiry=0
+[recent app errors]
+[recent worker errors]
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:51:18", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:52:03", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:52:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:52:05", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:52:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:52:07", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:52:48", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:52:50", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:52:50", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:52:52", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:53:33", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:53:35", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:53:35", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:54:19", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:54:21", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:54:21", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:54:23", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:03", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:55:07", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-worker-mysql     | Please wait for a moment:   0%|          | 0/70 [00:00<?, ?it/s]Please wait for a moment:   1%|▏         | 1/70 [00:00<00:58,  1.19it/s]Please wait for a moment:   3%|▎         | 2/70 [00:01<00:52,  1.29it/s]Please wait for a moment:   4%|▍         | 3/70 [00:02<00:44,  1.49it/s]Please wait for a moment:   6%|▌         | 4/70 [00:02<00:40,  1.65it/s]Please wait for a moment:   7%|▋         | 5/70 [00:03<00:39,  1.64it/s]Please wait for a moment:   9%|▊         | 6/70 [00:03<00:39,  1.64it/s]Please wait for a moment:  10%|█         | 7/70 [00:04<00:29,  2.14it/s]Please wait for a moment:  11%|█▏        | 8/70 [00:04<00:29,  2.10it/s]Please wait for a moment:  13%|█▎        | 9/70 [00:05<00:35,  1.70it/s]Please wait for a moment:  14%|█▍        | 10/70 [00:05<00:29,  2.06it/s]Please wait for a moment:  16%|█▌        | 11/70 [00:06<00:35,  1.64it/s]Please wait for a moment:  17%|█▋        | 12/70 [00:07<00:37,  1.56it/s]Please wait for a moment:  19%|█▊        | 13/70 [00:07<00:36,  1.58it/s]Please wait for a moment:  20%|██        | 14/70 [00:08<00:36,  1.55it/s]Please wait for a moment:  21%|██▏       | 15/70 [00:08<00:28,  1.94it/s]Please wait for a moment:  23%|██▎       | 16/70 [00:08<00:23,  2.25it/s]Please wait for a moment:  24%|██▍       | 17/70 [00:09<00:27,  1.96it/s]Please wait for a moment:  26%|██▌       | 18/70 [00:09<00:21,  2.47it/s]Please wait for a moment:  27%|██▋       | 19/70 [00:10<00:26,  1.94it/s]Please wait for a moment:  29%|██▊       | 20/70 [00:11<00:25,  1.94it/s]Please wait for a moment:  30%|███       | 21/70 [00:11<00:28,  1.70it/s]Please wait for a moment:  31%|███▏      | 22/70 [00:12<00:23,  2.06it/s]Please wait for a moment:  33%|███▎      | 23/70 [00:12<00:23,  2.01it/s]Please wait for a moment:  34%|███▍      | 24/70 [00:12<00:18,  2.55it/s]Please wait for a moment:  36%|███▌      | 25/70 [00:13<00:20,  2.24it/s]Please wait for a moment:  37%|███▋      | 26/70 [00:13<00:22,  1.98it/s]Please wait for a moment:  39%|███▊      | 27/70 [00:14<00:21,  2.04it/s]Please wait for a moment:  40%|████      | 28/70 [00:14<00:20,  2.05it/s]Please wait for a moment:  41%|████▏     | 29/70 [00:15<00:20,  1.98it/s]Please wait for a moment:  43%|████▎     | 30/70 [00:15<00:20,  1.99it/s]Please wait for a moment:  44%|████▍     | 31/70 [00:16<00:20,  1.90it/s]Please wait for a moment:  46%|████▌     | 32/70 [00:17<00:24,  1.56it/s]Please wait for a moment:  47%|████▋     | 33/70 [00:17<00:22,  1.64it/s]Please wait for a moment:  49%|████▊     | 34/70 [00:18<00:19,  1.89it/s]Please wait for a moment:  50%|█████     | 35/70 [00:19<00:22,  1.53it/s]Please wait for a moment:  51%|█████▏    | 36/70 [00:19<00:16,  2.03it/s]Please wait for a moment:  53%|█████▎    | 37/70 [00:19<00:16,  2.06it/s]Please wait for a moment:  54%|█████▍    | 38/70 [00:20<00:15,  2.01it/s]Please wait for a moment:  56%|█████▌    | 39/70 [00:20<00:15,  1.97it/s]Please wait for a moment:  57%|█████▋    | 40/70 [00:21<00:15,  1.91it/s]Please wait for a moment:  59%|█████▊    | 41/70 [00:22<00:16,  1.80it/s]Please wait for a moment:  60%|██████    | 42/70 [00:22<00:17,  1.63it/s]Please wait for a moment:  61%|██████▏   | 43/70 [00:22<00:12,  2.15it/s]Please wait for a moment:  63%|██████▎   | 44/70 [00:23<00:09,  2.77it/s]Please wait for a moment:  64%|██████▍   | 45/70 [00:23<00:10,  2.31it/s]Please wait for a moment:  66%|██████▌   | 46/70 [00:24<00:11,  2.12it/s]Please wait for a moment:  67%|██████▋   | 47/70 [00:24<00:11,  2.06it/s]Please wait for a moment:  69%|██████▊   | 48/70 [00:25<00:11,  1.93it/s]Please wait for a moment:  70%|███████   | 49/70 [00:26<00:11,  1.78it/s]Please wait for a moment:  71%|███████▏  | 50/70 [00:26<00:10,  1.85it/s]Please wait for a moment:  73%|███████▎  | 51/70 [00:27<00:10,  1.79it/s]Please wait for a moment:  74%|███████▍  | 52/70 [00:27<00:07,  2.33it/s]Please wait for a moment:  76%|███████▌  | 53/70 [00:27<00:07,  2.31it/s]Please wait for a moment:  77%|███████▋  | 54/70 [00:27<00:05,  2.94it/s]Please wait for a moment:  79%|███████▊  | 55/70 [00:28<00:06,  2.27it/s]Please wait for a moment:  80%|████████  | 56/70 [00:29<00:06,  2.11it/s]Please wait for a moment:  81%|████████▏ | 57/70 [00:29<00:06,  2.08it/s]Please wait for a moment:  83%|████████▎ | 58/70 [00:29<00:05,  2.17it/s]Please wait for a moment:  84%|████████▍ | 59/70 [00:30<00:05,  2.15it/s]Please wait for a moment:  86%|████████▌ | 60/70 [00:30<00:04,  2.15it/s]Please wait for a moment:  87%|████████▋ | 61/70 [00:31<00:03,  2.76it/s]Please wait for a moment:  89%|████████▊ | 62/70 [00:31<00:02,  2.68it/s]Please wait for a moment:  90%|█████████ | 63/70 [00:32<00:03,  2.06it/s]Please wait for a moment:  91%|█████████▏| 64/70 [00:32<00:02,  2.08it/s]Please wait for a moment:  93%|█████████▎| 65/70 [00:33<00:02,  2.08it/s]Please wait for a moment:  94%|█████████▍| 66/70 [00:33<00:02,  1.89it/s]Please wait for a moment:  96%|█████████▌| 67/70 [00:34<00:01,  1.75it/s]Please wait for a moment:  97%|█████████▋| 68/70 [00:35<00:01,  1.40it/s]Please wait for a moment:  99%|█████████▊| 69/70 [00:35<00:00,  1.86it/s]Please wait for a moment: 100%|██████████| 70/70 [00:36<00:00,  2.01it/s]                                                                         WARNING:app.services.bff.remote_client:remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch
+===== stability sample stable 2 Thu Jun 11 21:58:18 CST 2026 =====
+ 21:58:18 up 3 days, 10:42, 550 users,  load average: 1.32, 1.36, 1.35
+               total        used        free      shared  buff/cache   available
+Mem:            3723        2932         425           2         642         791
+Swap:           1987         610        1377
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+Filesystem     Inodes IUsed IFree IUse% Mounted on
+/dev/vda2        3.8M  394K  3.4M   11% /
+[compose ps]
+NAME                             IMAGE                                         COMMAND                  SERVICE                  CREATED          STATUS                       PORTS
+tquant-app-mysql                 tquant-web:mysql                              "sh -c 'exec gunicor…"   app                      14 minutes ago   Up 14 minutes (healthy)      0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                           "bff-gateway"            go-bff-gateway           14 minutes ago   Up 13 minutes (healthy)      8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                   "market-read-service"    go-market-read-service   14 minutes ago   Up 14 minutes (healthy)      8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                   "scan-worker"            go-scan-worker           14 minutes ago   Up 14 minutes (healthy)      8093/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4        "docker-entrypoint.s…"   mysql                    2 days ago       Up About an hour (healthy)   3306/tcp, 33060/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine   "docker-entrypoint.s…"   redis                    2 days ago       Up 2 days (healthy)          6379/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                              "python -m app.worke…"   runtime-scheduler        14 minutes ago   Up 14 minutes (healthy)      8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                              "python -m app.worke…"   runtime-worker           14 minutes ago   Up 14 minutes (healthy)      8000/tcp
+[stats]
+NAME                             CPU %     MEM USAGE / LIMIT   MEM %     PIDS
+tquant-frontend-web              0.00%     4.18MiB / 128MiB    3.27%     5
+tquant-go-bff-gateway            0.00%     2.719MiB / 128MiB   2.12%     5
+tquant-go-market-read-service    0.00%     7.484MiB / 128MiB   5.85%     7
+tquant-go-scan-worker            0.00%     2.938MiB / 128MiB   2.29%     5
+tquant-runtime-scheduler-mysql   4.25%     334.1MiB / 640MiB   52.21%    26
+tquant-app-mysql                 0.11%     194.5MiB / 768MiB   25.33%    7
+tquant-runtime-worker-mysql      81.10%    537.1MiB / 768MiB   69.93%    11
+tquant-redis                     1.54%     11.21MiB / 128MiB   8.76%     7
+tquant-mysql                     22.04%    1018MiB / 1GiB      99.37%    45
+[readyz]
+{"status":"ok","app":"维斯量化交易平台","checks":{"database":true,"frontend_next_dist":true,"frontend_dist":true,"analytics_dependencies":true},"errors":[]}
+[runtime summary]
+{"queued": 2, "running": 1, "failed": 1910, "retrying": 0, "succeeded_recent": 2514, "longest_wait_seconds": 111409, "oldest_queued_at": "2026-06-10T07:01:31", "claimable_queued": 2}
+status_counts=[{"status": "cancelled", "count": 28}, {"status": "failed", "count": 1910}, {"status": "queued", "count": 2}, {"status": "running", "count": 1}, {"status": "succeeded", "count": 43758}]
+[mysql status]
+Slow_queries	36
+Threads_connected	9
+Threads_running	2
+Uptime	5352
+innodb_buffer_pool_size	536870912
+max_connections	120
+[redis status]
+connected_clients:4
+used_memory_human:2.83M
+used_memory_peak_human:14.37M
+evicted_keys:0
+db0:keys=8,expires=8,avg_ttl=15465,subexpiry=0
+[recent app errors]
+[recent worker errors]
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:03", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:55:07", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:48", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:55:50", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:55:50", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:56:33", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:56:35", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:56:35", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:56:37", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:57:18", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:57:21", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:58:04", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:58:10", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:  34%|███▍      | 24/70 [00:06<00:21,  2.12it/s]Please wait for a moment:  36%|███▌      | 25/70 [00:07<00:21,  2.09it/s]Please wait for a moment:  37%|███▋      | 26/70 [00:07<00:23,  1.87it/s]Please wait for a moment:  39%|███▊      | 27/70 [00:08<00:27,  1.57it/s]Please wait for a moment:  40%|████      | 28/70 [00:08<00:20,  2.05it/s]Please wait for a moment:  41%|████▏     | 29/70 [00:09<00:25,  1.60it/s]Please wait for a moment:  43%|████▎     | 30/70 [00:09<00:19,  2.09it/s]Please wait for a moment:  44%|████▍     | 31/70 [00:10<00:19,  1.97it/s]Please wait for a moment:  46%|████▌     | 32/70 [00:11<00:21,  1.77it/s]Please wait for a moment:  47%|████▋     | 33/70 [00:11<00:21,  1.71it/s]Please wait for a moment:  49%|████▊     | 34/70 [00:12<00:21,  1.65it/s]Please wait for a moment:  50%|█████     | 35/70 [00:13<00:21,  1.64it/s]Please wait for a moment:  51%|█████▏    | 36/70 [00:13<00:22,  1.48it/s]                                                                         Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T13:58:20", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+===== stability sample stable 3 Thu Jun 11 22:01:22 CST 2026 =====
+ 22:01:22 up 3 days, 10:45, 550 users,  load average: 1.87, 1.56, 1.43
+               total        used        free      shared  buff/cache   available
+Mem:            3723        2994         368           2         637         729
+Swap:           1987         608        1379
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+Filesystem     Inodes IUsed IFree IUse% Mounted on
+/dev/vda2        3.8M  394K  3.4M   11% /
+[compose ps]
+NAME                             IMAGE                                         COMMAND                  SERVICE                  CREATED          STATUS                    PORTS
+tquant-app-mysql                 tquant-web:mysql                              "sh -c 'exec gunicor…"   app                      17 minutes ago   Up 17 minutes (healthy)   0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                           "bff-gateway"            go-bff-gateway           17 minutes ago   Up 17 minutes (healthy)   8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                   "market-read-service"    go-market-read-service   17 minutes ago   Up 17 minutes (healthy)   8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                   "scan-worker"            go-scan-worker           17 minutes ago   Up 17 minutes (healthy)   8093/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4        "docker-entrypoint.s…"   mysql                    2 days ago       Up 2 hours (healthy)      3306/tcp, 33060/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine   "docker-entrypoint.s…"   redis                    2 days ago       Up 2 days (healthy)       6379/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                              "python -m app.worke…"   runtime-scheduler        17 minutes ago   Up 17 minutes (healthy)   8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                              "python -m app.worke…"   runtime-worker           17 minutes ago   Up 17 minutes (healthy)   8000/tcp
+[stats]
+NAME                             CPU %     MEM USAGE / LIMIT   MEM %     PIDS
+tquant-frontend-web              0.00%     4.238MiB / 128MiB   3.31%     5
+tquant-go-bff-gateway            0.00%     2.734MiB / 128MiB   2.14%     5
+tquant-go-market-read-service    0.00%     7.52MiB / 128MiB    5.87%     7
+tquant-go-scan-worker            2.62%     3.027MiB / 128MiB   2.37%     5
+tquant-runtime-scheduler-mysql   0.00%     360.1MiB / 640MiB   56.26%    34
+tquant-app-mysql                 0.12%     195.4MiB / 768MiB   25.44%    7
+tquant-runtime-worker-mysql      0.85%     567.2MiB / 768MiB   73.85%    11
+tquant-redis                     0.53%     6.027MiB / 128MiB   4.71%     7
+tquant-mysql                     26.23%    1024MiB / 1GiB      99.97%    48
+[readyz]
+{"status":"ok","app":"维斯量化交易平台","checks":{"database":true,"frontend_next_dist":true,"frontend_dist":true,"analytics_dependencies":true},"errors":[]}
+[runtime summary]
+{"queued": 3, "running": 1, "failed": 1910, "retrying": 0, "succeeded_recent": 2511, "longest_wait_seconds": 111594, "oldest_queued_at": "2026-06-10T07:01:31", "claimable_queued": 3}
+status_counts=[{"status": "cancelled", "count": 28}, {"status": "failed", "count": 1910}, {"status": "queued", "count": 3}, {"status": "running", "count": 1}, {"status": "succeeded", "count": 43761}]
+[mysql status]
+Slow_queries	223
+Threads_connected	11
+Threads_running	4
+Uptime	5546
+innodb_buffer_pool_size	536870912
+max_connections	120
+[redis status]
+connected_clients:4
+used_memory_human:1.30M
+used_memory_peak_human:14.37M
+evicted_keys:0
+db0:keys=8,expires=8,avg_ttl=33336,subexpiry=0
+[recent app errors]
+[recent worker errors]
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 26 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 30 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 31 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 29 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 33 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 28 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 34 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:28", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 32 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 35 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 36 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 40 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 37 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 38 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 39 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 42 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 43 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 41 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 44 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 45 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 46 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 48 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 47 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 50 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 51 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 49 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 52 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 53 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 54 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 55 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney spot page fetch failed and was skipped: EastMoney stock spot page 56 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T13:59:29", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T14:00:19", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T14:00:20", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T14:00:21", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T14:00:22", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T14:01:05", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T14:01:07", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}
+tquant-runtime-scheduler-mysql  | {"timestamp": "2026-06-11T14:01:07", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "EastMoney first spot page failed, falling back to AkShare snapshot: EastMoney stock spot page 1 failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T14:01:08", "level": "WARNING", "module": "app.services.bff.remote_client", "message": "remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch"}
+tquant-runtime-scheduler-mysql  | Please wait for a moment:   0%|          | 0/1 [00:00<?, ?it/s]                                                               {"timestamp": "2026-06-11T14:01:09", "level": "WARNING", "module": "app.services.market.spot_snapshot", "message": "AkShare stock spot fallback failed: Can not decode value starting with character '<'"}

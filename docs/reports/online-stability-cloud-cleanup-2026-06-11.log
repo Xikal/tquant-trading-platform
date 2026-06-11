@@ -1,0 +1,270 @@
+[cleanup] mode: apply
+[disk before]
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   36G   21G  63% /
+
+[largest home entries]
+4.0K	/home/ubuntu/ydeyes-mix-default.xml
+4.0K	/home/ubuntu/ydeyes-mix-intl.xml
+4.0K	/home/ubuntu/ydeyes.xml
+4.0K	/home/ubuntu/ydeyesinst_linux64.md5
+8.0K	/home/ubuntu/client.ts
+12K	/home/ubuntu/ShellLayout.tsx
+12K	/home/ubuntu/self_cloud_install_linux64.sh
+24K	/home/ubuntu/LowBuyPage.tsx
+24K	/home/ubuntu/backtest_reports
+24K	/home/ubuntu/full_backfill_reports
+24K	/home/ubuntu/low_buy_market_backtest.py
+28K	/home/ubuntu/full_backfill_v2_reports
+28K	/home/ubuntu/history.py
+28K	/home/ubuntu/low_buy_history.py
+36K	/home/ubuntu/low_buy_screener.py
+44K	/home/ubuntu/baseline_reports
+56K	/home/ubuntu/DashboardPage.tsx
+60K	/home/ubuntu/styles.css
+68K	/home/ubuntu/market_data.py
+204K	/home/ubuntu/cacert.pem
+2.6M	/home/ubuntu/self_cloud_install_linux64_mix
+12M	/home/ubuntu/backtest_logs
+24M	/home/ubuntu/gupiao-deploy-20260610225704-K3ipp5
+29M	/home/ubuntu/ydeyesinst_linux64.tar.gz
+30M	/home/ubuntu/ydeyes_linux64.tar.gz
+112M	/home/ubuntu/gupiao-deploy-backup-20260611143947
+181M	/home/ubuntu/gupiao-deploy-backup-20260611214252
+182M	/home/ubuntu/gupiao-deploy-backup-20260611201253
+301M	/home/ubuntu/mysql-backups
+1.2G	/home/ubuntu/gupiao-upload
+
+[docker usage]
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          16        10        14.71GB   11.86GB (80%)
+Containers      13        9         1.094MB   32.77kB (2%)
+Local Volumes   5         5         10.65GB   0B (0%)
+Build Cache     184       0         8.987GB   3.436GB
+
+[cleanup candidates]
+/home/ubuntu/gupiao-deploy-20260610225704-K3ipp5
+
+[remove upload packages and temporary verify scripts]
++ find /home/ubuntu -maxdepth 1 -type f \( -name 'gupiao-deploy-*' -o -name 'gupiao-delta-deploy-*' -o -name 'gupiao-frontend-hot-*' -o -name 'gupiao_remote_verify*.sh' \) -delete
++ find /tmp -maxdepth 1 -type d \( -name 'gupiao-python-hot-*' -o -name 'tquant-queue-hotpatch-*' \) -exec rm -rf {} +
+
+[keep latest deploy backups]
+/home/ubuntu/gupiao-deploy-backup-20260611201253
+/home/ubuntu/gupiao-deploy-backup-20260611143947
+
+[remove legacy hot-patch upload backups]
+
+
+[keep latest report directories by family]
+
+[docker prune build cache and dangling images]
++ sudo docker builder prune -f
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Deleted build cache objects:
+y4ck5xrhcdxfrsbn6dbqlqtwq
+v3h9q1zri99pfi2asbln0rpbk
+15kyox576x659bnckufq606cd
+0adioh0bk69hedbxeefueokbx
+i33yzgsf146j1p12msett4oih
+6u2x3zxhkrr8q2lcm15hmuqhm
+y0y2e3zkmno806efgew63935h
+i6z4wheedow7350xu46cilb70
+d0z912m5bsx0iqm9td4hxp90l
+s421yjjfiooxrn6n143ty71el
+ip0ei2icmbfbue9d7kypzsq4f
+sly45j2iebvbvcpzj1gsz9l11
+ijgtn42k3fu6nuikas8cuv1b0
+qyd5md6jvs9phmqlzatco26en
+osomqjj96cyj43af2ld818p18
+uaspgnsx8lmzw45bj7g3dlo2b
+pwkcxtjna9mgucpyhpfnvjd6i
+d968iietgg57bm4av9muaqic7
+oajoc8ywzdzokrjrwdtgx2ymf
+hrzt84zecv3e8t1uyonex6rmk
+5kn57xm5ue6ksh6qelqum1lad
+lduapouboko5xlcvsyya5yfbz
+6cu3s854rcqad7tkwt0ghrtcn
+5iywrdorsupjtlxo6a4ku6lrq
+3cg8gcv2xuzsk6am9afxmqnmm
+d9sklx3ed6p3jaa7urm1asvd1
+gp2egx6zp8966d6iahcbnddq3
+rgbyw7lfykvzppcod747xyf5c
+x734g3720vq9qav6huubq3y2a
+f837hjllaeahbjrdkr8ocg2mm
+j24emiytiwnluj5mu3w5mg1h3
+tym9e4327kvij5cgx7f54uiks
+9ioqoevdu9bn0vpexsvrfz6yq
+w95934hmqtsrs9bgcf4ntdmvk
+rdx5lm8am0b9pbyvlkuwsm978
+09on6v84jaze3z36h7mdgpkqv
+u43l9xl2be58688uusdzs3rdu
+swkm9bq0eysrdumyyrscdtlx0
+qgn71deqjfr8dgkujyv42h7x4
+ipabkycaytpedfnv5eu6bmmfe
+7cjbpue6ucs19jw136e9owekt
+2kzc7s7wesd23asiglubxbein
+g6by2g0p84zjpvlve8ve5jvy8
+78vbsm5dv5e7j665a49e7yrdd
+3m4v7e2axmky0yfwc6iwhufl4
+or722y3ctx3uuypdeh79qywmn
+yuzs16whpjjh9x50jqpialpi1
+ksdwccz9r8fnr9oiriuj6t18t
+2ig91g8ajk8q6klafsbjsxuv3
+pklijoi1of7uertoj5l6exz6v
+9qq9psaa11oe8zvjq033z955j
+0vjqyl3qv2qakw1iduxk6xp0t
+uxt67bdnnxo9htprsuni84h7u
+ye2afq081w9c2tnq3xvsc1pkk
+r1ksk9dxpfeu789cuo214vjct
+tbxa7daccvydsdikww26b2f1w
+iupqb3jnogu44lkc227nw2xww
+yvsgnzv4av7cf0alprcqsmlzo
+0ojjek9ty3k13e0wi1fc3j5cs
+fhavzc8vd6etplx8vzuawuddb
+ufwk3sk850idvddob0b8jsc1x
+z12krrf7gfv26h03b2k6hqb9k
+qi3yyi2di8v94tjmee1w0tk5i
+o7839wy6aga4l9akjp3ox1o3a
+jucnoqiw99nr2ab5i3gzxau89
+3llt70c26fdcxyb5mh0kw7bbw
+lykrfw0fn4xc2cbux1ubg7tta
+fgyt6u9n4n17xcwjj32tkkd9a
+cy2is0ob3gwtvero4c21hclqb
+tb7xwdr47ymn3et0h6g3hqmft
+krg8ij0aygqkxofcgp71qsvg2
+v2dvvap5ydl7wm9vud183ae4g
+wv16rmseb0zysf0iiwbc72574
+eq505hy3djagze8681bx8qz04
+ebbrtr2qod7zrod1xkgujqvpu
+4h990m4tr65a1ywojatlvrqtf
+s8302ho37kjhhj4gk99ui94d7
+p39pz5wdv8pxxjgus25lk47q6
+pbeu8rssw1cbni7bc8zzjej81
+3cra9d7g78a3maqeab0jfrwvt
+lbtxly18rffesrh44b9lgmksx
+xtzpmg0gueesoaaqfivwjtnvg
+szq95gxhwl17qujbbqmhcwmyf
+ch5zpe1exehv0zs2zipu3i9f8
+so1y7co0bpwt4x2x2x3ymy37r
+m06dxf2ih3s78v1spi9sk9ye1
+bqi3w7oml394dx0r0laxy8jmk
+ls098ik57bsrcagvi16e89aa7
+wpojg0snpkk2u7mxh5sx3u64o
+4jnndryw1y1awowug38lr4o14
+9pfjitbvlrw6jm8ycfbadmin9
+bw260xctnbj2y2roat7zq44ms
+lxg4zo6fr12848gza9ryclybt
+uehvncnydroljvrj79pfwzlwu
+zs1qaj89wk6dly623zxnswty4
+kf3y5a30fzzvej3968piuh1x8
+wkaop3k6ha8wpn482x53dfdbn
+c4yv5lgf3u88y4ks9i0b260hz
+ndhszp4mekgkf6fk6143pgbyh
+c7ql6rciwij60d4bcm51zq3cf
+np68ahsmza1d8b5udn6y3m394
+tx5kop3jcu6euawk6f5zongen
+mjmrzo6vqmxtu411u3dwo3v50
+ndk083wt3y8usuzwpnl2jowdy
+lw5w609434ak38vhv9w9xq9pc
+g8e1i7i1s21h7gs7i5bxtvryl
+af0q2lg0b9y1gev8gqxpbfswz
+p840ebxfkkq2zv5fvubbsq6es
+2hxcinet4qe9euy8mpe1v7gka
+mti5nf41ho9fkqzabtoew9g33
+xe8vm7htt9tpm54fwhjztvdav
+evoqly5hy49itug1oic35t19e
+y3f7uuh329fohaun700z2nk47
+poos8qn5pyj4oo97eobrm6lak
+t1952i7cniunkw7sk5a1178mo
+7cjsd90mx1o1p868lhttik4tm
+qymckely116gzuldywj9pwmub
+t0cude0m01psalvp4lsvwiatu
+xv0kxxvbpasg7f1ekbrtc0k23
+gvrhu1mu7z200qf7bdk2ygtae
+dmuqwemsuatkszvh2xae98y0y
+hw1oa44h4dkoe9xydsoz5rl3o
+
+Total reclaimed space: 3.436GB
++ sudo docker image prune -f
+Deleted Images:
+untagged: sha256:882a90fa7f3fa27259dc4560176597b1825de171ee7ff9bb7cd7b07465a9e964
+deleted: sha256:882a90fa7f3fa27259dc4560176597b1825de171ee7ff9bb7cd7b07465a9e964
+untagged: sha256:a7355a5e8a2d18a9b2b8ddb0580860930f5ff55cc4a558a55b9733e5104daf7a
+deleted: sha256:a7355a5e8a2d18a9b2b8ddb0580860930f5ff55cc4a558a55b9733e5104daf7a
+untagged: sha256:c049f14548638dace1f0d86b2ee8c1c7f3264ca44a2d4d0513c09b3e20068978
+deleted: sha256:c049f14548638dace1f0d86b2ee8c1c7f3264ca44a2d4d0513c09b3e20068978
+untagged: sha256:c18cd1cc0538891acd755224d018ba6df842206b88b389b1a7a52ad76729c148
+deleted: sha256:c18cd1cc0538891acd755224d018ba6df842206b88b389b1a7a52ad76729c148
+untagged: sha256:2088e058ceea1161d06b85ccc5f84304e131936aa6273574ee39a00bb434fe93
+deleted: sha256:2088e058ceea1161d06b85ccc5f84304e131936aa6273574ee39a00bb434fe93
+untagged: sha256:82d8102c4f4789969f545397df01f322331d94b11a092e827281e6959a7490bf
+deleted: sha256:82d8102c4f4789969f545397df01f322331d94b11a092e827281e6959a7490bf
+untagged: sha256:da7ca997cfeee668b90101c8593e887175aad84fc0b1d42bd034fa770a41701c
+deleted: sha256:da7ca997cfeee668b90101c8593e887175aad84fc0b1d42bd034fa770a41701c
+untagged: sha256:ea7eb6f098941e02de7e1b1cbf9e9526624d2f86d0d2ebc8d773bf6fdd6b7f7b
+deleted: sha256:ea7eb6f098941e02de7e1b1cbf9e9526624d2f86d0d2ebc8d773bf6fdd6b7f7b
+untagged: sha256:5496864003bca4596cb5b76384a6a81095506ca7b2efb778d2d8934c4a2a171e
+deleted: sha256:5496864003bca4596cb5b76384a6a81095506ca7b2efb778d2d8934c4a2a171e
+untagged: sha256:6ff3eb9d3cb573f7efb1a73d97c6beda9a45c8032a7955d22abb57ca6524bc1b
+deleted: sha256:6ff3eb9d3cb573f7efb1a73d97c6beda9a45c8032a7955d22abb57ca6524bc1b
+untagged: sha256:77dd8fd7b2852d5e47daf546ef896c33f20c530990dc3671769775088183b4bb
+deleted: sha256:77dd8fd7b2852d5e47daf546ef896c33f20c530990dc3671769775088183b4bb
+
+Total reclaimed space: 147.3MB
+docker volumes:kept
+
+[optional separated stack stop]
+separated_stack_stop:skipped
+
+[safety checks]
+NAMES                            IMAGE                                            STATUS                       PORTS
+tquant-frontend-web              docker.m.daocloud.io/library/nginx:1.27-alpine   Up 8 minutes (healthy)       0.0.0.0:18080->80/tcp, [::]:18080->80/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                              Up 8 minutes (healthy)       8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                      Up 8 minutes (healthy)       8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                      Up 8 minutes (healthy)       8093/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                                 Up 8 minutes (healthy)       8000/tcp
+tquant-app-mysql                 tquant-web:mysql                                 Up 8 minutes (healthy)       0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                                 Up 8 minutes (healthy)       8000/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine      Up 2 days (healthy)          6379/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4           Up About an hour (healthy)   3306/tcp, 33060/tcp
+readyz:ok
+
+[disk after]
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   32G   26G  56% /
+
+[largest home entries after]
+4.0K	/home/ubuntu/tquant-resource-install-20260609.json
+4.0K	/home/ubuntu/verify_remote_analyze.py
+4.0K	/home/ubuntu/ydeyes-mix-abroad.xml
+4.0K	/home/ubuntu/ydeyes-mix-default.xml
+4.0K	/home/ubuntu/ydeyes-mix-intl.xml
+4.0K	/home/ubuntu/ydeyes.xml
+4.0K	/home/ubuntu/ydeyesinst_linux64.md5
+8.0K	/home/ubuntu/client.ts
+12K	/home/ubuntu/ShellLayout.tsx
+12K	/home/ubuntu/self_cloud_install_linux64.sh
+24K	/home/ubuntu/LowBuyPage.tsx
+24K	/home/ubuntu/backtest_reports
+24K	/home/ubuntu/full_backfill_reports
+24K	/home/ubuntu/low_buy_market_backtest.py
+28K	/home/ubuntu/full_backfill_v2_reports
+28K	/home/ubuntu/history.py
+28K	/home/ubuntu/low_buy_history.py
+36K	/home/ubuntu/low_buy_screener.py
+44K	/home/ubuntu/baseline_reports
+56K	/home/ubuntu/DashboardPage.tsx
+60K	/home/ubuntu/styles.css
+68K	/home/ubuntu/market_data.py
+204K	/home/ubuntu/cacert.pem
+2.6M	/home/ubuntu/self_cloud_install_linux64_mix
+12M	/home/ubuntu/backtest_logs
+29M	/home/ubuntu/ydeyesinst_linux64.tar.gz
+30M	/home/ubuntu/ydeyes_linux64.tar.gz
+181M	/home/ubuntu/gupiao-deploy-backup-20260611214252
+301M	/home/ubuntu/mysql-backups
+1.2G	/home/ubuntu/gupiao-upload

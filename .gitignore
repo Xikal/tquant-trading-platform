@@ -8,12 +8,7 @@ __pycache__/
 .venv/
 node_modules/
 dist/
-frontend/dist-native/
-frontend/.env.native.local
 .env.deploy.local
-frontend/*.tsbuildinfo
-frontend/android/keystore.properties
-frontend/android/keystores/
 backend/.env
 backend/data/*.db
 backend/data/*.sqlite
@@ -25,8 +20,6 @@ backend/data/*
 backend/data/reports/*
 !backend/data/reports/strategy-success-rate/
 !backend/data/reports/strategy-success-rate/*.json
-!frontend/src/ui/data/
-!frontend/src/ui/data/**
 artifacts/
 output/
 rust/**/target/

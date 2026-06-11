@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from argparse import Namespace
 from pathlib import Path
@@ -173,26 +172,28 @@ def test_warning_budget_fails_when_allowance_count_is_exceeded() -> None:
 
 
 def test_responsive_smoke_covers_all_workspace_routes() -> None:
-    script = Path(__file__).resolve().parents[2] / "frontend" / "scripts" / "smoke-responsive.mjs"
-    source = script.read_text(encoding="utf-8")
-    match = re.search(r"const paths = (?P<paths>\[[^\]]+\]);", source)
-    assert match, "responsive smoke path list missing"
-    paths = json.loads(match.group("paths").replace("'", '"'))
+    root = Path(__file__).resolve().parents[2]
+    smoke_spec = root / "frontend-next" / "tests" / "e2e" / "smoke.spec.ts"
+    route_config = root / "frontend-next" / "src" / "shared" / "config" / "routes.ts"
+    source = smoke_spec.read_text(encoding="utf-8")
+    routes_source = route_config.read_text(encoding="utf-8")
 
-    assert paths == [
+    for path in (
         "/monitor",
-        "/emotion",
-        "/analysis",
-        "/playbook",
-        "/strategy-tracking",
-        "/strategy",
-        "/backtest",
-        "/paper",
-        "/data",
-        "/settings",
-    ]
-    assert "visible_text_length" in source
-    assert "main_region_count" in source
+        "/next/monitor",
+        "/next/monitor/market",
+        "/next/strategy-tracking",
+        "/next/analysis",
+        "/next/playbook",
+        "/next/data",
+        "/next/settings",
+    ):
+        assert path in source
+    assert "/next/backtest" not in source
+    assert "/next/paper" not in source
+    assert "legacy-main" in source
+    assert "/next/playbook" in routes_source
+    assert "/next/backtest" not in routes_source
 
 
 def test_app_api_smoke_sets_hardened_auth_environment() -> None:

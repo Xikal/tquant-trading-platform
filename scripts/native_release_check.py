@@ -22,6 +22,10 @@ PRODUCTION_ORIGINS = {"https://weisilianghua.cloud", "https://www.weisilianghua.
 
 
 def main() -> int:
+    if not (ROOT / "frontend").exists():
+        print("native-release-check:skipped legacy frontend retired")
+        return 0
+
     version = json.loads(VERSION_FILE.read_text(encoding="utf-8"))
     expected_code = int(version["build_number"])
     expected_name = str(version["version"])
@@ -46,11 +50,11 @@ def main() -> int:
     errors.extend(_navigation_whitelist_errors())
 
     if not ANDROID_PUBLIC.exists():
-        errors.append("Android bundled assets are missing. Run `cd frontend && npm run build:native && npx cap sync android`.")
+        errors.append("Android bundled assets are missing; legacy frontend/native shell is retired.")
     else:
         js_files = list(ANDROID_PUBLIC.rglob("*.js"))
         if not js_files:
-            errors.append("Android bundled assets contain no JavaScript files. Run `cd frontend && npm run build:native && npx cap sync android`.")
+            errors.append("Android bundled assets contain no JavaScript files; legacy frontend/native shell is retired.")
         else:
             js_text = "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in js_files)
             marker_pattern = re.compile(
@@ -60,7 +64,7 @@ def main() -> int:
                 rf"\b[A-Za-z_$][\w$]*\s*=\s*{expected_code}\b"
             )
             if not marker_pattern.search(js_text):
-                errors.append("Native bundled update version marker was not found. Run `cd frontend && npm run build:native && npx cap sync android`.")
+                errors.append("Native bundled update version marker was not found; legacy frontend/native shell is retired.")
 
     if errors:
         for error in errors:

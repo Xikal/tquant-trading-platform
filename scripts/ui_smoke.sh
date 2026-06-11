@@ -21,7 +21,7 @@ mkdir -p "$OUT_DIR"
 export TQUANT_UI_SMOKE_BASE_URL="$BASE_URL"
 export TQUANT_UI_SMOKE_OUT_DIR="$OUT_DIR"
 
-NODE_PATH="$ROOT_DIR/frontend/node_modules" node <<'NODE'
+NODE_PATH="$ROOT_DIR/frontend-next/node_modules" node <<'NODE'
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");

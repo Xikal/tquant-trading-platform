@@ -11,15 +11,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_contract_first_toolchain_files_and_scripts_exist() -> None:
-    package_json = json.loads((ROOT / "frontend" / "package.json").read_text(encoding="utf-8"))
+    package_json = json.loads((ROOT / "frontend-next" / "package.json").read_text(encoding="utf-8"))
     scripts = package_json["scripts"]
 
     assert (ROOT / "backend" / "scripts" / "export_openapi_schema.py").exists()
     assert (ROOT / "docs" / "contracts" / "openapi.json").exists()
-    assert (ROOT / "frontend" / "src" / "generated" / "api-types.ts").exists()
-    assert "export_openapi_schema.py" in scripts["api:export"]
+    assert (ROOT / "frontend-next" / "src" / "generated" / "api-types.ts").exists()
     assert "openapi-typescript" in scripts["api:generate"]
-    assert "npm run api:export" in scripts["api:check"]
     assert "npm run api:generate" in scripts["api:check"]
     assert "npm run typecheck" in scripts["api:check"]
 

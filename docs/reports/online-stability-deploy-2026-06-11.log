@@ -1,0 +1,1128 @@
+[one-click-deploy] target=ubuntu@43.143.243.97 domain=weisilianghua.cloud mode=--scope all --full --host 43.143.243.97 --key /Users/j/Downloads/gupiao.pem --refresh-https-config sync_mode=package-only ssh=key
+[quick-deploy] deploy to ubuntu@43.143.243.97 using ssh-key:/Users/j/Downloads/gupiao.pem
+[quick-deploy] safe mode: local compile/build checks enabled; HTTPS automation/cron disabled, production-safe cookies kept enabled
+[quick-deploy] remote preflight: resource gate with safe cleanup
+preflight:project_dir=/home/ubuntu/gupiao-upload
+preflight:disk_before
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/vda2        59G   35G   22G  62% /
+preflight:swap_before
+               total        used        free      shared  buff/cache   available
+Mem:            3723        3342         189           1         456         380
+Swap:           1987         966        1021
+preflight:docker_before
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          16        10        14.71GB   11.86GB (80%)
+Containers      13        9         180.2kB   32.77kB (18%)
+Local Volumes   5         5         11.17GB   0B (0%)
+Build Cache     177       0         8.955GB   3.404GB
+preflight:root_used_pct=62
+preflight:docker_build_cache_gb=8
+preflight:warning_docker_build_cache_gb=8
+preflight:mysql_slow_log_mb=113
+preflight:binlog_expire_seconds=259200
+preflight:max_binlog_size_mb=256
+preflight:mysql_compose_resource_config=present
+preflight:journald_resource_config=present
+preflight:deploy_backup_count=0
+preflight:mysql_backup_count=1
+[deploy] resolved deploy scope: all
+[deploy] requested deploy sync mode: package-only
+[deploy] compile backend
+[deploy] run strategy replacement tests
+/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 0.069s
+
+OK
+[deploy] run full backend tests
+/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+...INFO:agent.audit:agent_tool_call {'trace_id': 'agent_9ee4cd2210394426', 'agent_id': '', 'provider': 'custom_http', 'tool': 'get_priority_board', 'tool_name': 'get_priority_board', 'permission': 'read', 'params_snapshot': {'limit': 12}, 'ok': False, 'outcome': 'error', 'latency_ms': 2, 'duration_ms': 2, 'ip_address': '', 'error_code': 'PROVIDER_NOT_CONFIGURED', 'result_summary': '{"ok": false, "error_code": "PROVIDER_NOT_CONFIGURED"}', 'created_at': '2026-06-11 21:42:15'}
+.INFO:agent.audit:agent_tool_call {'trace_id': 'agent_cc574693d7cc437b', 'agent_id': '', 'provider': 'hermes', 'tool': 'get_priority_board', 'tool_name': 'get_priority_board', 'permission': 'read', 'params_snapshot': {'limit': 12}, 'ok': False, 'outcome': 'error', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'PROVIDER_NOT_CONFIGURED', 'result_summary': '{"ok": false, "error_code": "PROVIDER_NOT_CONFIGURED"}', 'created_at': '2026-06-11 21:42:15'}
+.INFO:agent.audit:agent_tool_call {'trace_id': 'agent_70486db6464643e6', 'agent_id': '', 'provider': 'none', 'tool': 'get_priority_board', 'tool_name': 'get_priority_board', 'permission': 'read', 'params_snapshot': {'limit': 12}, 'ok': True, 'outcome': 'success', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': None, 'result_summary': '{"ok": true, "error_code": ""}', 'created_at': '2026-06-11 21:42:15'}
+..INFO:agent.audit:agent_tool_call {'trace_id': 'agent_848ece612ab44efd', 'agent_id': '', 'provider': 'none', 'tool': 'send_test_notification', 'tool_name': 'send_test_notification', 'permission': 'notify', 'params_snapshot': {'channel': 'feishu'}, 'ok': False, 'outcome': 'denied', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'TOOL_PERMISSION_DENIED', 'result_summary': '{"ok": false, "error_code": "TOOL_PERMISSION_DENIED"}', 'created_at': '2026-06-11 21:42:15'}
+INFO:agent.audit:agent_tool_call {'trace_id': 'agent_50adc92fe6a24cea', 'agent_id': '', 'provider': 'none', 'tool': 'send_signal_notification', 'tool_name': 'send_signal_notification', 'permission': 'notify', 'params_snapshot': {'symbol': '510300', 'signal_state': 'near_entry'}, 'ok': False, 'outcome': 'denied', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'TOOL_PERMISSION_DENIED', 'result_summary': '{"ok": false, "error_code": "TOOL_PERMISSION_DENIED"}', 'created_at': '2026-06-11 21:42:15'}
+INFO:agent.audit:agent_tool_call {'trace_id': 'agent_37d0743f52be455b', 'agent_id': '', 'provider': 'none', 'tool': 'scan_priority_board_notifications', 'tool_name': 'scan_priority_board_notifications', 'permission': 'notify', 'params_snapshot': {'limit': 3}, 'ok': False, 'outcome': 'denied', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'TOOL_PERMISSION_DENIED', 'result_summary': '{"ok": false, "error_code": "TOOL_PERMISSION_DENIED"}', 'created_at': '2026-06-11 21:42:15'}
+....INFO:agent.audit:agent_tool_call {'trace_id': 'agent_3891027820a141d1', 'agent_id': '', 'provider': 'none', 'tool': 'missing_tool', 'tool_name': 'missing_tool', 'permission': 'unknown', 'params_snapshot': {}, 'ok': False, 'outcome': 'error', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'TOOL_NOT_FOUND', 'result_summary': '{"ok": false, "error_code": "TOOL_NOT_FOUND"}', 'created_at': '2026-06-11 21:42:15'}
+.INFO:agent.audit:agent_tool_call {'trace_id': 'agent_fa37c9e23a374adf', 'agent_id': '', 'provider': 'none', 'tool': 'run_platform_autopilot', 'tool_name': 'run_platform_autopilot', 'permission': 'write', 'params_snapshot': {'auto_repair': False}, 'ok': False, 'outcome': 'denied', 'latency_ms': 0, 'duration_ms': 0, 'ip_address': '', 'error_code': 'TOOL_PERMISSION_DENIED', 'result_summary': '{"ok": false, "error_code": "TOOL_PERMISSION_DENIED"}', 'created_at': '2026-06-11 21:42:15'}
+........INFO:httpx:HTTP Request: GET http://testserver/api/agent/health "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/health "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/paper/order "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/audit/summary?agent_id=agent-analyst "HTTP/1.1 200 OK"
+.ERROR:app.core.admin_auth:ADMIN_API_TOKEN is not configured; admin endpoint rejected.
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/reports/daily/push "HTTP/1.1 503 Service Unavailable"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/reports/daily/push "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/reports/daily "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/health "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/backtest "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/compare-strategies "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/market-sentiment "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/sector-heatmap?limit=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/position-t-signal "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/paper-portfolio?account_id=1 "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/priority-board?limit=12 "HTTP/1.1 200 OK"
+.ERROR:app.core.admin_auth:ADMIN_API_TOKEN is not configured; admin endpoint rejected.
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/provider/invoke "HTTP/1.1 503 Service Unavailable"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/provider/invoke "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/provider/status "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/recommend-orders "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/market-state-analysis "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/sector-mainline-analysis "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/strategy-cross-validation "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/risk-check "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/agent/context/comprehensive-analysis "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/health "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/paper/order "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/paper/order "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/health "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/notify/signal "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: POST http://testserver/api/agent/notify/scan-priority-board "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: GET http://testserver/api/agent/context/watchlist "HTTP/1.1 200 OK"
+..................INFO:httpx:HTTP Request: GET http://testserver/api/app/bootstrap "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy/404 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy/400 "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy/500 "HTTP/1.1 500 Internal Server Error"
+.INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy?strategy=raise-datasource "HTTP/1.1 400 Bad Request"
+INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy?strategy=raise-generic "HTTP/1.1 500 Internal Server Error"
+INFO:httpx:HTTP Request: GET http://testserver/api/app/low-buy?scan_mode=unexpected "HTTP/1.1 422 Unprocessable Entity"
+.INFO:httpx:HTTP Request: POST http://testserver/api/app/low-buy/300750/favorite "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/app/watchlist "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/app/low-buy/300750/favorite "HTTP/1.1 200 OK"
+..INFO:httpx:HTTP Request: GET http://testserver/api/app/watchlist/510300 "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: DELETE http://testserver/api/app/watchlist/510300 "HTTP/1.1 404 Not Found"
+.INFO:httpx:HTTP Request: GET http://testserver/api/app/watchlist "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://testserver/api/app/watchlist "HTTP/1.1 200 OK"
+........INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 429 Too Many Requests"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: GET https://testserver/api/auth/me "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: POST https://testserver/api/auth/register "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://testserver/api/auth/me "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/login "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/refresh "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/refresh "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/logout "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/refresh "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: GET https://testserver/api/auth/me "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: POST https://testserver/api/auth/register "HTTP/1.1 401 Unauthorized"
+INFO:httpx:HTTP Request: POST https://testserver/api/auth/register "HTTP/1.1 200 OK"
+...........INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_northbound_fund_flow_summary quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_northbound_fund_flow_summary quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_lhb_stock_statistic quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_lhb_stock_statistic quality=unavailable
+WARNING:app.services.market.providers.router:market provider call timed out: operation=fetch_lhb_stock_statistic latency_ms=4001
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_lhb_stock_statistic quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_lhb_stock_statistic quality=unavailable
+WARNING:app.services.low_buy.factor_external:dragon board statistics fetch failed: lhb statistic not enabled for OpenBB adapter
+WARNING:app.services.market.providers.router:market provider call failed: operation=fetch_limit_up_snapshot latency_ms=4
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_limit_up_snapshot quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_limit_up_snapshot quality=unavailable
+WARNING:app.services.market.providers.router:market provider call timed out: operation=fetch_limit_up_snapshot latency_ms=4002
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_limit_up_snapshot quality=unavailable
+INFO:app.services.market.providers.router:market provider result not usable: operation=fetch_limit_up_snapshot quality=unavailable
+WARNING:app.services.low_buy.factor_external:limit-up pool fetch failed: limit-up snapshot not enabled for OpenBB adapter
+............INFO:httpx:HTTP Request: POST http://testserver/api/feishu/event "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/feishu/event "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: POST http://testserver/api/feishu/event "HTTP/1.1 200 OK"
+...WARNING:app.services.finance.rust_math:rust bollinger_bands failed; falling back to python
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/app/services/finance/rust_math.py", line 254, in rust_bollinger_bands
+    raw_values = module.bollinger_bands(cleaned, int(window), float(num_std))
+AttributeError: module 'tquant_rs' has no attribute 'bollinger_bands'
+..............[backtest] isolated compute classic_retrace 2026-04-24
+...[backtest] production compute classic_retrace 2026-04-24
+............................................................................................................................................INFO:httpx:HTTP Request: GET http://testserver/api/market/etf-minute-snapshots?symbols=510300&period=1m&limit=20 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/etf-minute-snapshots?symbols=510300 "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/etf-universe "HTTP/1.1 403 Forbidden"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/etf-universe?t0_only=true "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/breadth "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/pulse/history?trade_date=2026-05-25 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/pulse "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/market/pulse "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/pulse?refresh=sync "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/review-summary "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/trading-session "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/market/sector-relative-strength "HTTP/1.1 200 OK"
+.WARNING:app.services.monitor_snapshot_service:monitor priority board fallback unavailable priority_limit=12
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/app/services/monitor_snapshot_service.py", line 91, in _fallback_priority_board_from_read_model
+    board = LowBuyScreenerService().priority_board(
+  File "/Users/j/Documents/gupiao/backend/app/services/low_buy/service.py", line 326, in priority_board
+    return self._priority.priority_board(
+  File "/Users/j/Documents/gupiao/backend/app/services/low_buy/service_components.py", line 99, in priority_board
+    return self._runtime.priority_board(
+  File "/Users/j/Documents/gupiao/backend/app/services/low_buy/priority_board.py", line 105, in priority_board
+    target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
+  File "/Users/j/Documents/gupiao/backend/app/services/latest_data_status.py", line 79, in published_low_buy_trade_date
+    state = _read_state(db)
+  File "/Users/j/Documents/gupiao/backend/app/services/latest_data_status.py", line 228, in _read_state
+    row = db.execute(select(SystemSetting).where(SystemSetting.key == SETTING_KEY)).scalar_one_or_none()
+AttributeError: 'object' object has no attribute 'execute'
+INFO:httpx:HTTP Request: GET http://testserver/api/monitor/snapshot?priority_limit=12 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/monitor/snapshot?priority_limit=12 "HTTP/1.1 200 OK"
+.ERROR:app.services.agent_notification_service:Feishu notification business failure: status=200 body={"code":1,"msg":"invalid webhook"}
+.WARNING:app.services.agent_notification_service:Notification send failed, signal ledger not counted: channel=feishu symbol=300059 strategy=volume_shrink reason=hermes notification business failed
+..WARNING:app.services.agent_notification_service:Notification channel not configured, skipping signal notification: channel=feishu
+WARNING:app.services.agent_notification_service:Notification send failed, signal ledger not counted: channel=feishu symbol=510300 strategy=first_board reason=notification adapter not configured
+..............WARNING:app.services.paper.scheduler_exit:自动退出计划暂停：本轮批量行情不可用，拒绝使用持仓旧价兜底 account_id=1
+.....................WARNING:app.services.paper.ledger_repair:ledger repair account 1 uses DB price snapshot only; no usable latest_price found before replay
+..INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+.............WARNING:app.main:phase4 metrics unavailable
+...............................ERROR:app.core.admin_auth:ADMIN_API_TOKEN is not configured; admin endpoint rejected.
+....INFO:httpx:HTTP Request: GET http://testserver/api/settings/main-force-model "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/settings/main-force-model "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: GET http://testserver/api/settings/runtime "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: GET http://testserver/api/settings "HTTP/1.1 401 Unauthorized"
+...INFO:httpx:HTTP Request: POST http://testserver/api/auth/register "HTTP/1.1 200 OK"
+ERROR:app.core.admin_auth:admin bearer auth failed
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 661, in connect
+    sock = socket.create_connection(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 843, in create_connection
+    raise err
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 831, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 61] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    self._dec_overflow()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 175, in _do_get
+    return self._create_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 901, in __connect
+    pool.logger.debug("Error on connect(): %s", e)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 365, in __init__
+    self.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 723, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 61] Connection refused)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/app/core/admin_auth.py", line 72, in _bearer_user_is_admin
+    user = AuthService().user_from_access_token(db, token)
+  File "/Users/j/Documents/gupiao/backend/app/services/auth_service.py", line 245, in user_from_access_token
+    user = db.get(User, claims.user_id)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 3680, in get
+    return self._get_impl(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 3859, in _get_impl
+    return db_load_fn(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/loading.py", line 695, in load_on_pk_identity
+    session.execute(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+  File "<string>", line 2, in _connection_for_bind
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3293, in connect
+    return self._connection_cls(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    self._dec_overflow()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 175, in _do_get
+    return self._create_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 901, in __connect
+    pool.logger.debug("Error on connect(): %s", e)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 365, in __init__
+    self.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 723, in connect
+    raise exc
+sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (2003, "Can't connect to MySQL server on 'localhost' ([Errno 61] Connection refused)")
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:httpx:HTTP Request: PATCH http://testserver/api/screeners/low-buy/strategies/volume_shrink "HTTP/1.1 200 OK"
+ERROR:app.core.admin_auth:admin bearer auth failed
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 661, in connect
+    sock = socket.create_connection(
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 843, in create_connection
+    raise err
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 831, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 61] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    self._dec_overflow()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 175, in _do_get
+    return self._create_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 901, in __connect
+    pool.logger.debug("Error on connect(): %s", e)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 365, in __init__
+    self.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 723, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 61] Connection refused)")
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/app/core/admin_auth.py", line 72, in _bearer_user_is_admin
+    user = AuthService().user_from_access_token(db, token)
+  File "/Users/j/Documents/gupiao/backend/app/services/auth_service.py", line 245, in user_from_access_token
+    user = db.get(User, claims.user_id)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 3680, in get
+    return self._get_impl(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 3859, in _get_impl
+    return db_load_fn(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/loading.py", line 695, in load_on_pk_identity
+    session.execute(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2239, in _execute_internal
+    conn = self._connection_for_bind(bind)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2108, in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+  File "<string>", line 2, in _connection_for_bind
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 1187, in _connection_for_bind
+    conn = bind.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3293, in connect
+    return self._connection_cls(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 145, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 2448, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
+    self._dbapi_connection = engine.raw_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
+    return self.pool.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    self._dec_overflow()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/impl.py", line 175, in _do_get
+    return self._create_connection()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 901, in __connect
+    pool.logger.debug("Error on connect(): %s", e)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 365, in __init__
+    self.connect()
+  File "/Users/j/Documents/gupiao/backend/.venv/lib/python3.9/site-packages/pymysql/connections.py", line 723, in connect
+    raise exc
+sqlalchemy.exc.OperationalError: (pymysql.err.OperationalError) (2003, "Can't connect to MySQL server on 'localhost' ([Errno 61] Connection refused)")
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO:httpx:HTTP Request: PATCH http://testserver/api/screeners/low-buy/strategies/volume_shrink "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/auth/register "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/screeners/low-buy/strategies "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/screeners/low-buy/strategies "HTTP/1.1 401 Unauthorized"
+.INFO:httpx:HTTP Request: POST http://testserver/api/auth/register "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/v1/strategy/low-buy/strategies "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/v1/agent/tools "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy/signals/replay?strategy=first_board&symbol=%E6%B4%81%E7%BE%8E&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy/signals/replay?strategy=first_board&lookback_days=2&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategies/meta "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy/presets "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/symbols/search?q=510300&limit=5 "HTTP/1.1 200 OK"
+....................WARNING:app.services.low_buy.screening_quotes:low-buy quote refresh skipped: quote source failed: quote source unavailable
+.....INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10&exclude_chinext=true "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10&exclude_star=true "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10&board_filter=main_only "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items/first_board:600000:2026-04-20 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items/first_board:600000:2026-04-20 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/holding-analysis?range=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/holding-analysis?range=10&exclude_chinext=true&exclude_star=true "HTTP/1.1 200 OK"
+..INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?range=10&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/items?limit=80 "HTTP/1.1 422 Unprocessable Entity"
+.INFO:httpx:HTTP Request: POST http://testserver/api/strategy-tracking/refresh?range=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/review?range=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/leakage-audit?range=10&needs_review=true "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/reports/daily?range=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/reports/weekly?range=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=no_signal_model "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=data_missing_model "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=strategy_disabled "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=window_not_reached "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=shadow_job_not_run "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=write_failed "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=schema_mismatch "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/shadow-observations?range=10&model_key=main_force_model_observation "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/snapshot?range=10&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/strategy-tracking/snapshot/rebuild?range=10 "HTTP/1.1 200 OK"
+ERROR:app.services.strategy_tracking_snapshot:strategy tracking snapshot rebuild failed
+Traceback (most recent call last):
+  File "/Users/j/Documents/gupiao/backend/app/services/strategy_tracking_snapshot.py", line 179, in rebuild_snapshot
+    raise ValueError(f"策略跟踪快照防未来函数校验失败: {audit.audit_flags[:3]}")
+ValueError: 策略跟踪快照防未来函数校验失败: ['forced_violation']
+INFO:httpx:HTTP Request: POST http://testserver/api/strategy-tracking/snapshot/rebuild?range=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/snapshot?range=10&limit=10 "HTTP/1.1 200 OK"
+.INFO:httpx:HTTP Request: POST http://testserver/api/strategy-tracking/snapshot/rebuild?range=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/api/strategy-tracking/snapshot?range=10&limit=10&exclude_chinext=true&exclude_star=true "HTTP/1.1 200 OK"
+......
+----------------------------------------------------------------------
+Ran 424 tests in 19.696s
+
+OK
+[deploy] build frontend-next
+
+> frontend-next@0.1.0 build
+> npm run typecheck && vite build
+
+
+> frontend-next@0.1.0 typecheck
+> tsc -b
+
+vite v8.0.16 building client environment for production...
+[2Ktransforming...✓ 205 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  0.84 kB │ gzip:  0.42 kB
+dist/assets/compute.worker-CfpN2e1f.js           1.85 kB
+dist/assets/AnalysisPage-GgsZiFk2.css            8.71 kB │ gzip:  2.04 kB
+dist/assets/PlaybookPage-CQEEXdaQ.css           12.87 kB │ gzip:  2.63 kB
+dist/assets/LoginPage-qTpIqddy.css              13.82 kB │ gzip:  3.41 kB
+dist/assets/DataConsolePage-CrpkwR8g.css        15.19 kB │ gzip:  3.04 kB
+dist/assets/MonitorMarketPage-BMWyR_Ro.css      15.23 kB │ gzip:  2.87 kB
+dist/assets/MonitorActionPage-sR5v6x4_.css      16.79 kB │ gzip:  3.53 kB
+dist/assets/index-kWKDR8vD.css                  16.89 kB │ gzip:  4.41 kB
+dist/assets/StrategyTrackingPage-CYfJN7ai.css   19.88 kB │ gzip:  3.73 kB
+dist/assets/SettingsPage-CDHqPUYT.css           21.21 kB │ gzip:  3.69 kB
+dist/assets/EmptyState-eOkv1v1r.js               0.19 kB │ gzip:  0.18 kB
+dist/assets/tanstack-table-B_k3yBrN.js           0.46 kB │ gzip:  0.30 kB
+dist/assets/queryState-CCqooWwn.js               0.81 kB │ gzip:  0.43 kB
+dist/assets/Modal-DC9DkWTf.js                    2.19 kB │ gzip:  1.12 kB
+dist/assets/tanstack-query-CBFy7FHV.js           2.33 kB │ gzip:  1.20 kB
+dist/assets/dataAccess-BYTq-g5I.js               4.27 kB │ gzip:  1.83 kB
+dist/assets/DataTable-DkUeeIny.js                4.68 kB │ gzip:  2.00 kB
+dist/assets/mutations-Cq4DuK76.js               12.24 kB │ gzip:  3.59 kB
+dist/assets/LoginPage-BAnn66kj.js               15.26 kB │ gzip:  6.28 kB
+dist/assets/tanstack-router-Br280CGz.js         18.00 kB │ gzip:  6.14 kB
+dist/assets/MonitorMarketPage-ox7CxDPU.js       20.08 kB │ gzip:  6.96 kB
+dist/assets/AnalysisPage-CCpTEDZc.js            20.79 kB │ gzip:  7.96 kB
+dist/assets/DataConsolePage-BDwHwZAW.js         22.52 kB │ gzip:  8.11 kB
+dist/assets/PlaybookPage-DW3Iyy8b.js            23.97 kB │ gzip:  8.55 kB
+dist/assets/SettingsPage-sebr5PfE.js            26.76 kB │ gzip:  9.81 kB
+dist/assets/MonitorActionPage-DoikhYIM.js       27.73 kB │ gzip:  9.70 kB
+dist/assets/solid-vendor-Ch9Uoa8e.js            33.18 kB │ gzip: 12.60 kB
+dist/assets/StrategyTrackingPage-B0aS-47K.js    48.17 kB │ gzip: 15.17 kB
+dist/assets/index-BCr77DpN.js                   69.07 kB │ gzip: 20.91 kB
+dist/assets/tanstack-misc-2vkUcTec.js          138.98 kB │ gzip: 40.12 kB
+dist/assets/vendor-BfhJbhuW.js                 160.64 kB │ gzip: 52.01 kB
+
+✓ built in 459ms
+[deploy] upload package to ubuntu@43.143.243.97:/home/ubuntu/gupiao-deploy-20260611214239-AAImJa
+[deploy] backup current release and deploy scope all
+deploy_sync:package-only
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+tar: Ignoring unknown extended header keyword 'SCHILY.fflags'
+deploy_manifest:updated
+deploy_scope:all
+mysqldump: [Warning] Using a password on the command line interface can be insecure.
+MySQL 备份完成：/home/ubuntu/gupiao-upload/backups/t_quant-20260611-214257.sql.gz
+db_migration:backup_ok
+prebuilt_images:app_unavailable_fallback_build
+time="2026-06-11T21:43:34+08:00" level=warning msg="COMPOSE_BAKE=false is deprecated, support for internal compose builder will be removed in next release"
+#0 building with "default" instance using docker driver
+
+#1 [app internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 4.13kB 0.0s done
+#1 DONE 0.2s
+
+#2 [app internal] load metadata for docker.m.daocloud.io/library/python:3.11-slim
+#2 ...
+
+#3 [app internal] load metadata for docker.m.daocloud.io/library/rust:1.95-bookworm
+#3 DONE 0.1s
+
+#4 [app internal] load metadata for docker.m.daocloud.io/library/node:20-bookworm-slim
+#4 DONE 0.1s
+
+#2 [app internal] load metadata for docker.m.daocloud.io/library/python:3.11-slim
+#2 DONE 0.1s
+
+#5 [app internal] load .dockerignore
+#5 transferring context: 868B done
+#5 DONE 0.0s
+
+#6 [app internal] load build context
+#6 DONE 0.0s
+
+#7 [app rust-builder 1/5] FROM docker.m.daocloud.io/library/rust:1.95-bookworm@sha256:6258907abe69656e41cd992e0b705cdcfabcbbe3db374f92ed2d47121282d4a1
+#7 resolve docker.m.daocloud.io/library/rust:1.95-bookworm@sha256:6258907abe69656e41cd992e0b705cdcfabcbbe3db374f92ed2d47121282d4a1 0.1s done
+#7 DONE 0.2s
+
+#8 [app runtime  1/18] FROM docker.m.daocloud.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979487a9fc0e6e38295747e49ac0
+#8 resolve docker.m.daocloud.io/library/python:3.11-slim@sha256:a3ab0b966bc4e91546a033e22093cb840908979487a9fc0e6e38295747e49ac0 0.2s done
+#8 DONE 0.2s
+
+#9 [app frontend-next-builder 1/6] FROM docker.m.daocloud.io/library/node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+#9 resolve docker.m.daocloud.io/library/node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 0.2s done
+#9 DONE 0.2s
+
+#6 [app internal] load build context
+#6 transferring context: 316.09kB 0.2s done
+#6 DONE 0.4s
+
+#10 [app frontend-next-builder 5/6] COPY frontend-next/ ./
+#10 CACHED
+
+#11 [app frontend-next-builder 2/6] WORKDIR /app/frontend-next
+#11 CACHED
+
+#12 [app frontend-next-builder 3/6] COPY frontend-next/package*.json ./
+#12 CACHED
+
+#13 [app frontend-next-builder 4/6] RUN npm ci
+#13 CACHED
+
+#14 [app frontend-next-builder 6/6] RUN npm run build
+#14 CACHED
+
+#15 [app rust-builder 2/5] WORKDIR /app/rust/tquant-rs
+#15 CACHED
+
+#16 [app runtime 10/18] COPY backend/requirements-analytics.txt /tmp/backend-requirements-analytics.txt
+#16 CACHED
+
+#17 [app runtime  4/18] COPY backend/requirements.txt /tmp/backend-requirements.txt
+#17 CACHED
+
+#18 [app rust-builder 3/5] RUN if [ -n "http://mirrors.tencentyun.com/debian-security" ]; then         sed -i "s|http://deb.debian.org/debian-security|http://mirrors.tencentyun.com/debian-security|g" /etc/apt/sources.list.d/debian.sources;     fi     && if [ -n "http://mirrors.tencentyun.com/debian" ]; then         sed -i "s|http://deb.debian.org/debian|http://mirrors.tencentyun.com/debian|g" /etc/apt/sources.list.d/debian.sources;     fi     && apt-get update     && apt-get install -y --no-install-recommends python3-dev python3-pip     && pip3 install --break-system-packages --no-cache-dir --retries 20 --timeout 600 --progress-bar off -i https://pypi.tuna.tsinghua.edu.cn/simple maturin     && mkdir -p /usr/local/cargo     && printf '[source.crates-io]\nreplace-with = "rsproxy-sparse"\n\n[source.rsproxy-sparse]\nregistry = "sparse+https://rsproxy.cn/index/"\n' > /usr/local/cargo/config.toml     && rm -rf /var/lib/apt/lists/*
+#18 CACHED
+
+#19 [app runtime  2/18] WORKDIR /app/backend
+#19 CACHED
+
+#20 [app runtime  9/18] RUN if [ "0" = "1" ] || [ "0" = "1" ] || [ "0" = "true" ]; then         pip install --retries 8 -r /tmp/backend-requirements-rl-extra.txt;     fi
+#20 CACHED
+
+#21 [app rust-builder 4/5] COPY rust/tquant-rs/ ./
+#21 CACHED
+
+#22 [app runtime  5/18] RUN pip install --retries 8 -r /tmp/backend-requirements.txt
+#22 CACHED
+
+#23 [app runtime  6/18] COPY --from=rust-builder /tmp/wheels/*.whl /tmp/
+#23 CACHED
+
+#24 [app rust-builder 5/5] RUN PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --locked --strip --features extension-module -o /tmp/wheels
+#24 CACHED
+
+#25 [app runtime  7/18] RUN pip install /tmp/*.whl && rm -f /tmp/*.whl
+#25 CACHED
+
+#26 [app runtime  8/18] COPY backend/requirements-rl-extra.txt /tmp/backend-requirements-rl-extra.txt
+#26 CACHED
+
+#27 [app runtime  3/18] RUN if [ -n "http://mirrors.tencentyun.com/debian-security" ]; then         sed -i "s|http://deb.debian.org/debian-security|http://mirrors.tencentyun.com/debian-security|g" /etc/apt/sources.list.d/debian.sources;     fi     && if [ -n "http://mirrors.tencentyun.com/debian" ]; then         sed -i "s|http://deb.debian.org/debian|http://mirrors.tencentyun.com/debian|g" /etc/apt/sources.list.d/debian.sources;     fi     && apt-get update     && apt-get install -y --no-install-recommends         build-essential         curl         ca-certificates         default-libmysqlclient-dev         pkg-config     && rm -rf /var/lib/apt/lists/*
+#27 CACHED
+
+#28 [app runtime 11/18] RUN if [ "0" = "1" ] || [ "0" = "true" ]; then         pip install --retries 8 -r /tmp/backend-requirements-analytics.txt;     fi
+#28 CACHED
+
+#29 [app runtime 12/18] COPY backend /app/backend
+#29 DONE 2.8s
+
+#30 [app runtime 13/18] COPY scripts /app/scripts
+#30 DONE 0.2s
+
+#31 [app runtime 14/18] COPY docs/reports/strategy-24m-backtest-2026-05-30.json /app/docs/reports/strategy-24m-backtest-2026-05-30.json
+#31 DONE 0.1s
+
+#32 [app runtime 15/18] COPY docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json /app/docs/reports/focus-strategy-walk-forward-plan-2026-05-28/summary.json
+#32 DONE 0.1s
+
+#33 [app runtime 16/18] COPY docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json /app/docs/reports/focus-strategy-parameter-walk-forward-2026-05-28/summary.json
+#33 DONE 0.1s
+
+#34 [app runtime 17/18] COPY --from=frontend-next-builder /app/frontend-next/dist /app/frontend-next/dist
+#34 DONE 0.2s
+
+#35 [app runtime 18/18] RUN adduser --disabled-password --gecos "" --home /home/tquant tquant     && mkdir -p /app/backend/data     && chown -R tquant:tquant /app/backend /app/frontend-next /app/scripts /app/docs
+#35 1.256 usermod: no changes
+#35 DONE 7.4s
+
+#36 [app] exporting to image
+#36 exporting layers
+#36 exporting layers 1.4s done
+#36 exporting manifest sha256:a8ca1728d31e6a6f1c6ee937a7807f2eba9ae61fa0e4bd0755c7d777e56f7a30 0.0s done
+#36 exporting config sha256:aa949f36ca7af1a768f03deaf02f1d80e1685ab9d9a337f1742dc305f4a7226d 0.0s done
+#36 exporting attestation manifest sha256:0ab7137f44a926ac99fe9a72f699af3aa7c656bf080ff3f0838e92d4362c166e 0.1s done
+#36 exporting manifest list sha256:e98cc59e3c89af6ec3a5c641eeafb65abc04d98cc12e94bf3fe2568f07c78454
+#36 exporting manifest list sha256:e98cc59e3c89af6ec3a5c641eeafb65abc04d98cc12e94bf3fe2568f07c78454 0.0s done
+#36 naming to docker.io/library/tquant-web:mysql 0.0s done
+#36 unpacking to docker.io/library/tquant-web:mysql
+#36 unpacking to docker.io/library/tquant-web:mysql 0.7s done
+#36 DONE 2.3s
+
+#37 [app] resolving provenance for metadata file
+#37 DONE 0.1s
+ app  Built
+ Container tquant-mysql  Running
+ Container tquant-migration-mysql  Recreate
+ Container tquant-migration-mysql  Recreated
+Attaching to tquant-migration-mysql
+tquant-migration-mysql  | INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+tquant-migration-mysql  | INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+[Ktquant-migration-mysql exited with code 0
+[31m[1mAborting on container exit...[0m
+ Container tquant-migration-mysql  Stopping
+ Container tquant-migration-mysql  Stopped
+tquant-app-mysql
+tquant-runtime-scheduler-mysql
+tquant-runtime-worker-mysql
+ Container tquant-mysql  Running
+ Container tquant-redis  Running
+ Container tquant-app-mysql  Creating
+ Container tquant-runtime-worker-mysql  Creating
+ Container tquant-app-mysql  Created
+ Container tquant-runtime-worker-mysql  Created
+ Container tquant-runtime-scheduler-mysql  Creating
+ Container tquant-runtime-scheduler-mysql  Created
+ Container tquant-mysql  Waiting
+ Container tquant-mysql  Healthy
+ Container tquant-migration-mysql  Starting
+ Container tquant-migration-mysql  Started
+ Container tquant-redis  Waiting
+ Container tquant-migration-mysql  Waiting
+ Container tquant-mysql  Waiting
+ Container tquant-mysql  Waiting
+ Container tquant-redis  Waiting
+ Container tquant-migration-mysql  Waiting
+ Container tquant-mysql  Healthy
+ Container tquant-redis  Healthy
+ Container tquant-redis  Healthy
+ Container tquant-mysql  Healthy
+ Container tquant-migration-mysql  Exited
+ Container tquant-migration-mysql  Exited
+ Container tquant-app-mysql  Starting
+ Container tquant-runtime-worker-mysql  Starting
+ Container tquant-runtime-worker-mysql  Started
+ Container tquant-migration-mysql  Waiting
+ Container tquant-runtime-worker-mysql  Waiting
+ Container tquant-mysql  Waiting
+ Container tquant-redis  Waiting
+ Container tquant-app-mysql  Started
+ Container tquant-migration-mysql  Exited
+ Container tquant-redis  Healthy
+ Container tquant-mysql  Healthy
+ Container tquant-runtime-worker-mysql  Healthy
+ Container tquant-runtime-scheduler-mysql  Starting
+ Container tquant-runtime-scheduler-mysql  Started
+web_image:updated
+analytics_worker:skipped_on_demand
+prebuilt_images:go_unavailable_fallback_build
+time="2026-06-11T21:44:08+08:00" level=warning msg="COMPOSE_BAKE=false is deprecated, support for internal compose builder will be removed in next release"
+#0 building with "default" instance using docker driver
+
+#1 [go-market-read-service internal] load build definition from Dockerfile
+#1 transferring dockerfile: 557B done
+#1 DONE 0.0s
+
+#2 [go-market-read-service internal] load metadata for docker.m.daocloud.io/library/alpine:3.20
+#2 DONE 1.2s
+
+#3 [go-market-read-service internal] load metadata for docker.m.daocloud.io/library/golang:1.22-alpine
+#3 DONE 1.3s
+
+#4 [go-market-read-service internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [go-market-read-service stage-1 1/3] FROM docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#5 resolve docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#5 DONE 0.0s
+
+#6 [go-market-read-service build 1/6] FROM docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052
+#6 resolve docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052 0.0s done
+#6 DONE 0.0s
+
+#7 [go-market-read-service internal] load build context
+#7 transferring context: 893B done
+#7 DONE 0.0s
+
+#8 [go-market-read-service build 4/6] RUN for attempt in 1 2 3 4 5; do go mod download && break || sleep $((attempt * 5)); done
+#8 CACHED
+
+#9 [go-market-read-service build 5/6] COPY cmd ./cmd
+#9 CACHED
+
+#10 [go-market-read-service build 6/6] RUN go build -o /out/market-read-service ./cmd/market-read-service
+#10 CACHED
+
+#11 [go-market-read-service stage-1 2/3] RUN adduser -D -H appuser
+#11 CACHED
+
+#12 [go-market-read-service build 2/6] WORKDIR /src
+#12 CACHED
+
+#13 [go-market-read-service build 3/6] COPY go.mod go.sum ./
+#13 CACHED
+
+#14 [go-market-read-service stage-1 3/3] COPY --from=build /out/market-read-service /usr/local/bin/market-read-service
+#14 CACHED
+
+#15 [go-market-read-service] exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:4ca75e6260bb4d57a9542d5a2613abea82a62a19968e5db04148517cbbf7ab20 done
+#15 exporting config sha256:f78634c5ea83b7447aeacdcb094600c9b4eb2f1c6aeb3fae095218796901a38b done
+#15 exporting attestation manifest sha256:5afd8d80f320a6d7ad18418159ffffffed604b1fb8de33af3c3625b9f63a5986 0.0s done
+#15 exporting manifest list sha256:734a6be508b28610d16e16631adade98873c360fc60b81f4e1a5f59675984c32
+#15 exporting manifest list sha256:734a6be508b28610d16e16631adade98873c360fc60b81f4e1a5f59675984c32 0.0s done
+#15 naming to docker.io/library/tquant-go-market-read:mysql done
+#15 unpacking to docker.io/library/tquant-go-market-read:mysql done
+#15 DONE 0.1s
+
+#16 [go-market-read-service] resolving provenance for metadata file
+#16 DONE 0.1s
+
+#17 [go-bff-gateway internal] load build definition from Dockerfile
+#17 transferring dockerfile: 382B done
+#17 DONE 0.0s
+
+#2 [go-bff-gateway internal] load metadata for docker.m.daocloud.io/library/alpine:3.20
+#2 DONE 1.3s
+
+#3 [go-bff-gateway internal] load metadata for docker.m.daocloud.io/library/golang:1.22-alpine
+#3 DONE 1.4s
+
+#18 [go-bff-gateway internal] load .dockerignore
+#18 transferring context: 2B done
+#18 DONE 0.0s
+
+#19 [go-bff-gateway internal] load build context
+#19 DONE 0.0s
+
+#6 [go-bff-gateway build 1/5] FROM docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052
+#6 resolve docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052 0.1s done
+#6 DONE 0.1s
+
+#5 [go-bff-gateway stage-1 1/3] FROM docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#5 resolve docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.1s done
+#5 DONE 0.1s
+
+#19 [go-bff-gateway internal] load build context
+#19 transferring context: 290B done
+#19 DONE 0.0s
+
+#11 [go-bff-gateway stage-1 2/3] RUN adduser -D -H appuser
+#11 CACHED
+
+#20 [go-bff-gateway build 3/5] COPY go.mod ./
+#20 CACHED
+
+#21 [go-bff-gateway build 4/5] COPY cmd ./cmd
+#21 CACHED
+
+#12 [go-bff-gateway build 2/5] WORKDIR /src
+#12 CACHED
+
+#22 [go-bff-gateway build 5/5] RUN go build -o /out/bff-gateway ./cmd/bff-gateway
+#22 CACHED
+
+#23 [go-bff-gateway stage-1 3/3] COPY --from=build /out/bff-gateway /usr/local/bin/bff-gateway
+#23 CACHED
+
+#24 [go-bff-gateway] exporting to image
+#24 exporting layers done
+#24 exporting manifest sha256:f5aed96df95aa1b3f4008a20055085bda1a6c2c10d833eb2eb58c7ce2dc75257 done
+#24 exporting config sha256:1f86cef6224ca9b762ebe9016e084a91be4eb726e0d19a671f758ca103374e0f done
+#24 exporting attestation manifest sha256:fca66ccaf0883c25e0d2599306e5c8f10aaefb54bf74a0729dd9e5f07246b8cc
+#24 exporting attestation manifest sha256:fca66ccaf0883c25e0d2599306e5c8f10aaefb54bf74a0729dd9e5f07246b8cc 0.0s done
+#24 exporting manifest list sha256:1431f5b358a46ebfd6a79f7ce07d78d6b52e6db10d3f410a14d0589225360d8f 0.0s done
+#24 naming to docker.io/library/tquant-go-bff:mysql done
+#24 unpacking to docker.io/library/tquant-go-bff:mysql done
+#24 DONE 0.1s
+
+#25 [go-bff-gateway] resolving provenance for metadata file
+#25 DONE 0.0s
+
+#26 [go-scan-worker internal] load build definition from Dockerfile
+#26 transferring dockerfile: 382B done
+#26 DONE 0.0s
+
+#3 [go-scan-worker internal] load metadata for docker.m.daocloud.io/library/golang:1.22-alpine
+#3 DONE 1.5s
+
+#2 [go-scan-worker internal] load metadata for docker.m.daocloud.io/library/alpine:3.20
+#2 DONE 1.3s
+
+#27 [go-scan-worker internal] load .dockerignore
+#27 transferring context: 2B done
+#27 DONE 0.0s
+
+#6 [go-scan-worker build 1/5] FROM docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052
+#6 resolve docker.m.daocloud.io/library/golang:1.22-alpine@sha256:1699c10032ca2582ec89a24a1312d986a3f094aed3d5c1147b19880afe40e052 0.0s done
+#6 DONE 0.2s
+
+#5 [go-scan-worker stage-1 1/3] FROM docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#5 resolve docker.m.daocloud.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#5 DONE 0.2s
+
+#28 [go-scan-worker internal] load build context
+#28 transferring context: 176B done
+#28 DONE 0.0s
+
+#12 [go-scan-worker build 2/5] WORKDIR /src
+#12 CACHED
+
+#29 [go-scan-worker build 4/5] COPY cmd ./cmd
+#29 CACHED
+
+#30 [go-scan-worker build 5/5] RUN go build -o /out/scan-worker ./cmd/scan-worker
+#30 CACHED
+
+#11 [go-scan-worker stage-1 2/3] RUN adduser -D -H appuser
+#11 CACHED
+
+#31 [go-scan-worker build 3/5] COPY go.mod ./
+#31 CACHED
+
+#32 [go-scan-worker stage-1 3/3] COPY --from=build /out/scan-worker /usr/local/bin/scan-worker
+#32 CACHED
+
+#33 [go-scan-worker] exporting to image
+#33 exporting layers done
+#33 exporting manifest sha256:925997db936ac6b8f13eaf964ea22ca2a43543dfcf9abd40dfd40c3e0818056b done
+#33 exporting config sha256:9817f6c7a06cdc40c2aae77a9208c7a752de15c019ef8026db0fa16d9fa15d7c done
+#33 exporting attestation manifest sha256:5de771dd7db8dbda2362e7e44265b512237e874abbcfcb7c3427d525a074ac2d 0.0s done
+#33 exporting manifest list sha256:95634735800fabd32de8793cad8d750a813f6d1550758319fd291e2d53803c4c 0.0s done
+#33 naming to docker.io/library/tquant-go-scan-worker:mysql
+#33 naming to docker.io/library/tquant-go-scan-worker:mysql done
+#33 unpacking to docker.io/library/tquant-go-scan-worker:mysql 0.0s done
+#33 DONE 0.1s
+
+#34 [go-scan-worker] resolving provenance for metadata file
+#34 DONE 0.0s
+ go-bff-gateway  Built
+ go-market-read-service  Built
+ go-scan-worker  Built
+ Container tquant-mysql  Running
+ Container tquant-redis  Running
+ Container tquant-go-market-read-service  Recreate
+ Container tquant-app-mysql  Running
+ Container tquant-go-scan-worker  Recreate
+ Container tquant-go-market-read-service  Recreated
+ Container tquant-go-bff-gateway  Recreate
+ Container tquant-go-scan-worker  Recreated
+ Container tquant-go-bff-gateway  Recreated
+ Container tquant-mysql  Waiting
+ Container tquant-mysql  Waiting
+ Container tquant-redis  Waiting
+ Container tquant-redis  Healthy
+ Container tquant-mysql  Healthy
+ Container tquant-migration-mysql  Starting
+ Container tquant-mysql  Healthy
+ Container tquant-go-market-read-service  Starting
+ Container tquant-migration-mysql  Started
+ Container tquant-migration-mysql  Waiting
+ Container tquant-mysql  Waiting
+ Container tquant-redis  Waiting
+ Container tquant-go-market-read-service  Started
+ Container tquant-mysql  Healthy
+ Container tquant-redis  Healthy
+ Container tquant-migration-mysql  Exited
+ Container tquant-app-mysql  Waiting
+ Container tquant-app-mysql  Waiting
+ Container tquant-go-market-read-service  Waiting
+ Container tquant-app-mysql  Healthy
+ Container tquant-app-mysql  Healthy
+ Container tquant-go-scan-worker  Starting
+ Container tquant-go-scan-worker  Started
+ Container tquant-go-market-read-service  Healthy
+ Container tquant-go-bff-gateway  Starting
+ Container tquant-go-bff-gateway  Started
+ Container tquant-frontend-web  Recreate
+ Container tquant-frontend-web  Recreated
+ Container tquant-frontend-web  Starting
+ Container tquant-frontend-web  Started
+frontend_next:separated_frontend_web:docker-compose.separated.yml
+frontend_next:monolith_compat
+frontend_next:updated
+NAMES                            IMAGE                                            STATUS                                     PORTS
+tquant-frontend-web              docker.m.daocloud.io/library/nginx:1.27-alpine   Up Less than a second (health: starting)   0.0.0.0:18080->80/tcp, [::]:18080->80/tcp
+tquant-go-bff-gateway            tquant-go-bff:mysql                              Up 2 seconds (health: starting)            8091/tcp
+tquant-go-market-read-service    tquant-go-market-read:mysql                      Up 8 seconds (healthy)                     8092/tcp
+tquant-go-scan-worker            tquant-go-scan-worker:mysql                      Up 5 seconds (healthy)                     8093/tcp
+tquant-runtime-scheduler-mysql   tquant-web:mysql                                 Up 14 seconds (healthy)                    8000/tcp
+tquant-app-mysql                 tquant-web:mysql                                 Up 22 seconds (healthy)                    0.0.0.0:18090->8000/tcp, [::]:18090->8000/tcp
+tquant-runtime-worker-mysql      tquant-web:mysql                                 Up 22 seconds (healthy)                    8000/tcp
+tquant-redis                     docker.m.daocloud.io/library/redis:7-alpine      Up 2 days (healthy)                        6379/tcp
+tquant-mysql                     docker.m.daocloud.io/library/mysql:8.4           Up About an hour (healthy)                 3306/tcp, 33060/tcp
+[deploy] sync metrics: requested_mode=package-only sync_mode=package-only changed_count=0 deleted_count=0 delta_bytes=0 full_bytes=50872797 upload_seconds=8 fallback_reason=none
+[deploy] refresh remote nginx config when HTTPS site already exists
+Hit:1 http://mirrors.tencentyun.com/ubuntu noble InRelease
+Hit:2 http://mirrors.tencentyun.com/ubuntu noble-updates InRelease
+Hit:3 http://mirrors.tencentyun.com/ubuntu noble-backports InRelease
+Hit:4 http://mirrors.tencentyun.com/ubuntu noble-security InRelease
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+nginx is already the newest version (1.24.0-2ubuntu7.11).
+certbot is already the newest version (2.9.0-1).
+python3-certbot-nginx is already the newest version (2.9.0-1).
+gettext-base is already the newest version (0.21-14ubuntu2).
+0 upgraded, 0 newly installed, 0 to remove and 138 not upgraded.
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+HTTPS 已配置：https://weisilianghua.cloud -> 127.0.0.1:18090，证书目录：www.weisilianghua.cloud
+[deploy] verify backend API deployment
+tquant-app-mysql health:healthy
+backend_api_readyz:ok
+[deploy] verify worker deployment
+tquant-runtime-scheduler-mysql health:healthy
+tquant-runtime-worker-mysql health:healthy
+analytics_worker:skipped_on_demand
+workers:ok
+[deploy] verify frontend-next static deployment
+tquant-frontend-web health:healthy
+frontend_next_static:ok
+[deploy] verify go services
+tquant-go-bff-gateway health:healthy
+tquant-go-market-read-service health:healthy
+tquant-go-scan-worker health:healthy
+go_services:ok
+[deploy] verify HTTPS nginx SNI loopback
+https_sni_loopback:ok
+public_domain:ok
+[deploy] verify latest low-buy data closure
+{
+  "ok": true,
+  "status": {
+    "expected_trade_date": "2026-06-11",
+    "calendar_expected_trade_date": "2026-06-11",
+    "local_latest_trade_date": "2026-06-11",
+    "published_trade_date": "2026-06-11",
+    "staleness_trade_days": 0,
+    "local_staleness_trade_days": 0,
+    "status": "success",
+    "daily_bar_count": 5211,
+    "min_daily_bar_count": 4500,
+    "post_close_daily_bar_count": 5211,
+    "post_close_fetch_cutoff": "2026-06-11T15:01:00",
+    "latest_daily_bar_fetch_time": "2026-06-11T17:12:41",
+    "post_close_daily_bars_ready": true,
+    "daily_bar_freshness_status": "post_close_complete",
+    "missing_strategies": [],
+    "required_strategies": [
+      "first_board",
+      "late_session_strong_support",
+      "volume_shrink"
+    ],
+    "updated_at": "2026-06-11 21:44:34"
+  },
+  "strategy_summaries": [
+    {
+      "strategy": "first_board",
+      "latest_trade_date": "2026-06-11",
+      "present": true,
+      "pool_size": 480,
+      "matched_count": 40,
+      "updated_at": "2026-06-11 09:11:37"
+    },
+    {
+      "strategy": "late_session_strong_support",
+      "latest_trade_date": "2026-06-11",
+      "present": true,
+      "pool_size": 115,
+      "matched_count": 2,
+      "updated_at": "2026-06-11 09:13:14"
+    },
+    {
+      "strategy": "volume_shrink",
+      "latest_trade_date": "2026-06-11",
+      "present": true,
+      "pool_size": 480,
+      "matched_count": 7,
+      "updated_at": "2026-06-11 09:17:30"
+    }
+  ],
+  "failures": [],
+  "warnings": []
+}
+[deploy] done: http://43.143.243.97:18090 / https://weisilianghua.cloud
+[quick-deploy] verify remote service health
+tquant-app-mysql status:healthy
+tquant-runtime-scheduler-mysql status:healthy
+tquant-runtime-worker-mysql status:healthy
+tquant-go-bff-gateway status:healthy
+tquant-go-market-read-service status:healthy
+tquant-go-scan-worker status:healthy
+analytics_worker:skipped_on_demand
+web_image:ok
+readyz:ok
+protected_api:ok
+api_fallback:ok
+frontend:ok
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_tuning:ok
+[quick-deploy] verify default public entry https://43.143.243.97
+curl: (28) Connection timed out after 15006 milliseconds

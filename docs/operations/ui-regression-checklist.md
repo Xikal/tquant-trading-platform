@@ -7,8 +7,8 @@
 ## 必跑命令
 
 ```bash
-cd frontend
-npm run build:web
+cd frontend-next
+npm run build
 ```
 
 如本地浏览器环境可用，继续执行：
@@ -23,10 +23,8 @@ npm run build:web
 - 量化分析
 - 选股宝典
 - 研究复盘 / 策略工作台
-- 模拟盘
 - 系统配置
 - 登录页
-- 移动端壳页面
 
 ## 检查项
 

@@ -301,25 +301,29 @@ def _anti_overfit_check(backtest: dict[str, Any], optimization: dict[str, Any]) 
 
 
 def _frontend_check(root: Path) -> dict[str, Any]:
-    family_strip = root / "frontend" / "src" / "features" / "workspace-shared" / "FamilyStrip.tsx"
-    quality_helper = root / "frontend" / "src" / "features" / "workspace-shared" / "workspaceFamilyQuality.ts"
-    family_text = family_strip.read_text(encoding="utf-8") if family_strip.exists() else ""
-    helper_text = quality_helper.read_text(encoding="utf-8") if quality_helper.exists() else ""
+    playbook_page = root / "frontend-next" / "src" / "features" / "playbook" / "PlaybookPage.tsx"
+    playbook_model = root / "frontend-next" / "src" / "features" / "playbook" / "playbookModel.ts"
+    e2e_fixture = root / "frontend-next" / "tests" / "e2e" / "cutover-fixtures.ts"
+    page_text = playbook_page.read_text(encoding="utf-8") if playbook_page.exists() else ""
+    model_text = playbook_model.read_text(encoding="utf-8") if playbook_model.exists() else ""
+    fixture_text = e2e_fixture.read_text(encoding="utf-8") if e2e_fixture.exists() else ""
     complete = (
-        "Modal" in family_text
-        and "fallback" in family_text
-        and "弱数据候选" in family_text
-        and "familyStripQualityText" in helper_text
+        "detailOpen" in page_text
+        and "fallback" in page_text
+        and "candidateFamilies" in model_text
+        and "data_quality_text" in model_text
+        and "family_sections" in fixture_text
     )
     return _check(
         "frontend_family_dense_display",
         "前端策略族高密度展示",
         complete,
-        "策略族概览保持高密度，详情进入只读弹窗，并展示 data_quality/fallback/缺失数据提示。",
+        "策略族概览保持高密度，详情进入只读展开区，并展示 data_quality/fallback/缺失数据提示。",
         {
-            "family_strip_component": str(family_strip.relative_to(root)),
-            "quality_helper": str(quality_helper.relative_to(root)),
-            "modal_detail": "Modal" in family_text,
+            "playbook_page": str(playbook_page.relative_to(root)),
+            "playbook_model": str(playbook_model.relative_to(root)),
+            "e2e_fixture": str(e2e_fixture.relative_to(root)),
+            "readonly_detail": "detailOpen" in page_text,
         },
     )
 

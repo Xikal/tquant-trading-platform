@@ -9,13 +9,14 @@ CLEAN_FRONTEND_DIST=0
 
 usage() {
   cat <<'EOF'
-Usage: scripts/clean_local_artifacts.sh [--pycache] [--frontend-dist] [--apply]
+Usage: scripts/clean_local_artifacts.sh [--pycache] [--frontend-next-dist] [--apply]
 
 Local-only cleanup. Default is dry-run.
 
 Options:
   --pycache        Remove Python __pycache__ directories and *.pyc files.
-  --frontend-dist  Remove frontend/dist.
+  --frontend-next-dist
+                   Remove frontend-next/dist.
   --apply          Actually remove files. Without this flag, only prints targets.
 EOF
 }
@@ -26,7 +27,7 @@ while [[ $# -gt 0 ]]; do
       CLEAN_PYCACHE=1
       shift
       ;;
-    --frontend-dist)
+    --frontend-next-dist|--frontend-dist)
       CLEAN_FRONTEND_DIST=1
       shift
       ;;
@@ -67,6 +68,6 @@ if [[ "$CLEAN_PYCACHE" == "1" ]]; then
   done < <(find "$ROOT_DIR/backend/app" "$ROOT_DIR/backend/tests" "$ROOT_DIR/backend/scripts" "$ROOT_DIR/scripts" \( -name '__pycache__' -o -name '*.pyc' \) 2>/dev/null | sort)
 fi
 
-if [[ "$CLEAN_FRONTEND_DIST" == "1" && -d "$ROOT_DIR/frontend/dist" ]]; then
-  remove_path "$ROOT_DIR/frontend/dist"
+if [[ "$CLEAN_FRONTEND_DIST" == "1" && -d "$ROOT_DIR/frontend-next/dist" ]]; then
+  remove_path "$ROOT_DIR/frontend-next/dist"
 fi

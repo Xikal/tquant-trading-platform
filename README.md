@@ -1,10 +1,10 @@
 # A股短线做T量化 Web 应用
 
-一个面向 A 股股票与 ETF 的短线做T量化系统，采用 `React + ECharts + FastAPI + SQLite` 架构，支持实时监控、量化信号、AI 补充分析、制度识别、风控配置、信号复盘与回测。
+一个面向 A 股股票与 ETF 的短线做T量化系统，采用 `Solid + Vite + FastAPI + MySQL/SQLite` 架构，支持实时监控、量化信号、AI 补充分析、制度识别、风控配置、信号复盘与回测。
 
 文档入口见：[docs/README.md](/Users/j/Documents/gupiao/docs/README.md)
 
-原生 App 开发说明见：[NATIVE_APP_SETUP.md](/Users/j/Documents/gupiao/frontend/NATIVE_APP_SETUP.md)
+旧 `frontend/` 与原生 App 壳已退役；当前 Web 入口为 `frontend-next/`。
 
 ## 当前生产范围
 
@@ -44,18 +44,15 @@
 │   ├── data
 │   ├── requirements.txt
 │   └── .env.example
-├── frontend
+├── frontend-next
 │   ├── src
-│   │   ├── api
 │   │   ├── app
 │   │   ├── features
 │   │   ├── generated
-│   │   ├── state
-│   │   ├── styles
-│   │   └── ui
+│   │   └── shared
 │   ├── scripts
 │   ├── package.json
-│   └── .env.example
+│   └── vite.config.ts
 ├── docs
 │   ├── README.md
 │   ├── engineering-conventions.md
@@ -101,8 +98,7 @@ uvicorn app.main:app --reload --port 8000
 ### 2. 启动前端
 
 ```bash
-cd frontend
-cp .env.example .env
+cd frontend-next
 npm install
 npm run dev
 ```
@@ -115,7 +111,7 @@ npm run dev
 
 ### 3. 单端口运行
 
-现在后端也可以直接托管 `frontend/dist`，因此生产化运行时只需要启动后端：
+现在后端托管 `frontend-next/dist`，因此生产化运行时只需要启动后端：
 
 ```bash
 cd backend
@@ -205,8 +201,8 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 项目现在使用根目录的 [VERSION.json](/Users/j/Documents/gupiao/VERSION.json) 作为单一版本源，统一管理：
 
-- `version`：对外版本号，同时同步到 Web、后端 App bootstrap、Android `versionName`、iOS `MARKETING_VERSION`
-- `build_number`：同步到 Android `versionCode` 和 iOS `CURRENT_PROJECT_VERSION`
+- `version`：对外版本号，同时同步到 `frontend-next/package.json`、`frontend-next/package-lock.json` 和后端 App bootstrap
+- `build_number`：保留在版本配置中；旧 native 壳退役后不再同步 Android/iOS
 - `min_supported_version`：同步到后端 App bootstrap 的最低支持版本
 
 常用命令：

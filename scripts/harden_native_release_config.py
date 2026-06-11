@@ -16,6 +16,9 @@ PRODUCTION_ORIGINS = (
 
 
 def main() -> int:
+    if not (ROOT / "frontend").exists():
+        print("native-release-config:skipped legacy frontend retired")
+        return 0
     _write_android_network_security()
     _write_access_config(ANDROID_CONFIG_XML)
     _write_access_config(IOS_CONFIG_XML)

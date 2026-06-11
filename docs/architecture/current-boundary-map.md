@@ -17,23 +17,23 @@ more work out of the Web process. It is not a microservice split plan.
 | Backtest worker | `backend/app/services/backtest_worker.py` | Persistent backtest job execution outside request threads |
 | Analytics layer | `backend/app/services/analytics/` | Parquet manifests, DuckDB read queries, report generation; never production trading facts |
 | Backtest domain | `backend/app/services/backtest/` and backtest job services | Signal evaluation replay, broker simulation, persistence and reporting |
-| Frontend contract | `docs/contracts/openapi.json`, `frontend/src/generated/api-types.ts` | Generated API contract types used by frontend wrappers |
+| Frontend contract | `docs/contracts/openapi.json`, `frontend-next/src/generated/api-types.ts` | Generated API contract types used by frontend wrappers |
 
 ## Contract Chain
 
 1. FastAPI app exposes the OpenAPI schema.
 2. `backend/scripts/export_openapi_schema.py` writes `docs/contracts/openapi.json`
    and `docs/contracts/openapi.hash`.
-3. `frontend/package.json` runs:
+3. `frontend-next/package.json` runs:
    - `api:export`
    - `api:generate`
    - `api:check`
-4. `openapi-typescript` generates `frontend/src/generated/api-types.ts`.
+4. `openapi-typescript` generates `frontend-next/src/generated/api-types.ts`.
 5. `npm run typecheck` fails if wrappers using generated `paths` or
    `components` drift from the backend contract.
 
 New or modified frontend API wrappers must prefer generated types from
-`frontend/src/generated/api-types.ts`. Existing handwritten wrappers are a
+`frontend-next/src/generated/api-types.ts`. Existing handwritten wrappers are a
 migration backlog, not a pattern for new endpoints.
 
 ## Existing Workerized Capabilities

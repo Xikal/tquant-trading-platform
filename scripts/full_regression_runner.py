@@ -133,7 +133,7 @@ def build_steps(args: argparse.Namespace) -> list[RegressionStep]:
             "core",
             ("frontend", "privacy", "architecture"),
             ("npm", "run", "lint"),
-            PROJECT_ROOT / "frontend",
+            PROJECT_ROOT / "frontend-next",
             240,
         ),
         RegressionStep(
@@ -142,7 +142,7 @@ def build_steps(args: argparse.Namespace) -> list[RegressionStep]:
             "core",
             ("frontend", "ui", "mobile", "usability"),
             ("npm", "test", "--", "--run"),
-            PROJECT_ROOT / "frontend",
+            PROJECT_ROOT / "frontend-next",
             300,
         ),
         RegressionStep(
@@ -151,7 +151,7 @@ def build_steps(args: argparse.Namespace) -> list[RegressionStep]:
             "core",
             ("frontend", "performance", "bundle"),
             ("npm", "run", "build"),
-            PROJECT_ROOT / "frontend",
+            PROJECT_ROOT / "frontend-next",
             420,
         ),
         RegressionStep(
@@ -340,7 +340,7 @@ def run_frontend_responsive_smoke(step: RegressionStep, args: argparse.Namespace
     })
     preview = subprocess.Popen(
         ["npm", "run", "preview", "--", "--host", "127.0.0.1", "--port", str(port)],
-        cwd=PROJECT_ROOT / "frontend",
+        cwd=PROJECT_ROOT / "frontend-next",
         stdout=preview_log.open("w", encoding="utf-8"),
         stderr=subprocess.STDOUT,
         text=True,
@@ -348,8 +348,8 @@ def run_frontend_responsive_smoke(step: RegressionStep, args: argparse.Namespace
     try:
         wait_for_url(base_url, timeout_seconds=30)
         completed = subprocess.run(
-            ["npm", "run", "smoke:responsive"],
-            cwd=PROJECT_ROOT / "frontend",
+            ["npx", "playwright", "test", "tests/e2e/smoke.spec.ts", "--project=chromium"],
+            cwd=PROJECT_ROOT / "frontend-next",
             env=env,
             text=True,
             capture_output=True,
@@ -364,8 +364,8 @@ def run_frontend_responsive_smoke(step: RegressionStep, args: argparse.Namespace
             step.name,
             step.profile,
             list(step.dimensions),
-            "npm run preview && npm run smoke:responsive",
-            str(PROJECT_ROOT / "frontend"),
+            "npm run preview && npx playwright test tests/e2e/smoke.spec.ts --project=chromium",
+            str(PROJECT_ROOT / "frontend-next"),
             completed.returncode == 0,
             False,
             completed.returncode,
@@ -379,8 +379,8 @@ def run_frontend_responsive_smoke(step: RegressionStep, args: argparse.Namespace
             step.name,
             step.profile,
             list(step.dimensions),
-            "npm run preview && npm run smoke:responsive",
-            str(PROJECT_ROOT / "frontend"),
+            "npm run preview && npx playwright test tests/e2e/smoke.spec.ts --project=chromium",
+            str(PROJECT_ROOT / "frontend-next"),
             False,
             False,
             None,

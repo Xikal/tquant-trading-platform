@@ -14,10 +14,9 @@ VERSION_FILE = ROOT_DIR / "VERSION.json"
 
 
 TARGETS = (
-    ROOT_DIR / "frontend/package.json",
+    ROOT_DIR / "frontend-next/package.json",
+    ROOT_DIR / "frontend-next/package-lock.json",
     ROOT_DIR / "backend/app/services/app_mobile/bootstrap.py",
-    ROOT_DIR / "frontend/android/app/build.gradle",
-    ROOT_DIR / "frontend/ios/App/App.xcodeproj/project.pbxproj",
 )
 
 
@@ -42,6 +41,15 @@ def sync_package_json(path: Path, version: str) -> None:
     path.write_text(f"{json.dumps(data, indent=2, ensure_ascii=False)}\n", encoding="utf-8")
 
 
+def sync_package_lock(path: Path, version: str) -> None:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["version"] = version
+    root_package = data.get("packages", {}).get("")
+    if isinstance(root_package, dict):
+        root_package["version"] = version
+    path.write_text(f"{json.dumps(data, indent=2, ensure_ascii=False)}\n", encoding="utf-8")
+
+
 def sync_bootstrap(path: Path, version: str, min_supported_version: str) -> None:
     text = path.read_text(encoding="utf-8")
     text = replace_exact(text, r'^(\s*_app_version = )"[^"]+"$', rf'\1"{version}"', "bootstrap app version")
@@ -54,51 +62,19 @@ def sync_bootstrap(path: Path, version: str, min_supported_version: str) -> None
     path.write_text(text, encoding="utf-8")
 
 
-def sync_android(path: Path, version: str, build_number: int) -> None:
-    text = path.read_text(encoding="utf-8")
-    text = replace_exact(text, r'^(\s*versionCode )\d+$', rf"\g<1>{build_number}", "android versionCode")
-    text = replace_exact(
-        text,
-        r'^(\s*versionName )"[^"]+"$',
-        rf'\g<1>"{version}"',
-        "android versionName",
-    )
-    path.write_text(text, encoding="utf-8")
-
-
-def sync_ios(path: Path, version: str, build_number: int) -> None:
-    text = path.read_text(encoding="utf-8")
-    text = replace_exact(
-        text,
-        r"(\bCURRENT_PROJECT_VERSION = )\d+;",
-        rf"\g<1>{build_number};",
-        "ios CURRENT_PROJECT_VERSION",
-    )
-    text = replace_exact(
-        text,
-        r"(\bMARKETING_VERSION = )[0-9A-Za-z.\-]+;",
-        rf"\g<1>{version};",
-        "ios MARKETING_VERSION",
-    )
-    path.write_text(text, encoding="utf-8")
-
-
 def sync_targets(config: dict[str, object]) -> None:
     version = str(config["version"])
-    build_number = int(config["build_number"])
     min_supported_version = str(config["min_supported_version"])
 
     sync_package_json(TARGETS[0], version)
-    sync_bootstrap(TARGETS[1], version, min_supported_version)
-    sync_android(TARGETS[2], version, build_number)
-    sync_ios(TARGETS[3], version, build_number)
+    sync_package_lock(TARGETS[1], version)
+    sync_bootstrap(TARGETS[2], version, min_supported_version)
 
 
 def collect_current_values() -> dict[str, dict[str, object]]:
     package_json = json.loads(TARGETS[0].read_text(encoding="utf-8"))
-    bootstrap_text = TARGETS[1].read_text(encoding="utf-8")
-    android_text = TARGETS[2].read_text(encoding="utf-8")
-    ios_text = TARGETS[3].read_text(encoding="utf-8")
+    package_lock = json.loads(TARGETS[1].read_text(encoding="utf-8"))
+    bootstrap_text = TARGETS[2].read_text(encoding="utf-8")
 
     def match(pattern: str, text: str, label: str) -> str:
         result = re.search(pattern, text, flags=re.MULTILINE)
@@ -107,8 +83,12 @@ def collect_current_values() -> dict[str, dict[str, object]]:
         return result.group(1)
 
     return {
-        "frontend/package.json": {
+        "frontend-next/package.json": {
             "version": package_json.get("version"),
+        },
+        "frontend-next/package-lock.json": {
+            "version": package_lock.get("version"),
+            "root_version": (package_lock.get("packages") or {}).get("", {}).get("version"),
         },
         "backend/app/services/app_mobile/bootstrap.py": {
             "version": match(r'^\s*_app_version = "([^"]+)"$', bootstrap_text, "bootstrap app version"),
@@ -118,45 +98,29 @@ def collect_current_values() -> dict[str, dict[str, object]]:
                 "bootstrap min supported version",
             ),
         },
-        "frontend/android/app/build.gradle": {
-            "version": match(r'^\s*versionName "([^"]+)"$', android_text, "android versionName"),
-            "build_number": int(match(r"^\s*versionCode (\d+)$", android_text, "android versionCode")),
-        },
-        "frontend/ios/App/App.xcodeproj/project.pbxproj": {
-            "version": match(r"\bMARKETING_VERSION = ([0-9A-Za-z.\-]+);", ios_text, "ios marketing version"),
-            "build_number": int(match(r"\bCURRENT_PROJECT_VERSION = (\d+);", ios_text, "ios build number")),
-        },
     }
 
 
 def check_targets(config: dict[str, object]) -> int:
     expected_version = str(config["version"])
-    expected_build_number = int(config["build_number"])
     expected_min_supported_version = str(config["min_supported_version"])
     current_values = collect_current_values()
 
     drift_messages: list[str] = []
 
-    if current_values["frontend/package.json"]["version"] != expected_version:
-        drift_messages.append("frontend/package.json version mismatch")
+    if current_values["frontend-next/package.json"]["version"] != expected_version:
+        drift_messages.append("frontend-next/package.json version mismatch")
+    package_lock_values = current_values["frontend-next/package-lock.json"]
+    if package_lock_values["version"] != expected_version:
+        drift_messages.append("frontend-next/package-lock.json version mismatch")
+    if package_lock_values["root_version"] != expected_version:
+        drift_messages.append("frontend-next/package-lock.json root package version mismatch")
 
     bootstrap_values = current_values["backend/app/services/app_mobile/bootstrap.py"]
     if bootstrap_values["version"] != expected_version:
         drift_messages.append("bootstrap app_version mismatch")
     if bootstrap_values["min_supported_version"] != expected_min_supported_version:
         drift_messages.append("bootstrap min_supported_version mismatch")
-
-    android_values = current_values["frontend/android/app/build.gradle"]
-    if android_values["version"] != expected_version:
-        drift_messages.append("android versionName mismatch")
-    if android_values["build_number"] != expected_build_number:
-        drift_messages.append("android versionCode mismatch")
-
-    ios_values = current_values["frontend/ios/App/App.xcodeproj/project.pbxproj"]
-    if ios_values["version"] != expected_version:
-        drift_messages.append("ios MARKETING_VERSION mismatch")
-    if ios_values["build_number"] != expected_build_number:
-        drift_messages.append("ios CURRENT_PROJECT_VERSION mismatch")
 
     if drift_messages:
         print("version-sync:drift")
@@ -166,7 +130,8 @@ def check_targets(config: dict[str, object]) -> int:
 
     print(
         "version-sync:ok "
-        f"version={expected_version} build_number={expected_build_number} min_supported_version={expected_min_supported_version}"
+        f"version={expected_version} min_supported_version={expected_min_supported_version} "
+        "targets=frontend-next,backend-bootstrap"
     )
     return 0
 
