@@ -542,3 +542,70 @@ Operations not executed in this snapshot:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 04:48 CST Premarket Read-Only Checkpoint
+
+This premarket checkpoint was collected before the first required `09:15 CST`
+trading-day checkpoint, so it does not count toward full trading-day completion.
+It is kept as continuity evidence while waiting for the formal D5 observation
+window to start.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label premarket-0448 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-0448.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-0448.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-11T20:48:36Z
+host_time=2026-06-12 04:48:32 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+blocking=none
+warnings=scheduler_provider_warning_lines_observed=5, mysql_slow_queries=55
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.36, 0.33, 0.28`; memory available `1346MiB`; swap used `32.46%`; root `63%`; inode `13%` | warning: swap still present |
+| runtime-scheduler | `255MiB / 640MiB`; warning lines observed `5` | pass, down from earlier sustained warning window |
+| runtime-worker | `296.1MiB / 768MiB`; CPU sample `22.50%` | pass |
+| MySQL | `869MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=55` | warning |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | recent summary only `low_buy_materialization_refresh` succeeded, count `2` | pass |
+
+The current checkpoint summary was regenerated from local JSON snapshots:
+
+```text
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete
+```
+
+Decision:
+
+1. D5 embedded scheduler remains closed.
+2. The provider warning pressure is improved in the current premarket window.
+3. The next required action remains the formal `09:15 CST` checkpoint collection.
+
+Operations not executed in this checkpoint:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
