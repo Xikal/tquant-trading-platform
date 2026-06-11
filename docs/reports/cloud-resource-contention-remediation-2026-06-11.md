@@ -558,15 +558,135 @@ sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --no-build --for
 
 Rollback is not recommended unless the scheduler shows new enqueue regressions or health failures. The deployed change only affects duplicate enqueue behavior after a same-idempotency task has already succeeded; it does not change strategy policy, scoring, or priority-board ordering.
 
+## D5 Gate Recheck And D6 Worker Guard - 2026-06-12 00:22 CST
+
+D5 was not executed. Although the user had granted execution authorization, the plan requires a longer stable observation window after D6 and preferably a complete trading-day observation before collapsing the standalone scheduler into the runtime worker. Current evidence fails that gate because the runtime worker still has very little headroom.
+
+### Read-Only Gate Evidence
+
+| Area | Evidence | Interpretation |
+|---|---|---|
+| time | `2026-06-12 00:22:40 +0800` | about 12 minutes after scheduler dedupe deploy |
+| load | `0.18 / 0.41 / 0.71` | host load is low |
+| memory | `3723MiB total / 2581MiB used / 1141MiB available` | host memory better than D0 |
+| swap | `905MiB used / 1987MiB` | still materially used |
+| disk / inode | `/` `60%`; inode `12%` | ok |
+| MySQL | `640.1MiB / 1.5GiB`, `Threads_connected=9`, `Threads_running=2`, `Max_used_connections=12`, `Slow_queries=15` | stable after D6 limit |
+| runtime worker | `752.5MiB / 768MiB`, `97.98%`, CPU sample `75.72%` | D5 gate fail |
+| runtime scheduler | `365.2MiB / 640MiB`, `57.06%` | still active but isolated |
+| Redis | `used_memory=1.33M`, `evicted_keys=0`, `connected_clients=5`, `dbsize=9` | ok |
+| OOM since D6 | no kernel OOM entries since `2026-06-12 00:10:00` | ok |
+
+Three additional samples confirmed the worker memory pressure is sustained, not a single stats spike:
+
+| Time CST | Worker | Scheduler | MySQL | Notes |
+|---|---:|---:|---:|---|
+| `00:23:08` | `713MiB / 768MiB`, `92.84%` | `412.9MiB / 640MiB`, `64.51%` | `644.8MiB / 1.5GiB` | scheduler healthcheck caused transient CPU spike |
+| `00:23:40` | `713MiB / 768MiB`, `92.84%` | `366.6MiB / 640MiB`, `57.28%` | `645.1MiB / 1.5GiB` | stable but still high worker RSS |
+| `00:24:12` | `713MiB / 768MiB`, `92.84%` | `365.5MiB / 640MiB`, `57.11%` | `645.5MiB / 1.5GiB` | D5 remains unsafe |
+
+Runtime task evidence after D6 code deploy remains positive:
+
+| Query | Result | Interpretation |
+|---|---|---|
+| all tasks since `2026-06-11 16:10:54 UTC` | only `low_buy_materialization_refresh` succeeded `1` | repeated A-key and strategy-tracking rows stopped |
+| dedupe-sensitive tasks since deploy | no new `a_key_level_materialization_refresh`, `strategy_tracking_snapshot_refresh`, `latest_data_watchdog`, or `hermes_platform_autopilot` rows | D6 dedupe is working in the short window |
+| queued/running | old `data_quality_sla_refresh` ids `41913`, `44330` only | no new core backlog |
+
+HTTP/API and page checks:
+
+| URL | Result |
+|---|---|
+| `http://127.0.0.1:18090/readyz` | `200`, `0.003803s` |
+| `http://127.0.0.1:18090/api/monitor` | `404`, expected legacy alias absence |
+| `http://127.0.0.1:18090/api/monitor/snapshot` | `401`, expected auth guard |
+| `http://127.0.0.1:18090/api/priority-board` | `404`, expected legacy alias absence |
+| `http://127.0.0.1:18090/api/screeners/low-buy/priority-board` | `401`, expected auth guard |
+| `http://127.0.0.1:18090/api/runtime-tasks/summary` | `401`, expected admin guard |
+| `/next/monitor` | `200`, `0.003445s` |
+| `/next/monitor/market` | `200`, `0.004109s` |
+| `/next/strategy-tracking` | `200`, `0.003659s` |
+
+Heartbeat source is current and still shows standalone scheduler mode:
+
+| Key | Updated at | Worker id |
+|---|---|---|
+| `platform_component.heartbeat.runtime-scheduler` | `2026-06-11 16:22:29` | `runtime-scheduler` |
+| `platform_component.heartbeat.runtime-worker` | `2026-06-11 16:22:43` | `runtime-758c134e30fc` |
+| `runtime_worker.heartbeat` | `2026-06-11 16:22:43` | `runtime-758c134e30fc` |
+
+### Decision
+
+| Decision | Status | Reason |
+|---|---|---|
+| Execute D5 embedded scheduler now | no | would move scheduler work into a worker already at `92-98%` of memory limit |
+| Keep standalone scheduler isolated | yes | contains scheduler/provider pressure away from the worker |
+| Continue D6 worker root-cause mitigation | yes | worker RSS remains high after duplicate-task fix |
+| Deploy or enable new worker recycle guard now | no | code is local only in this section; live enablement requires a focused worker deploy and post-deploy observation |
+
+### Local D6 Worker Guard Implemented
+
+To address sustained worker RSS without changing strategy semantics, a default-off runtime worker recycle guard was added locally:
+
+| File | Change |
+|---|---|
+| `backend/app/core/config.py` | Adds `runtime_worker_recycle_rss_mb: int = 0` default-off setting. |
+| `backend/app/workers/runtime_worker.py` | After a task has completed and status has been written, checks current RSS; if RSS is at or above the configured threshold, exits with code `0` so Docker can restart a fresh worker process. |
+| `docker-compose.mysql.yml` | Passes `RUNTIME_WORKER_RECYCLE_RSS_MB` into `runtime-worker`; default remains `0`. |
+| `.env.docker.example`, `.env.deploy.local.example` | Documents the default-off guard. |
+| `scripts/verify_platform_budget.py` | Reports warning `worker_recycle_rss_mb_disabled` when the guard is not enabled in resource-stabilization checks. |
+| `docs/operations/cloud-core-worker-resource-runbook.md` | Adds enablement, rollback, and post-check commands. |
+
+This guard does not interrupt running tasks and does not alter low-buy strategy policy, production scoring, or priority-board ordering. It is a process-lifetime guard at a task boundary.
+
+### Local Verification
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_phase4_runtime_worker_tasks.py::test_runtime_worker_recycle_guard_defaults_off \
+  backend/tests/test_phase4_runtime_worker_tasks.py::test_runtime_worker_recycle_guard_triggers_after_task \
+  backend/tests/test_platform_budget_verifier.py::test_platform_budget_report_warns_when_worker_recycle_guard_disabled \
+  backend/tests/test_independent_runtime_components.py::test_mysql_compose_keeps_web_light_and_workers_independent \
+  backend/tests/test_cloud_performance_script.py::test_mysql_compose_exposes_low_priority_task_pause_to_workers
+
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_platform_budget_verifier.py
+```
+
+Results: `5 passed`, `10 passed`; only the existing LibreSSL urllib3 warning appeared.
+
+### Worker Guard Rollout Command Not Executed
+
+Recorded for a later authorized worker-only deployment after review:
+
+```bash
+cd /home/ubuntu/gupiao-upload
+cp .env ".env.worker-recycle-backup.$(date +%Y%m%d%H%M%S)"
+grep -q "^RUNTIME_WORKER_RECYCLE_RSS_MB=" .env \
+  && sed -i "s/^RUNTIME_WORKER_RECYCLE_RSS_MB=.*/RUNTIME_WORKER_RECYCLE_RSS_MB=700/" .env \
+  || printf "\nRUNTIME_WORKER_RECYCLE_RSS_MB=700\n" >> .env
+sudo docker compose -f docker-compose.mysql.yml build runtime-worker
+sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --no-build --force-recreate runtime-worker
+```
+
+Rollback command:
+
+```bash
+cd /home/ubuntu/gupiao-upload
+cp .env.worker-recycle-backup.YYYYMMDDHHMMSS .env
+sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-worker
+```
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |
 |---|---|---|
-| Local docs/code commits | yes | D1-D3 local implementation and this report update |
+| Local docs/code commits | yes | D1-D3 local implementation, D6 dedupe fix, D6 worker guard local implementation, and this report update |
 | Online `.env` changes | yes | D4 non-core stop flags, D6 MySQL memory limits |
 | Online source upload | yes | D6 minimal upload of `latest_data_close_refresh.py` with remote backup |
 | Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql; D6 minimal runtime-scheduler recreate |
 | Docker build | yes | D6 minimal rebuild of `runtime-scheduler` image only |
+| D5 scheduler embed | no | not executed; current worker memory fails the gate |
+| Worker recycle guard live enablement | no | local code only; rollout command recorded but not executed |
 | Docker cleanup/image prune/volume prune | no | not executed |
 | DB schema/data changes | no | not executed |
 | nginx/systemd changes | no | not executed |

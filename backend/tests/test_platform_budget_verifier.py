@@ -59,6 +59,7 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "RUNTIME_BACKGROUND_ROLE": "worker",
                 "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
                 "RUNTIME_WORKER_EMBED_SCHEDULER": "false",
+                "RUNTIME_WORKER_RECYCLE_RSS_MB": "700",
             },
             "pool_budget": 4,
         },
@@ -213,6 +214,19 @@ def test_embedded_scheduler_mode_allows_standalone_scheduler_to_be_absent(tmp_pa
         str(item).startswith("core_resource_profile:runtime_scheduler")
         for item in payload["evaluation"]["warnings"]
     )
+
+
+def test_platform_budget_report_warns_when_worker_recycle_guard_disabled(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["runtime_worker"]["env"]["RUNTIME_WORKER_RECYCLE_RSS_MB"] = "0"  # type: ignore[index]
+
+    result = run_budget_report(fixture, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "warning"
+    assert "worker_recycle_rss_mb_disabled" in payload["evaluation"]["warnings"]
 
 
 def test_platform_budget_verifier_is_read_only() -> None:

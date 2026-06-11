@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 import socket
+import sys
 import threading
 import time
 from datetime import date
@@ -120,6 +123,9 @@ class RuntimeWorker:
         logger.info("runtime worker started: %s", self.worker_id)
         while True:
             did_work = self.run_once()
+            if did_work and _should_recycle_after_task():
+                logger.warning("runtime worker recycling after task: worker_id=%s", self.worker_id)
+                raise SystemExit(0)
             if not did_work:
                 time.sleep(self.poll_interval_seconds)
 
@@ -506,6 +512,43 @@ def _ensure_task_enabled(task_type: str) -> None:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_ML_JOBS_ENABLED=true")
     if task_type in FACTOR_TASK_TYPES and not settings.tquant_factor_jobs_enabled:
         raise RuntimeError(f"{task_type} is disabled: set TQUANT_FACTOR_JOBS_ENABLED=true")
+
+
+def _current_rss_mb() -> float | None:
+    if sys.platform.startswith("linux"):
+        try:
+            pages = int(Path("/proc/self/statm").read_text(encoding="utf-8").split()[1])
+        except (OSError, IndexError, ValueError):
+            return None
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        return pages * page_size / (1024 * 1024)
+    try:
+        import resource
+    except ImportError:
+        return None
+    usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if usage <= 0:
+        return None
+    # macOS reports bytes, Linux reports KiB. Linux is handled above.
+    return usage / (1024 * 1024)
+
+
+def _should_recycle_after_task() -> bool:
+    threshold_mb = int(getattr(get_settings(), "runtime_worker_recycle_rss_mb", 0) or 0)
+    if threshold_mb <= 0:
+        return False
+    rss_mb = _current_rss_mb()
+    if rss_mb is None:
+        logger.warning("runtime worker recycle threshold configured but rss is unavailable")
+        return False
+    if rss_mb < float(threshold_mb):
+        return False
+    logger.warning(
+        "runtime worker rss %.1fMiB reached recycle threshold %sMiB after task",
+        rss_mb,
+        threshold_mb,
+    )
+    return True
 
 
 def is_removed_paper_task(task_type: str) -> bool:

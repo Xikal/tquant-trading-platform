@@ -92,6 +92,8 @@ def test_mysql_compose_exposes_low_priority_task_pause_to_workers():
         service_block = match.group("body")
         assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}" in service_block
         assert "RUNTIME_LOW_PRIORITY_TASK_TYPES: *low_priority_task_types" in service_block
+        if service == "runtime-worker":
+            assert "RUNTIME_WORKER_RECYCLE_RSS_MB: ${RUNTIME_WORKER_RECYCLE_RSS_MB:-0}" in service_block
     analytics_block = source.split("  analytics-worker:", 1)[1].split("\n\n  migration:", 1)[0]
     assert 'profiles: ["analytics"]' in analytics_block
     assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED: ${RUNTIME_LOW_PRIORITY_TASKS_PAUSED:-false}" in analytics_block

@@ -419,6 +419,57 @@ def test_runtime_worker_keeps_heartbeat_fresh_during_long_task(monkeypatch):
     assert [event[1] for event in progress_events] == [5.0, 95.0]
 
 
+def test_runtime_worker_recycle_guard_defaults_off(monkeypatch):
+    monkeypatch.setenv("RUNTIME_WORKER_RECYCLE_RSS_MB", "0")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.setattr(runtime_worker, "_current_rss_mb", lambda: 999.0)
+
+    try:
+        assert runtime_worker._should_recycle_after_task() is False
+    finally:
+        get_settings.cache_clear()
+
+
+def test_runtime_worker_recycle_guard_triggers_after_task(monkeypatch):
+    db = _db()
+    monkeypatch.setenv("RUNTIME_WORKER_RECYCLE_RSS_MB", "10")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+
+    class _SessionFactory:
+        def __call__(self):
+            return db
+
+    class _Queue:
+        def __init__(self, _db_arg):  # noqa: ANN001
+            pass
+
+        def claim_next(self, *, worker_id, task_types=None):  # noqa: ANN001
+            return type("Task", (), {"id": 7, "task_type": "noop", "payload_json": "{}"})()
+
+        def update_progress(self, task_id, *, progress_pct, message="", payload=None):  # noqa: ANN001
+            pass
+
+        def mark_succeeded(self, task_id, result):  # noqa: ANN001
+            pass
+
+    monkeypatch.setattr(runtime_worker, "SessionLocal", _SessionFactory())
+    monkeypatch.setattr(runtime_worker, "RuntimeTaskQueue", _Queue)
+    monkeypatch.setattr(runtime_worker, "_execute_task", lambda *_args: {"ok": True})
+    monkeypatch.setattr(runtime_worker, "_record_worker_heartbeat", lambda _db_arg, *, worker_id: None)
+    monkeypatch.setattr(runtime_worker, "_current_rss_mb", lambda: 11.0)
+
+    try:
+        with pytest.raises(SystemExit) as exc:
+            runtime_worker.RuntimeWorker(worker_id="runtime-test").run_forever()
+        assert exc.value.code == 0
+    finally:
+        get_settings.cache_clear()
+
+
 def test_runtime_worker_executes_ml_incremental_train_task(tmp_path, monkeypatch):
     db = _db()
     monkeypatch.setenv("ML_SIGNAL_MODEL_DIR", str(tmp_path))

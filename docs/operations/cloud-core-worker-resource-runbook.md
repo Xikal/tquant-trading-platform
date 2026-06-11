@@ -38,6 +38,7 @@ Use this profile to reduce background pressure while keeping the core trading-re
 | `MARKET_REVIEW_ENABLED` | `false` | Stops midday/close review report generation |
 | `RUNTIME_STARTUP_CACHE_PREWARM_ENABLED` | `false` | Avoids startup prewarm competing with interactive reads |
 | `RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED` | `false` | Avoids history prewarm competing with worker tasks |
+| `RUNTIME_WORKER_RECYCLE_RSS_MB` | optional, e.g. `700` | Lets runtime-worker exit only after a task finishes when RSS is above the threshold; Docker restart policy brings it back |
 | `analytics-worker` | on demand | Runs only through the analytics profile when needed |
 | `backtest-worker` | not resident | Long backtests stay out of cloud steady state |
 
@@ -89,6 +90,9 @@ pairs = {
     "MARKET_REVIEW_ENABLED": "false",
     "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
     "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false",
+    # Optional D6 worker-memory guard; keep disabled until sustained RSS
+    # pressure is proven by docker stats/top evidence.
+    # "RUNTIME_WORKER_RECYCLE_RSS_MB": "700",
 }
 lines = path.read_text(encoding="utf-8").splitlines()
 seen = set()
@@ -110,6 +114,42 @@ sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate
 ```
 
 This command must not restart MySQL, Redis, Go services, or frontend-web.
+
+## Worker Memory Recycle Guard
+
+Use this only after D4/D6 observation proves the runtime worker keeps a high resident set after tasks finish. It does not interrupt a running task: the worker checks RSS after a task has been marked succeeded, failed, or skipped, then exits cleanly if the threshold is reached. Docker `restart: unless-stopped` starts a fresh worker process.
+
+Example enablement for a `768m` worker container:
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+set -e
+cd /home/ubuntu/gupiao-upload
+cp .env ".env.worker-recycle-backup.$(date +%Y%m%d%H%M%S)"
+grep -q "^RUNTIME_WORKER_RECYCLE_RSS_MB=" .env \
+  && sed -i "s/^RUNTIME_WORKER_RECYCLE_RSS_MB=.*/RUNTIME_WORKER_RECYCLE_RSS_MB=700/" .env \
+  || printf "\nRUNTIME_WORKER_RECYCLE_RSS_MB=700\n" >> .env
+sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-worker
+'
+```
+
+Rollback:
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+set -e
+cd /home/ubuntu/gupiao-upload
+cp .env.worker-recycle-backup.YYYYMMDDHHMMSS .env
+sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-worker
+'
+```
+
+Post-check:
+
+```bash
+sudo docker inspect tquant-runtime-worker-mysql --format "{{.RestartCount}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}"
+sudo docker stats --no-stream tquant-runtime-worker-mysql
+```
 
 ## Embedded Scheduler Cutover
 

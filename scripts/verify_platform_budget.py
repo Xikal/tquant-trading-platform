@@ -28,6 +28,7 @@ POOL_ENV_KEYS = (
     "RUNTIME_BACKGROUND_JOBS_ENABLED",
     "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED",
     "RUNTIME_WORKER_EMBED_SCHEDULER",
+    "RUNTIME_WORKER_RECYCLE_RSS_MB",
     "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED",
     "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED",
     "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED",
@@ -68,6 +69,8 @@ CORE_RESOURCE_PROFILE_EXPECTATIONS = {
         "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
     },
 }
+
+WORKER_RECYCLE_RSS_WARN_MB = 0
 
 
 @dataclass(frozen=True)
@@ -180,6 +183,20 @@ def evaluate_core_resource_profile(report: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def evaluate_worker_recycle_guard(report: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    env = report.get("roles", {}).get("runtime_worker", {}).get("env", {})
+    raw = str(env.get("RUNTIME_WORKER_RECYCLE_RSS_MB", "0") or "0").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        warnings.append(f"worker_recycle_rss_mb_invalid={raw}")
+        return warnings
+    if value <= WORKER_RECYCLE_RSS_WARN_MB:
+        warnings.append("worker_recycle_rss_mb_disabled")
+    return warnings
+
+
 def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, Any]:
     warnings: list[str] = []
     blocking: list[str] = []
@@ -201,6 +218,7 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
         blocking.append("web_analytics_enabled")
 
     warnings.extend(evaluate_core_resource_profile(report))
+    warnings.extend(evaluate_worker_recycle_guard(report))
 
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})

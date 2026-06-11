@@ -75,6 +75,7 @@ def test_mysql_compose_keeps_web_light_and_workers_independent() -> None:
     assert 'command: ["python", "-m", "app.workers.runtime_worker"]' in compose
     assert "RUNTIME_BACKGROUND_ROLE: worker" in compose
     assert "RUNTIME_WORKER_EMBED_SCHEDULER: ${RUNTIME_WORKER_EMBED_SCHEDULER:-false}" in compose
+    assert "RUNTIME_WORKER_RECYCLE_RSS_MB: ${RUNTIME_WORKER_RECYCLE_RSS_MB:-0}" in compose
     assert "RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS: ${RUNTIME_SCHEDULER_LEADER_LOCK_TTL_SECONDS:-60}" in compose
     assert "container_name: tquant-runtime-scheduler-mysql" in compose
     assert 'command: ["python", "-m", "app.workers.runtime_scheduler"]' in compose

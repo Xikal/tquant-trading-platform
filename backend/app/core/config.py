@@ -57,6 +57,7 @@ class AppSettings(BaseSettings):
     runtime_background_compact_mode_enabled: bool = False
     runtime_worker_embed_scheduler: bool = False
     runtime_scheduler_leader_lock_ttl_seconds: int = 60
+    runtime_worker_recycle_rss_mb: int = 0
     runtime_startup_cache_prewarm_enabled: bool = True
     runtime_startup_history_prewarm_enabled: bool = True
     runtime_low_buy_full_scan_interval_seconds: int = 60 * 60
