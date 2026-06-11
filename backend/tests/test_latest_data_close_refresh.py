@@ -3,6 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from types import SimpleNamespace
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.models.base import Base
+from app.models.entities import RuntimeTask
 from app.services import latest_data_close_refresh as close_refresh
 from app.runtime import background_jobs
 
@@ -52,6 +58,18 @@ def _patch_base(monkeypatch, *, expected: str = "2026-05-18") -> None:
             "latest_daily_bar_fetch_time": f"{trade_date}T13:51:11",
         },
     )
+
+
+def _sqlite_db():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    return session_factory()
 
 
 def test_after_close_enqueues_daily_bar_refresh_when_daily_bars_missing(monkeypatch) -> None:
@@ -193,6 +211,75 @@ def test_after_close_skips_when_already_published(monkeypatch) -> None:
     followup_types = [item.task_type for item in _FakeQueue.payloads]
     assert "data_quality_sla_refresh" in followup_types
     assert "low_buy_materialization_refresh" in followup_types
+
+
+def test_after_close_reuses_succeeded_core_tasks_without_requeue(monkeypatch) -> None:
+    db = _sqlite_db()
+    db.add(
+        RuntimeTask(
+            id=101,
+            task_type=close_refresh.A_KEY_LEVEL_MATERIALIZATION_TASK,
+            status="succeeded",
+            idempotency_key="a_key_level_materialization_refresh:2026-05-18",
+            payload_json='{"trade_date":"2026-05-18"}',
+            result_json='{"ok":true}',
+            priority=45,
+            progress_pct=100,
+            finished_at=datetime(2026, 5, 18, 15, 20),
+        )
+    )
+    db.add(
+        RuntimeTask(
+            id=102,
+            task_type=close_refresh.STRATEGY_TRACKING_SNAPSHOT_TASK,
+            status="succeeded",
+            idempotency_key="strategy_tracking_snapshot_refresh:2026-05-18:30",
+            payload_json='{"range_days":30}',
+            result_json='{"ok":true}',
+            priority=35,
+            progress_pct=100,
+            finished_at=datetime(2026, 5, 18, 15, 21),
+        )
+    )
+    db.commit()
+    monkeypatch.setattr(close_refresh, "is_a_share_trading_day", lambda _date: True)
+    monkeypatch.setattr(close_refresh, "expected_low_buy_trade_date", lambda _db: "2026-05-18")
+    monkeypatch.setattr(
+        close_refresh,
+        "daily_bar_freshness_status",
+        lambda _db, _trade_date: {
+            "daily_bar_count": close_refresh.MIN_STOCK_DAILY_BARS,
+            "post_close_daily_bar_count": close_refresh.MIN_STOCK_DAILY_BARS,
+            "daily_bar_freshness_status": "post_close_complete",
+        },
+    )
+    monkeypatch.setattr(
+        close_refresh,
+        "latest_data_status",
+        lambda _db, strategies: {
+            "status": "success",
+            "published_trade_date": "2026-05-18",
+            "missing_strategies": [],
+        },
+    )
+    monkeypatch.setattr(
+        close_refresh,
+        "enqueue_after_close_followups",
+        lambda _db, **_kwargs: {"ok": True, "action": "stubbed_for_test"},
+    )
+
+    result = close_refresh.enqueue_latest_data_close_refresh(
+        db,
+        now=datetime(2026, 5, 18, 15, 30),
+        strategies=["volume_shrink"],
+    )
+
+    assert result["action"] == "already_latest"
+    assert result["a_key_level_materialization_task_id"] == 101
+    assert result["a_key_level_materialization_task_status"] == "succeeded"
+    assert result["strategy_tracking_snapshot_task_id"] == 102
+    assert result["strategy_tracking_snapshot_task_status"] == "succeeded"
+    assert db.query(RuntimeTask).count() == 2
 
 
 def test_before_close_skips_without_touching_queue(monkeypatch) -> None:

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.timezone import beijing_now
 from app.models.entities import DataQualitySnapshot, MarketReviewReport, RuntimeTask
-from app.models.schema_defs.phase4 import RuntimeTaskCreate
+from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
 from app.services.latest_data_status import (
     MIN_STOCK_DAILY_BARS,
     daily_bar_freshness_status,
@@ -109,14 +109,10 @@ def enqueue_latest_data_close_refresh(
     status = latest_data_status(db, strategies=required)
     missing = list(status.get("missing_strategies") or [])
     if status.get("published_trade_date") == expected and status.get("status") == "success":
-        tracking_task = RuntimeTaskQueue(db).enqueue(
-            RuntimeTaskCreate(
-                task_type=STRATEGY_TRACKING_SNAPSHOT_TASK,
-                payload={"range_days": 30, "reason": "after_close_latest_data_already_latest"},
-                priority=35,
-                idempotency_key=f"{STRATEGY_TRACKING_SNAPSHOT_TASK}:{expected}:30",
-                max_attempts=2,
-            )
+        tracking_task = _enqueue_strategy_tracking_snapshot(
+            db,
+            trade_date=expected,
+            reason="after_close_latest_data_already_latest",
         )
         return {
             "ok": True,
@@ -146,14 +142,10 @@ def enqueue_latest_data_close_refresh(
         }
 
     publish_status = publish_latest_trade_date_if_ready(db, strategies=required)
-    tracking_task = RuntimeTaskQueue(db).enqueue(
-        RuntimeTaskCreate(
-            task_type=STRATEGY_TRACKING_SNAPSHOT_TASK,
-            payload={"range_days": 30, "reason": "after_close_latest_data"},
-            priority=35,
-            idempotency_key=f"{STRATEGY_TRACKING_SNAPSHOT_TASK}:{expected}:30",
-            max_attempts=2,
-        )
+    tracking_task = _enqueue_strategy_tracking_snapshot(
+        db,
+        trade_date=expected,
+        reason="after_close_latest_data",
     )
     db.commit()
     return {
@@ -174,14 +166,28 @@ def enqueue_latest_data_close_refresh(
 
 
 def _enqueue_a_key_level_materialization(db: Session, *, trade_date: str, reason: str):
-    return RuntimeTaskQueue(db).enqueue(
+    return _enqueue_unless_succeeded(
+        db,
         RuntimeTaskCreate(
             task_type=A_KEY_LEVEL_MATERIALIZATION_TASK,
             payload={"trade_date": trade_date, "reason": reason},
             priority=45,
             idempotency_key=f"{A_KEY_LEVEL_MATERIALIZATION_TASK}:{trade_date}",
             max_attempts=3,
-        )
+        ),
+    )
+
+
+def _enqueue_strategy_tracking_snapshot(db: Session, *, trade_date: str, reason: str) -> RuntimeTaskOut:
+    return _enqueue_unless_succeeded(
+        db,
+        RuntimeTaskCreate(
+            task_type=STRATEGY_TRACKING_SNAPSHOT_TASK,
+            payload={"range_days": 30, "reason": reason},
+            priority=35,
+            idempotency_key=f"{STRATEGY_TRACKING_SNAPSHOT_TASK}:{trade_date}:30",
+            max_attempts=2,
+        ),
     )
 
 
@@ -392,6 +398,32 @@ def _succeeded_task_exists(db: Session, idempotency_key: str) -> bool:
             .limit(1)
         ).scalar_one_or_none()
         is not None
+    )
+
+
+def _enqueue_unless_succeeded(db: Session, payload: RuntimeTaskCreate) -> RuntimeTaskOut:
+    if payload.idempotency_key and hasattr(db, "execute"):
+        existing = _succeeded_task(db, payload.idempotency_key)
+        if existing is not None:
+            return RuntimeTaskQueue(db).get(int(existing.id))
+    return RuntimeTaskQueue(db).enqueue(payload)
+
+
+def _succeeded_task(db: Session, idempotency_key: str) -> RuntimeTask | None:
+    return (
+        db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.idempotency_key == idempotency_key, RuntimeTask.status == "succeeded")
+            .order_by(
+                RuntimeTask.finished_at.is_(None).asc(),
+                RuntimeTask.finished_at.desc(),
+                RuntimeTask.updated_at.desc(),
+                RuntimeTask.id.desc(),
+            )
+            .limit(1)
+        )
+        .scalars()
+        .first()
     )
 
 

@@ -391,6 +391,58 @@ D6 rollback is not recommended unless the larger MySQL memory limit causes new h
 | D6 deepen | If p95/API or task evidence still shows bottleneck, analyze MySQL slow queries, index coverage, connection pool, and hot-read paths | query-only first; schema/query changes need separate implementation gate |
 | D7 | Treat domain TLS/SNI/RST as separate network-entry workstream | separate plan |
 
+## D6 Root-Cause Follow-Up - 2026-06-11 23:54 CST
+
+Read-only follow-up showed the service remained available, but runtime pressure had not been eliminated:
+
+| Area | Evidence | Interpretation |
+|---|---|---|
+| memory | `3723MiB total / 3129MiB used / 593MiB available`; swap `329MiB` | better than D0, but still tight |
+| MySQL | `1.015GiB / 1.5GiB`, `restart=0`, `oom=false`, healthy | D6 limit held; no new OOM after `23:42` |
+| runtime worker | `767.9MiB / 768MiB`, CPU `69.00%` | worker can still hit container memory ceiling |
+| runtime scheduler | `252.5MiB / 640MiB` | scheduler is healthy but still contributes background pressure |
+| HTTP | `/readyz` local/IP/domain `200`; protected APIs return expected `401` in ~3-5ms | online entry is usable |
+| frontend shell | `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` | SPA shell reachable |
+
+Task evidence:
+
+| Task type | 2h succeeded count | Duration evidence |
+|---|---:|---|
+| `strategy_tracking_snapshot_refresh` | `119+` | average about `1.74s`, max `16s` |
+| `a_key_level_materialization_refresh` | `48+` | average about `124s`, max `1406s` |
+| `latest_data_watchdog` | `22` | short duration |
+| `low_buy_materialization_refresh` | `28` | average about `33.68s`, max `267s` |
+
+Root-cause judgment:
+
+- The queue's existing idempotency only dedupes non-terminal active tasks. After a task succeeds, `active_idempotency_key` is cleared, so the scheduler can enqueue and rerun the same trade-date work on every interval.
+- `a_key_level_materialization_refresh:2026-06-11` and `strategy_tracking_snapshot_refresh:2026-06-11:30` repeated heavily in the 2h window.
+- This is a resource-contention problem, not a production strategy semantics problem. It does not require changing `strategy_policy.py`, `production_score`, or priority-board ordering.
+
+Implemented local D6 code mitigation, not deployed yet:
+
+| File | Change |
+|---|---|
+| `backend/app/services/latest_data_close_refresh.py` | A-key materialization and strategy-tracking snapshot enqueue now reuse an existing succeeded same-idempotency task instead of creating another row. |
+| `backend/tests/test_latest_data_close_refresh.py` | Added coverage proving succeeded A-key/strategy-tracking tasks are reused and no duplicate runtime rows are created. |
+
+Verification:
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_latest_data_close_refresh.py backend/tests/test_key_levels_materialization_readiness.py::test_after_close_enqueues_a_key_level_materialization_with_stable_idempotency_key
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_platform_budget_verifier.py backend/tests/test_runtime_task_queue.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_independent_runtime_components.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py
+```
+
+Results: `14 passed`, `73 passed`, `32 passed`; only the existing LibreSSL urllib3 warning appeared.
+
+D6 deployment gate:
+
+- This mitigation is committed locally only after review; it has not been deployed in this observation window.
+- Deploying it should reduce repeated worker-heavy materialization after the first successful same-day run.
+- After deployment, observe whether `a_key_level_materialization_refresh` drops from dozens per 2h to at most one successful same-day run plus any active/retry case.
+- D5 scheduler embed should still wait until this D6 mitigation is deployed and observed, because collapsing scheduler into a worker already near `768MiB` would increase risk.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |
