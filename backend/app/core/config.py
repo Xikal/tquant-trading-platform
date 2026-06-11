@@ -168,7 +168,10 @@ class AppSettings(BaseSettings):
     global_rate_limit_backend: str = "memory"
     global_rate_limit_max_calls: int = 30
     global_rate_limit_window_seconds: int = 1
-    admin_api_token: str = ""
+    admin_api_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("admin_api_token", "ADMIN_API_TOKEN"),
+    )
     auth_secret_key: str = ""
     tquant_settings_encryption_key: str = ""
     auth_cookie_secure: bool = True

@@ -35,6 +35,24 @@ class SecurityHardeningTests(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 503)
 
+    def test_admin_token_env_is_loaded_by_settings(self) -> None:
+        environ["ADMIN_API_TOKEN"] = "admin-token-from-env"
+        get_settings.cache_clear()
+
+        self.assertEqual(get_settings().admin_api_token, "admin-token-from-env")
+
+    def test_admin_auth_accepts_admin_token_env(self) -> None:
+        environ["ADMIN_API_TOKEN"] = "admin-token-from-env"
+        get_settings.cache_clear()
+
+        self.assertIsNone(
+            require_admin_auth(
+                SimpleNamespace(),
+                x_admin_token="admin-token-from-env",
+                authorization=None,
+            )
+        )
+
     def test_intraday_subprocess_rejects_unsafe_symbol(self) -> None:
         class Service(MarketIntradayMixin):
             settings = SimpleNamespace(http_timeout=1)

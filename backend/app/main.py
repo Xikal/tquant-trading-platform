@@ -65,6 +65,7 @@ _SECURITY_HEADERS = {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
 }
+_SPA_INDEX_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate"
 
 
 @asynccontextmanager
@@ -557,17 +558,22 @@ def _serve_frontend_dist(dist_dir: Path, index_file: Path, full_path: str) -> Fi
         resolved = None
         dist_root = dist_dir.resolve()
     if resolved is not None and resolved.is_file() and dist_root in resolved.parents:
-        return FileResponse(resolved)
+        return _frontend_file_response(resolved, is_index=resolved.name == "index.html")
     if _is_frontend_asset_request(full_path):
         return JSONResponse(status_code=404, content={"detail": "Frontend asset not found"})
     if index_file.exists():
-        return FileResponse(index_file)
+        return _frontend_file_response(index_file, is_index=True)
     return HealthResponse(status="ok", app=settings.app_name)
 
 
 def _is_frontend_asset_request(full_path: str) -> bool:
     normalized = full_path.strip("/")
     return normalized.startswith("assets/") or Path(normalized).suffix != ""
+
+
+def _frontend_file_response(path: Path, *, is_index: bool) -> FileResponse:
+    headers = {"Cache-Control": _SPA_INDEX_CACHE_CONTROL} if is_index else None
+    return FileResponse(path, headers=headers)
 
 
 def _serve_frontend_next(full_path: str) -> FileResponse | HealthResponse | JSONResponse:

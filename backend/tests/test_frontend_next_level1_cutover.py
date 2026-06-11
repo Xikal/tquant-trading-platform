@@ -47,11 +47,14 @@ def test_root_and_business_routes_use_frontend_next(monkeypatch, tmp_path):
 
     assert root_response.status_code == 200
     assert "next-only" in root_response.text
+    assert root_response.headers["cache-control"] == "no-store, no-cache, must-revalidate, proxy-revalidate"
     for path, response in route_responses.items():
         assert response.status_code == 200, path
         assert "next-only" in response.text, path
+        assert response.headers["cache-control"] == "no-store, no-cache, must-revalidate, proxy-revalidate", path
     assert next_asset_response.status_code == 200
     assert "next-only" in next_asset_response.text
+    assert "cache-control" not in next_asset_response.headers
     assert root_asset_response.status_code == 200
     assert "next-only" in root_asset_response.text
     assert missing_next_asset_response.status_code == 404
