@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-11T20:15:46.614633+00:00",
+  "generated_at": "2026-06-11T20:23:01.614869+00:00",
   "host": {
-    "date": "Fri Jun 12 04:15:42 CST 2026",
-    "uptime": "04:15:42 up 3 days, 16:59, 702 users,  load average: 0.50, 0.31, 0.28",
+    "date": "Fri Jun 12 04:22:57 CST 2026",
+    "uptime": "04:22:57 up 3 days, 17:07, 713 users,  load average: 0.58, 0.58, 0.40",
     "memory": {
       "mem": {
         "total_mb": 3723,
-        "used_mb": 2373,
-        "free_mb": 172,
-        "used_pct": 63.74,
-        "available_mb": 1349
+        "used_mb": 2385,
+        "free_mb": 157,
+        "used_pct": 64.06,
+        "available_mb": 1337
       },
       "swap": {
         "total_mb": 1987,
@@ -64,7 +64,7 @@
         },
         {
           "name": "tquant-runtime-scheduler-mysql",
-          "status": "Up 18 minutes (healthy)"
+          "status": "Up 25 minutes (healthy)"
         },
         {
           "name": "tquant-runtime-worker-mysql",
@@ -100,15 +100,15 @@
           "name": "tquant-runtime-scheduler-mysql",
           "cpu_percent": "0.00%",
           "cpu_pct": 0.0,
-          "memory_usage": "255.1MiB / 640MiB",
-          "memory_used_bytes": 267491737,
-          "memory_percent": "39.86%",
-          "memory_pct": 39.86
+          "memory_usage": "254.4MiB / 640MiB",
+          "memory_used_bytes": 266757734,
+          "memory_percent": "39.75%",
+          "memory_pct": 39.75
         },
         {
           "name": "tquant-runtime-worker-mysql",
-          "cpu_percent": "0.00%",
-          "cpu_pct": 0.0,
+          "cpu_percent": "0.49%",
+          "cpu_pct": 0.49,
           "memory_usage": "296.1MiB / 768MiB",
           "memory_used_bytes": 310483353,
           "memory_percent": "38.55%",
@@ -116,66 +116,66 @@
         },
         {
           "name": "tquant-mysql",
-          "cpu_percent": "0.38%",
-          "cpu_pct": 0.38,
-          "memory_usage": "863.2MiB / 1.5GiB",
-          "memory_used_bytes": 905130803,
-          "memory_percent": "56.20%",
-          "memory_pct": 56.2
+          "cpu_percent": "0.84%",
+          "cpu_pct": 0.84,
+          "memory_usage": "863.9MiB / 1.5GiB",
+          "memory_used_bytes": 905864806,
+          "memory_percent": "56.25%",
+          "memory_pct": 56.25
         },
         {
           "name": "tquant-app-mysql",
-          "cpu_percent": "0.12%",
-          "cpu_pct": 0.12,
-          "memory_usage": "60.22MiB / 768MiB",
-          "memory_used_bytes": 63145246,
-          "memory_percent": "7.84%",
-          "memory_pct": 7.84
+          "cpu_percent": "0.13%",
+          "cpu_pct": 0.13,
+          "memory_usage": "60.25MiB / 768MiB",
+          "memory_used_bytes": 63176704,
+          "memory_percent": "7.85%",
+          "memory_pct": 7.85
         },
         {
           "name": "tquant-frontend-web",
           "cpu_percent": "0.00%",
           "cpu_pct": 0.0,
-          "memory_usage": "2.707MiB / 128MiB",
-          "memory_used_bytes": 2838495,
-          "memory_percent": "2.11%",
-          "memory_pct": 2.11
+          "memory_usage": "2.711MiB / 128MiB",
+          "memory_used_bytes": 2842689,
+          "memory_percent": "2.12%",
+          "memory_pct": 2.12
         },
         {
           "name": "tquant-go-bff-gateway",
           "cpu_percent": "0.00%",
           "cpu_pct": 0.0,
-          "memory_usage": "5.184MiB / 128MiB",
-          "memory_used_bytes": 5435817,
-          "memory_percent": "4.05%",
-          "memory_pct": 4.05
+          "memory_usage": "5.246MiB / 128MiB",
+          "memory_used_bytes": 5500829,
+          "memory_percent": "4.10%",
+          "memory_pct": 4.1
         },
         {
           "name": "tquant-go-market-read-service",
-          "cpu_percent": "0.00%",
-          "cpu_pct": 0.0,
-          "memory_usage": "8.094MiB / 128MiB",
-          "memory_used_bytes": 8487174,
-          "memory_percent": "6.32%",
-          "memory_pct": 6.32
+          "cpu_percent": "2.42%",
+          "cpu_pct": 2.42,
+          "memory_usage": "7.891MiB / 128MiB",
+          "memory_used_bytes": 8274313,
+          "memory_percent": "6.16%",
+          "memory_pct": 6.16
         },
         {
           "name": "tquant-go-scan-worker",
           "cpu_percent": "0.00%",
           "cpu_pct": 0.0,
-          "memory_usage": "5.828MiB / 128MiB",
-          "memory_used_bytes": 6111100,
-          "memory_percent": "4.55%",
-          "memory_pct": 4.55
+          "memory_usage": "5.887MiB / 128MiB",
+          "memory_used_bytes": 6172966,
+          "memory_percent": "4.60%",
+          "memory_pct": 4.6
         },
         {
           "name": "tquant-redis",
-          "cpu_percent": "0.48%",
-          "cpu_pct": 0.48,
-          "memory_usage": "4.977MiB / 128MiB",
-          "memory_used_bytes": 5218762,
-          "memory_percent": "3.89%",
-          "memory_pct": 3.89
+          "cpu_percent": "0.52%",
+          "cpu_pct": 0.52,
+          "memory_usage": "4.961MiB / 128MiB",
+          "memory_used_bytes": 5201985,
+          "memory_percent": "3.88%",
+          "memory_pct": 3.88
         }
       ]
     },
@@ -186,91 +186,91 @@
       "path": "/readyz",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003832,
+      "time_total": 0.00364,
       "error": ""
     },
     {
       "path": "/api/monitor",
       "returncode": 0,
       "status": 404,
-      "time_total": 0.003562,
+      "time_total": 0.003864,
       "error": ""
     },
     {
       "path": "/api/monitor/snapshot",
       "returncode": 0,
       "status": 401,
-      "time_total": 0.003128,
+      "time_total": 0.003114,
       "error": ""
     },
     {
       "path": "/api/priority-board",
       "returncode": 0,
       "status": 404,
-      "time_total": 0.002731,
+      "time_total": 0.002513,
       "error": ""
     },
     {
       "path": "/api/screeners/low-buy/priority-board",
       "returncode": 0,
       "status": 401,
-      "time_total": 0.002557,
+      "time_total": 0.002654,
       "error": ""
     },
     {
       "path": "/api/runtime-tasks/summary",
       "returncode": 0,
       "status": 401,
-      "time_total": 0.003045,
+      "time_total": 0.002576,
       "error": ""
     },
     {
       "path": "/next/monitor",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.00327,
+      "time_total": 0.003549,
       "error": ""
     },
     {
       "path": "/next/monitor/market",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003475,
+      "time_total": 0.003113,
       "error": ""
     },
     {
       "path": "/next/strategy-tracking",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003318,
+      "time_total": 0.003143,
       "error": ""
     },
     {
       "path": "/next/analysis",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003836,
+      "time_total": 0.003156,
       "error": ""
     },
     {
       "path": "/next/backtest",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003525,
+      "time_total": 0.003259,
       "error": ""
     },
     {
       "path": "/next/data",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003331,
+      "time_total": 0.003104,
       "error": ""
     },
     {
       "path": "/next/settings",
       "returncode": 0,
       "status": 200,
-      "time_total": 0.003207,
+      "time_total": 0.003187,
       "error": ""
     }
   ],
@@ -302,8 +302,8 @@
       {
         "task_type": "low_buy_materialization_refresh",
         "status": "succeeded",
-        "count": "6",
-        "oldest": "2026-06-11 18:16:45",
+        "count": "4",
+        "oldest": "2026-06-11 18:24:35",
         "latest": "2026-06-11 19:57:59"
       }
     ],
@@ -311,18 +311,18 @@
     "heartbeats": [
       {
         "key": "platform_component.heartbeat.runtime-scheduler",
-        "updated_at": "2026-06-11 20:15:41",
-        "value_prefix": "{\"component\": \"runtime-scheduler\", \"worker_id\": \"runtime-scheduler\", \"updated_at\": \"2026-06-11T20:15:41\", \"status\": \"running\"}"
+        "updated_at": "2026-06-11 20:22:41",
+        "value_prefix": "{\"component\": \"runtime-scheduler\", \"worker_id\": \"runtime-scheduler\", \"updated_at\": \"2026-06-11T20:22:41\", \"status\": \"running\"}"
       },
       {
         "key": "platform_component.heartbeat.runtime-worker",
-        "updated_at": "2026-06-11 20:15:42",
-        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:15:42\", \"status\": \"running\"}"
+        "updated_at": "2026-06-11 20:22:58",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:22:58\", \"status\": \"running\"}"
       },
       {
         "key": "runtime_worker.heartbeat",
-        "updated_at": "2026-06-11 20:15:42",
-        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:15:42\", \"status\": \"running\"}"
+        "updated_at": "2026-06-11 20:22:58",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:22:58\", \"status\": \"running\"}"
       }
     ]
   },
@@ -374,6 +374,9 @@
     "duplicate_success_warning_count": 12,
     "queue_warning_count": 1,
     "scheduler_provider_warning_blocking_lines": 20
+  },
+  "checkpoint": {
+    "label": "pre-d5-wait-0422"
   },
   "evaluation": {
     "status": "warning",

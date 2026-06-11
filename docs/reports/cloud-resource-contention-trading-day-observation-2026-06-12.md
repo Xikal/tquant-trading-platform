@@ -483,3 +483,62 @@ Operations not executed in this rollout:
 - No Docker cleanup.
 - No D5 scheduler embed.
 - No standalone scheduler stop.
+
+## 2026-06-12 04:22 CST Pre-D5 Waiting Snapshot
+
+Current local time was `2026-06-12 04:22 CST`, which is outside the required D5 checkpoint schedule. No D5 checkpoint can be counted yet; the first required checkpoint remains `09:15 CST`.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label pre-d5-wait-0422 \
+  --json-output docs/reports/cloud-resource-gate-observation-2026-06-12-latest.json \
+  --markdown-output docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-11T20:23:01Z
+host_time=2026-06-12 04:22:57 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+blocking=none
+warnings=scheduler_provider_warning_lines_observed=18, mysql_slow_queries=55
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.58, 0.58, 0.40`; memory available `1337MiB`; swap used `32.66%`; root `63%`; inode `13%` | warning: swap still present |
+| runtime-scheduler | `254.4MiB / 640MiB`; board warnings last 30m `15`; healthy | pass |
+| runtime-worker | `296.1MiB / 768MiB`; healthy | pass |
+| MySQL | `863.9MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=55` | warning |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | recent summary only `low_buy_materialization_refresh` succeeded, count `4` | pass |
+| Platform budget verifier | `status=ok`, `warnings=none`, `blocking=none` | pass |
+
+Decision:
+
+1. D6 provider backoff remains below D5 provider-pressure blocking threshold in this pre-market window.
+2. D5 remains closed only because the full trading-day checkpoint set has not started.
+3. Do not enable embedded scheduler yet.
+4. Next required action is the `09:15 CST` checkpoint collection.
+
+Operations not executed in this snapshot:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
