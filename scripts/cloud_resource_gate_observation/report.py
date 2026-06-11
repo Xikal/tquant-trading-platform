@@ -12,6 +12,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "# Cloud Resource Gate Observation",
         "",
         f"- Generated at: `{report.get('generated_at', '')}`",
+        f"- Checkpoint: `{report.get('checkpoint', {}).get('label', '') or 'single-snapshot'}`",
         f"- Source: `{report.get('source', {}).get('remote_user', '')}@{report.get('source', {}).get('remote_host', '')}`",
         f"- Evaluation: `{evaluation.get('status', 'unknown')}`",
         f"- D5 embedded scheduler ready: `{str(d5_gate.get('ready', False)).lower()}`",

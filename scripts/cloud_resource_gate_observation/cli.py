@@ -32,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--docker-logs-since", default="24h")
     parser.add_argument("--json-output", type=Path)
     parser.add_argument("--markdown-output", type=Path)
+    parser.add_argument("--checkpoint-label", default="")
     parser.add_argument("--full-trading-day-complete", action="store_true")
     parser.add_argument("--worker-memory-warning-pct", type=float)
     parser.add_argument("--worker-memory-blocking-pct", type=float)
@@ -58,6 +59,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         raise SystemExit("--fixture or --ssh-host is required")
     thresholds = parse_thresholds(args)
     report["thresholds"] = thresholds
+    if args.checkpoint_label:
+        report["checkpoint"] = {"label": args.checkpoint_label}
     report["evaluation"] = evaluate(report, thresholds, args.full_trading_day_complete)
     write_outputs(report, args.json_output, args.markdown_output)
     print(json.dumps(report["evaluation"], ensure_ascii=False))

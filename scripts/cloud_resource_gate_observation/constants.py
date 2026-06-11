@@ -57,6 +57,17 @@ LOW_PRIORITY_TASK_HINTS = (
     "hermes_platform_autopilot",
 )
 
+TRADING_DAY_CHECKPOINTS = (
+    ("09:15", "pre-open baseline"),
+    ("09:35", "after open pressure"),
+    ("10:30", "sustained morning load"),
+    ("11:30", "midday close"),
+    ("13:05", "afternoon reopen"),
+    ("14:55", "close pressure"),
+    ("15:10", "post-close tasks"),
+    ("15:30", "close-refresh cooldown"),
+)
+
 DEFAULT_THRESHOLDS = {
     "worker_memory_warning_pct": 85.0,
     "worker_memory_blocking_pct": 95.0,

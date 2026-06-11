@@ -64,6 +64,40 @@ Expected:
 - `d5_gate.ready=false` means do not embed scheduler.
 - `d5_gate.ready=true` requires `--full-trading-day-complete` and still needs a maintenance-window decision before any online write.
 
+Checkpoint collector naming:
+
+```bash
+cd /Users/j/Documents/gupiao
+CHECKPOINT=09:15
+STAMP=$(date +%Y%m%d-%H%M)
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 15m \
+  --checkpoint-label "$CHECKPOINT" \
+  --json-output "docs/reports/cloud-resource-gate-observations/2026-06-12-${CHECKPOINT/:/}-${STAMP}.json" \
+  --markdown-output "docs/reports/cloud-resource-gate-observations/2026-06-12-${CHECKPOINT/:/}-${STAMP}.md"
+```
+
+After all required checkpoints are collected, summarize them:
+
+```bash
+python3 scripts/summarize_cloud_resource_gate_observations.py \
+  docs/reports/cloud-resource-gate-observations/2026-06-12-*.json \
+  --json-output docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+  --markdown-output docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.md \
+  --fail-on-d5-blocked
+```
+
+Expected:
+
+- The summary reads local JSON snapshots only.
+- Missing any required checkpoint keeps `d5_ready=false`.
+- Sustained provider pressure, worker pressure, queue backlog, duplicate core tasks, or HTTP failures keep D5 blocked.
+- Low-frequency provider recovery probes below threshold remain warnings, not D5 blockers.
+
 ### Host And Containers
 
 ```bash
@@ -260,3 +294,34 @@ Decision:
 1. Continue keeping `runtime-scheduler` standalone.
 2. Do not execute D5 embedded scheduler yet.
 3. Continue full trading-day observation. The provider warning blocker can only be cleared after a fresh observation window proves the warnings are no longer sustained under trading-day load.
+
+## 2026-06-12 03:25 CST Tooling Update
+
+The D5 observation tooling now supports checkpoint labels and trading-day summary generation.
+
+Changed local tooling:
+
+- `scripts/collect_cloud_resource_gate_observation.py` accepts `--checkpoint-label`.
+- `scripts/summarize_cloud_resource_gate_observations.py` summarizes multiple checkpoint JSON snapshots.
+- Required checkpoints are `09:15`, `09:35`, `10:30`, `11:30`, `13:05`, `14:55`, `15:10`, `15:30`.
+- The summary keeps D5 blocked if any required checkpoint is missing, or if any snapshot has sustained D5 blockers.
+
+Validation:
+
+```text
+backend/tests/test_cloud_resource_gate_observation.py: 10 passed
+ad-hoc online read-only checkpoint: status=warning, blockers=full_trading_day_observation_incomplete
+single-checkpoint summary: d5_ready=false, blockers=full_trading_day_observation_incomplete
+```
+
+Operations:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
+
+Decision remains unchanged: D5 embedded scheduler is still closed until the complete trading-day checkpoint set passes.

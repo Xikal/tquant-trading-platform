@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT_DIR / "scripts" / "collect_cloud_resource_gate_observation.py"
+SUMMARY_SCRIPT = ROOT_DIR / "scripts" / "summarize_cloud_resource_gate_observations.py"
 
 
 def run_observation(fixture: dict[str, object], tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
@@ -26,6 +27,25 @@ def run_observation(fixture: dict[str, object], tmp_path: Path, *extra: str) -> 
             str(report_path),
             "--markdown-output",
             str(markdown_path),
+            *extra,
+        ],
+        cwd=ROOT_DIR,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def run_summary(tmp_path: Path, *snapshots: Path, extra: tuple[str, ...] = ()) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            str(SUMMARY_SCRIPT),
+            *(str(path) for path in snapshots),
+            "--json-output",
+            str(tmp_path / "summary.json"),
+            "--markdown-output",
+            str(tmp_path / "summary.md"),
             *extra,
         ],
         cwd=ROOT_DIR,
@@ -164,6 +184,16 @@ def test_clean_observation_can_pass_d5_gate_after_full_trading_day(tmp_path: Pat
     assert payload["evaluation"]["d5_gate"]["blockers"] == []
 
 
+def test_observation_records_checkpoint_label(tmp_path: Path) -> None:
+    result = run_observation(sample_gate_report(), tmp_path, "--checkpoint-label", "09:15")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((tmp_path / "gate.json").read_text(encoding="utf-8"))
+    markdown = (tmp_path / "gate.md").read_text(encoding="utf-8")
+    assert payload["checkpoint"]["label"] == "09:15"
+    assert "Checkpoint: `09:15`" in markdown
+
+
 def test_observation_blocks_on_core_http_failure(tmp_path: Path) -> None:
     fixture = sample_gate_report(
         http=[
@@ -239,6 +269,65 @@ def test_observation_treats_low_frequency_provider_recovery_probe_as_warning_onl
     assert "scheduler_provider_warning_lines_observed=5" not in blockers
 
 
+def test_trading_day_summary_requires_all_checkpoints(tmp_path: Path) -> None:
+    snapshots = []
+    for label in ("09:15", "09:35"):
+        payload = sample_gate_report(
+            checkpoint={"label": label},
+            evaluation={
+                "status": "ok",
+                "blocking": [],
+                "warnings": [],
+                "d5_gate": {
+                    "ready": True,
+                    "blockers": [],
+                    "full_trading_day_complete": True,
+                },
+            },
+        )
+        path = tmp_path / f"{label.replace(':', '')}.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        snapshots.append(path)
+
+    result = run_summary(tmp_path, *snapshots, extra=("--fail-on-d5-blocked",))
+
+    assert result.returncode == 42
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    markdown = (tmp_path / "summary.md").read_text(encoding="utf-8")
+    assert summary["d5_ready"] is False
+    assert "full_trading_day_observation_incomplete" in summary["d5_blockers"]
+    assert "`15:30`" in markdown
+
+
+def test_trading_day_summary_passes_when_all_checkpoints_are_clean(tmp_path: Path) -> None:
+    labels = ("09:15", "09:35", "10:30", "11:30", "13:05", "14:55", "15:10", "15:30")
+    snapshots = []
+    for label in labels:
+        payload = sample_gate_report(
+            checkpoint={"label": label},
+            evaluation={
+                "status": "ok",
+                "blocking": [],
+                "warnings": [],
+                "d5_gate": {
+                    "ready": True,
+                    "blockers": [],
+                    "full_trading_day_complete": True,
+                },
+            },
+        )
+        path = tmp_path / f"{label.replace(':', '')}.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        snapshots.append(path)
+
+    result = run_summary(tmp_path, *snapshots, extra=("--fail-on-d5-blocked",))
+
+    assert result.returncode == 0, result.stderr
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert summary["d5_ready"] is True
+    assert summary["d5_blockers"] == []
+
+
 def test_observation_parsers_cover_remote_sections() -> None:
     module = runpy.run_path(str(SCRIPT))
     parse_http = module["parse_http"]
@@ -262,8 +351,12 @@ def test_observation_parsers_cover_remote_sections() -> None:
 
 def test_observation_script_is_read_only_and_collects_required_paths() -> None:
     module_dir = ROOT_DIR / "scripts" / "cloud_resource_gate_observation"
-    script = SCRIPT.read_text(encoding="utf-8") + "\n" + "\n".join(
-        path.read_text(encoding="utf-8") for path in sorted(module_dir.glob("*.py"))
+    script = (
+        SCRIPT.read_text(encoding="utf-8")
+        + "\n"
+        + SUMMARY_SCRIPT.read_text(encoding="utf-8")
+        + "\n"
+        + "\n".join(path.read_text(encoding="utf-8") for path in sorted(module_dir.glob("*.py")))
     )
 
     forbidden = (
