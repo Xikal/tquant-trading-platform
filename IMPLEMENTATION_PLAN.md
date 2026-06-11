@@ -1,5 +1,50 @@
 # TQuant 实施计划
 
+## 2026-06-11 集合竞价辅助能力开发
+
+需求来源：
+
+- `docs/call-auction-assist-execution-plan-2026-06-11.md`
+- `docs/call-auction-assist-verified-requirements-2026-06-11.md`
+- `docs/engineering-conventions.md`
+- `docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md`
+- `AGENTS.md`
+
+### 执行边界
+
+- [x] 已执行 `git status --short`：当前仅见本任务新增未跟踪文档 `docs/call-auction-assist-execution-plan-2026-06-11.md`。
+- [x] 不修改 `backend/app/services/low_buy/strategy_policy.py`。
+- [x] 不改变 `production_score`、`priority_score`、priority board 排序语义。
+- [x] 不在 Web 请求线程拉竞价 provider。
+- [x] 不自动下单、不写模拟盘订单。
+- [x] `/next/paper` 当前重定向到 `/next/monitor`，未恢复前不作为验收项。
+- [x] 默认不部署、不推送、不打开生产 feature flag。
+
+### 本轮 TODO
+
+- [x] G0：新增 provider spike 脚本和单测，窗口外只生成 blocked 报告，不伪造数据。
+- [x] G0：在真实交易日 9:19:30-9:25:30 执行 provider spike，输出 Markdown/JSON 报告。
+- [x] 根据 G0 结论决定是否进入 G1；当前 `provider_failed`，按计划停止后续批次。
+
+### 当前进度
+
+- [x] 新增 `backend/scripts/call_auction_provider_spike.py`。
+- [x] 新增 `backend/app/services/auction/provider_spike.py`、`provider_spike_report.py`、`provider_spike_utils.py`。
+- [x] 新增 `backend/tests/test_call_auction_provider_spike.py`。
+- [x] 生成正式 G0 报告：`docs/reports/call-auction-provider-spike-2026-06-11.md`。
+- [x] 生成正式 G0 JSON：`backend/data/reports/call-auction-provider-spike-2026-06-11.json`（ignored 机器产物）。
+- [x] G0 结论：`provider_failed`；显式沪市/深市/ETF 样本 10 只，10/10 provider 失败，失败率 1.0，G2/G4 均不允许。
+- [x] 按用户提示词“若任一批次不满足验收门，停止后续批次并输出原因”，本轮不进入 G1/G2/G3/G4。
+- [x] Code review 修复：时间解析支持分钟级 provider 时间；默认样本兜底补齐沪市/深市/ETF 且满足 10 只正式样本下限；样本覆盖不足时输出 `blocked_by_sample_coverage`；单只 provider 调用增加超时；窗口结束后停止发起后续 provider 调用。
+
+### 验证记录
+
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python -m pytest backend/tests/test_call_auction_provider_spike.py -q`：13 passed / 1 LibreSSL warning。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/call_auction_provider_spike.py --help`：PASS。
+- [x] `PYTHONPATH=backend:. backend/.venv/bin/python backend/scripts/call_auction_provider_spike.py --symbols 600000,000001,510300,600519,000333,159915,300750,688981,512100,515000 --sleep 0.05 --output-md docs/reports/call-auction-provider-spike-$(date +%F).md --output-json backend/data/reports/call-auction-provider-spike-$(date +%F).json`：真实窗口 2026-06-11 09:21 CST 执行，`provider_failed`，10/10 失败。
+- [x] `git diff --check -- IMPLEMENTATION_PLAN.md backend/scripts/call_auction_provider_spike.py backend/app/services/auction backend/tests/test_call_auction_provider_spike.py docs/call-auction-assist-execution-plan-2026-06-11.md`：PASS。
+- [x] `git diff -- backend/app/services/low_buy/strategy_policy.py backend/app/services/low_buy/priority_board.py backend/app/services/low_buy/production_scoring.py`：无输出，硬边界未改。
+
 ## 2026-06-11 策略成功率优化收口任务
 
 需求来源：
