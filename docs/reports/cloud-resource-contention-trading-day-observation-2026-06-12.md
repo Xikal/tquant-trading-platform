@@ -325,3 +325,85 @@ Operations:
 - No deployment or cutover.
 
 Decision remains unchanged: D5 embedded scheduler is still closed until the complete trading-day checkpoint set passes.
+
+## 2026-06-12 03:36 CST Read-Only Gate Refresh
+
+Another ad-hoc read-only collector run was executed for D6 root-cause evidence:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 2h \
+  --checkpoint-label ad-hoc-d6-root-cause \
+  --json-output /tmp/gupiao-cloud-resource-gate-d6-root-cause.json \
+  --markdown-output /tmp/gupiao-cloud-resource-gate-d6-root-cause.md
+```
+
+Result:
+
+```text
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warning_lines=28
+warnings=scheduler_provider_warning_lines=28, mysql_slow_queries=51
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load average `0.37, 0.26, 0.28`; memory available `1364MiB`; swap used `655MiB / 1987MiB` (`32.96%`) | warning |
+| runtime-worker | `273.5MiB / 768MiB` (`35.62%`) | pass |
+| runtime-scheduler | `250.1MiB / 640MiB` (`39.08%`); provider warning lines `28` | blocker for D5 |
+| MySQL | `859.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=51` | warning |
+| HTTP/pages | `/readyz` 200; all checked `/next/*` pages 200; protected APIs 401 quickly | pass |
+| Runtime tasks | recent summary only `low_buy_materialization_refresh` succeeded, count `6` | pass |
+
+Platform budget verifier was also run read-only against the live containers:
+
+```bash
+python3 scripts/verify_platform_budget.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --json-output /tmp/gupiao-platform-budget-d6-root-cause.json \
+  --markdown-output /tmp/gupiao-platform-budget-d6-root-cause.md
+```
+
+Result:
+
+```text
+status=ok
+blocking=none
+warnings=none
+pool_budget_total=20
+Threads_connected=9
+Threads_running=2
+```
+
+Important env evidence:
+
+| Role | Evidence |
+|---|---|
+| web | `RUNTIME_BACKGROUND_JOBS_ENABLED=false`, `TQUANT_ANALYTICS_ENABLED=false`, `PLATFORM_AUTOPILOT_ENABLED=false` |
+| runtime-worker | `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`, `RUNTIME_WORKER_EMBED_SCHEDULER=false`, `RUNTIME_WORKER_RECYCLE_RSS_MB=700`, startup prewarm disabled |
+| runtime-scheduler | `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`, `RUNTIME_BACKGROUND_JOBS_ENABLED=true`, `MARKET_REVIEW_ENABLED=false` |
+
+Interpretation:
+
+1. The first-layer stop profile and budget guard are currently correct.
+2. D5 is blocked by full trading-day incompleteness and sustained scheduler provider pressure, not by budget-verifier failures.
+3. Do not stop `runtime-scheduler` and do not enable embedded scheduler.
+
+Operations not executed in this refresh:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.

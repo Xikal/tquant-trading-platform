@@ -12,6 +12,13 @@ Do not execute D5 embedded scheduler yet.
 
 Reason: the core service is available and short-window resource usage is improved, but scheduler provider warnings are still active, swap remains non-trivial, and MySQL slow-query evidence points to read-path and queue-query work that should be handled before moving scheduler load into runtime-worker.
 
+Latest refresh: `2026-06-12 03:36 CST`.
+
+- `collect_cloud_resource_gate_observation.py` returned `d5_gate.ready=false`.
+- Current D5 blockers are `full_trading_day_observation_incomplete` and `scheduler_provider_warning_lines=28`.
+- `scheduler_provider_warning_lines=28` exceeds the collector threshold `20`, so this is sustained provider pressure, not a low-frequency warning.
+- `verify_platform_budget.py` returned `status=ok`, with no blocking items and no warnings.
+
 ## Read-Only Evidence
 
 Collection time: `2026-06-12 01:18-01:20 CST`.
@@ -208,6 +215,17 @@ Impact:
 - This keeps standalone `runtime-scheduler` useful as a blast-radius boundary.
 - It is not safe to merge scheduler into runtime-worker until provider timeouts/fallbacks stop producing sustained warning bursts over a full trading day.
 
+Latest D6 evidence:
+
+| Metric | Value |
+|---|---:|
+| `scheduler_provider_warning_lines` | `28` |
+| D5 provider threshold | `20` |
+| `d5_gate.ready` | `false` |
+| Other D5 blocker | `full_trading_day_observation_incomplete` |
+
+Interpretation: provider pressure is currently an active D5 blocker. Keep the scheduler isolated even though worker RSS and platform budget currently look healthy.
+
 ## Root Cause Classification
 
 ### P1: Daily Bar Read Path Dominates MySQL Slow Time
@@ -359,6 +377,42 @@ Authorization:
 | Redis pressure | `5.645MiB / 128MiB` | not root cause |
 | Disk full | root `61%`, inode `12%` | not current root cause |
 | Core worker RSS | `218MiB / 768MiB` after recycle guard | improved; continue observing |
+| Platform budget/env guard | `verify_platform_budget.py` at `03:37 CST`: `status=ok`, `pool_budget_total=20`, no warnings | not current root cause |
+
+## Latest Budget Guard Evidence - 2026-06-12 03:37 CST
+
+Read-only command:
+
+```bash
+python3 scripts/verify_platform_budget.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --json-output /tmp/gupiao-platform-budget-d6-root-cause.json \
+  --markdown-output /tmp/gupiao-platform-budget-d6-root-cause.md
+```
+
+Result:
+
+```text
+ok=true
+status=ok
+blocking=none
+warnings=none
+```
+
+| Role | Evidence |
+|---|---|
+| web | pool budget `4`; `RUNTIME_BACKGROUND_JOBS_ENABLED=false`; `TQUANT_ANALYTICS_ENABLED=false`; `PLATFORM_AUTOPILOT_ENABLED=false` |
+| runtime-worker | pool budget `6`; `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`; `RUNTIME_WORKER_EMBED_SCHEDULER=false`; `RUNTIME_WORKER_RECYCLE_RSS_MB=700`; startup prewarm disabled |
+| runtime-scheduler | pool budget `6`; `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`; `RUNTIME_BACKGROUND_JOBS_ENABLED=true`; `MARKET_REVIEW_ENABLED=false` |
+| MySQL | `max_connections=120`; `Threads_connected=9`; `Threads_running=2` |
+
+Interpretation:
+
+1. The cloud stop profile is active and matches the resource-contention plan.
+2. Embedded scheduler remains explicitly disabled.
+3. D5 is blocked by full trading-day incompleteness and sustained provider pressure, not by connection-pool or low-priority-pause misconfiguration.
 
 ## Recommended Fix Plan
 

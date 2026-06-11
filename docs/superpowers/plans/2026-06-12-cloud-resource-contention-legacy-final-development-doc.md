@@ -64,9 +64,10 @@
 | 资源 | worker/MySQL 当前短窗有余量，swap 仍需观察 |
 | 队列 | 旧 `data_quality_sla_refresh` 非核心残留已取消 |
 | D5 embedded scheduler | `ready=false` |
-| 阻塞原因 | `full_trading_day_observation_incomplete`、`scheduler_provider_warnings_present` |
+| 硬阻塞原因 | `full_trading_day_observation_incomplete`、`scheduler_provider_warning_lines=28` |
+| 持续观察项 | MySQL slow queries、worker RSS、swap、runtime queue |
 
-结论：不能停独立 `runtime-scheduler`，不能启用 embedded scheduler，必须继续完整交易日观察。
+结论：不能停独立 `runtime-scheduler`，不能启用 embedded scheduler，必须继续完整交易日观察。provider warning 是 D5 的重要观察项；只有达到采集器定义的 sustained provider pressure 阈值或导致 `d5_gate.ready=false` 的明确 blocker 时，才作为硬阻塞。低频 warning 只记录为风险，不单独替代完整交易日 gate；当前 `2026-06-12 03:36 CST` 只读快照为 `scheduler_provider_warning_lines=28`，已超过阈值 `20`，所以属于本轮 D5 blocker。
 
 ## 2. 硬边界
 
@@ -132,7 +133,7 @@
 |---|---|---|
 | close-refresh dedupe | 同一 trade date 成功后不重复入队 | 交易日内无重复爆量 |
 | worker recycle guard | 任务边界回收高 RSS worker | 不中断 running task，无 restart loop |
-| provider degraded guard | 慢源/坏源返回 cached/warming/stale | provider warning 不再高频 |
+| provider degraded guard | 慢源/坏源返回 cached/warming/stale | provider warning 低于 sustained pressure 阈值，无 fallback storm |
 | runtime queue terminal state | removed paper task 标记 skipped/cancelled | 不计 failed，不 retry |
 | scheduler embed | 支持但默认关闭 | 完整交易日 gate 通过后维护窗口执行 |
 
@@ -162,6 +163,30 @@
 | P5 MySQL/机器规格根因 | `devops-operator`、`fullstack-builder` | 是 | 慢查询/连接/规格报告 | 调参需授权 |
 | P6 旧前端最终收口 | `ui-designer`、`qa-tester` | 是 | 防回流测试、归档/删除门槛 | 删除需授权 |
 | P7 前端/HTTP/长稳验收 | `qa-tester`、`ui-designer` | 是 | 页面 smoke、p95、完整交易日观察 | 否 |
+
+### 4.1 并行依赖图
+
+```text
+P1 状态基线与门禁
+  ├─ P2 非核心止血与模拟盘残留
+  ├─ P3 runtime/provider/队列稳定性
+  ├─ P5 MySQL/机器规格根因
+  ├─ P6 旧前端最终收口
+  └─ P7 前端/HTTP/长稳验收
+
+P4 scheduler 合并候选
+  └─ 只能在 P1/P3/P5/P7 均无 P0/P1 blocker，且完整交易日 D5 gate 通过后进入授权执行
+```
+
+### 4.2 最终执行判定
+
+当前最优路线不是云端 Web-only，也不是立即合并 scheduler；最优路线是三层串行生效、七包并行开发：
+
+1. 第一层先停非核心任务止血，解决资源争抢导致的卡顿。
+2. 第二层治理重复任务、provider fallback、worker RSS 和 scheduler 合并门槛。
+3. 第三层处理 MySQL 慢查询/规格、域名 TLS/SNI、Docker cache 和机器升配。
+
+其中 P2/P3/P5/P6/P7 可以在本地并行开发和只读验证；任何线上写动作必须回到 `trading-platform-supervisor` 统一串行授权。
 
 ## 5. 多 Agent 编排
 
@@ -703,7 +728,7 @@ Expected:
 3. 验证资源：uptime/load/free/swap/df/df -ih/docker ps/docker stats/docker system df。
 4. 验证任务：runtime_tasks、scheduler heartbeat、worker heartbeat、low-priority pause、dedupe。
 5. 验证前端：无白屏、无 chunk 404、无旧前端入口回流。
-6. 验证 D5 gate：full trading day incomplete、scheduler provider warnings、non-terminal tasks 任一存在时必须保持 blocked。
+6. 验证 D5 gate：full trading day incomplete、sustained scheduler provider pressure、non-terminal core tasks、MySQL OOM、worker RSS 持续贴边任一成为 collector blocker 时必须保持 blocked；低频 provider warning 只记录为 WARN。
 
 禁止：
 - 不做线上写操作。
@@ -828,7 +853,7 @@ Expected:
 1. 更新 docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md，记录完整交易日观察模板、当前未完成项和 D5 blocker。
 2. 复核第一层 stop profile 是否在线生效：PLATFORM_AUTOPILOT_ENABLED=false、RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true、MARKET_REVIEW_ENABLED=false。
 3. 复核 worker recycle guard 是否已启用及是否在任务边界正常工作；未稳定前不得执行 scheduler embed。
-4. 复核 provider degraded guard 是否减少 fallback 链式压力；如仍有 scheduler_provider_warnings_present，D5 继续阻塞。
+4. 复核 provider degraded guard 是否减少 fallback 链式压力；如仍有 sustained scheduler provider pressure 或 collector 明确输出 D5 blocker，D5 继续阻塞；低频 warning 只记录为观察风险。
 5. 复跑 dedupe、runtime task、priority board、low-buy、frontend-next cutover 相关测试。
 6. 输出下一步授权清单：哪些可以只读，哪些需要用户明确授权。
 
