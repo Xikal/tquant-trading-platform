@@ -1,0 +1,641 @@
+# Cloud Resource Contention Final Integrated Development Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 分三层治理线上资源争抢导致的卡顿，并把旧前端退役与已移除模拟盘残留收口纳入同一执行路径，保证监控、行情缓存、低吸榜、priority board、策略追踪持续可用。
+
+**Architecture:** 第一层先停非核心常驻任务止血，第二层合并或收敛调度结构并减少重复任务，第三层处理 MySQL、worker 内存、慢查询、机器规格和域名入口根因。云端保持模块化单体和核心 Worker 小闭环，不改生产策略语义，不把云端改成 Web-only。
+
+**Tech Stack:** Docker Compose, FastAPI, MySQL 8.4, Redis 7, Python runtime worker, Go hot-read services, frontend-next, pytest, Playwright, curl, SSH runbook.
+
+---
+
+## 1. 当前事实基线
+
+### 1.1 已确认问题
+
+| 问题 | 当前证据 | 判断 |
+|---|---|---|
+| 云服务器资源争抢 | MySQL 曾 cgroup OOM；runtime-worker 多次贴近 `768MiB` 上限；swap 曾高位 | 主要卡顿根因 |
+| 非核心任务占用 Worker | autopilot、analytics/backtest/data repair/research 类任务会进入队列或留下历史失败 | 可先止血 |
+| scheduler 常驻开销 | 独立 `runtime-scheduler` 常驻约数百 MiB，并有 provider timeout/circuit-open 日志 | 可合并但不能立即强切 |
+| 重复物化任务 | `a_key_level_materialization_refresh`、`strategy_tracking_snapshot_refresh` 曾同日重复大量入队 | 已有 dedupe 修复，需持续验收 |
+| MySQL 旧限制过紧 | `1GiB` 限制下发生 OOM；后续提高到 `1536m/2048m` 后短窗稳定 | 根因仍需慢查询/规格专项 |
+| 域名公网链路不稳 | `weisilianghua.cloud` 曾外部 TLS reset；IP HTTPS 可用 | 独立网络入口问题 |
+| 旧前端 | 当前仓库 `frontend/` 目录 absent，tracked 文件数为 0；运行、CI、Docker 主链路指向 `frontend-next/` | 旧前端物理退役已基本完成，剩余是 guard 和历史引用收口 |
+| 模拟盘 | active `/paper`、`/next/paper` 不再作为核心功能；历史 `paper_*` runtime task 已按 removed feature skipped | 不恢复，不作为核心保护项 |
+
+### 1.2 已完成事项
+
+| 批次 | 状态 | 说明 |
+|---|---|---|
+| D0 资源基线 | 已完成 | `docs/reports/cloud-resource-contention-remediation-2026-06-11.md` |
+| D1 非核心 stop profile 文档/Runbook | 已完成 | `docs/operations/cloud-core-worker-resource-runbook.md` |
+| D2 budget verifier 守卫 | 已完成 | 包含 low-priority、scheduler embed、worker recycle env 检查 |
+| D3 embedded scheduler deploy mode | 已完成 | 默认不启用，显式 flag 才允许 |
+| D4 线上非核心止血 | 已执行 | `.env` 启用 non-core stop flags，保留核心服务 |
+| D6 MySQL 资源上限止血 | 已执行 | `MYSQL_MEM_LIMIT=1536m`、`MYSQL_MEMSWAP_LIMIT=2048m` |
+| D6 close-refresh dedupe | 已开发并最小部署到 scheduler | 阻止同日成功任务重复入队 |
+| D6 worker recycle guard | 已开发 | 目标是任务边界回收高 RSS worker，需持续观察和确认线上启用状态 |
+| 旧前端删除/退役 | 已执行 | `frontend/` absent；CI/Docker/deploy 指向 `frontend-next` |
+| removed paper task skipped | 已执行 | 历史 paper runtime task 不再污染 failed/retry |
+
+### 1.3 仍未完成
+
+| 优先级 | 未完成项 | 为什么还要做 |
+|---|---|---|
+| P1 | 完整交易日稳定性观察 | 当前多为短窗，不能证明 09:15-15:10 长时间稳定 |
+| P1 | D5 scheduler 合并门槛复核 | worker RSS 仍曾达到 `92-98%`，立即合并会把 scheduler 压力转移进 worker |
+| P1 | MySQL 慢查询、连接池、索引和机器规格根因 | 提高 limit 只是止血，不代表慢查询/规格已解决 |
+| P1 | 域名 TLS/SNI reset 独立处理 | 资源方案不能解决公网链路 reset |
+| P2 | provider timeout、fallback、缓存命中治理 | EastMoney/AkShare/Go market-read 失败会放大 scheduler/worker 压力 |
+| P2 | 历史 failed runtime_tasks 降噪 | 不影响核心功能，但影响运维判断；需要 DB 写授权 |
+| P2 | 旧前端 guard 收尾 | 继续防止 `frontend-hot`、`frontend-legacy`、`/__legacy/*` 回流 |
+| P3 | analytics/backtest/ML/factor 按需运行手册 | 非核心能力可用但不常驻，需要清楚的人工启动和回滚路径 |
+
+## 2. 硬边界
+
+### 2.1 绝对禁止
+
+- 不改 `backend/app/services/low_buy/strategy_policy.py`。
+- 不改变生产策略语义。
+- 不改变 `production_score`。
+- 不改变 `priority_board` 排序和口径。
+- 不把 research/shadow/paper 历史口径绕过门控接入生产排序。
+- 不停止 MySQL、Redis、Web/API、Go hot-read、Go scan、核心 runtime-worker。
+- 不把云端改成 Web-only。
+- 不恢复 active 模拟盘功能，不恢复 `/paper` 或 `/next/paper` 作为核心路径。
+- 不直接删除生产数据库表、binlog、volume 或核心缓存。
+
+### 2.2 必须单独授权的线上动作
+
+- 修改线上 `.env`。
+- 重建、重启、停止、删除线上容器。
+- 停独立 `runtime-scheduler`。
+- Docker image/build cache 清理。
+- MySQL 配置调参、索引、schema 或数据写入。
+- 归档/标记历史 runtime task。
+- nginx reload、域名、证书、CDN/WAF、安全组调整。
+- 升级云服务器规格。
+
+### 2.3 当前核心保护范围
+
+| 核心能力 | 必须保持 |
+|---|---|
+| 监控 | `/next/monitor`、`/next/monitor/market`、monitor snapshot、BFF workspace |
+| 行情缓存 | quote cache、market pulse、Go market-read |
+| 低吸榜/推荐榜 | low-buy materialization、推荐榜数据 |
+| priority board | 排序、日期、口径、production score 不变 |
+| 策略追踪 | strategy tracking snapshot、页面和 BFF 数据 |
+| watchdog | latest data watchdog、数据新鲜度检查 |
+| 基础服务 | app、mysql、redis、frontend-next、go-bff、go-scan、runtime-worker |
+
+## 3. 三层最终方案
+
+### 3.1 第一层：停非核心任务止血
+
+目标：快速解除“云服务器资源争抢导致卡顿”这一大类问题，保持核心交易观察链路在线。
+
+| 项 | 目标状态 | 功能影响 | 是否核心 |
+|---|---|---|---|
+| `PLATFORM_AUTOPILOT_ENABLED` | `false` | 自动巡检/自愈建议停止 | 否 |
+| `RUNTIME_LOW_PRIORITY_TASKS_PAUSED` | `true` | analytics/backtest/ML/factor/data repair/research 不抢 worker | 否 |
+| `MARKET_REVIEW_ENABLED` | `false` 或降频 | 午盘/收盘自动复盘停止 | 否 |
+| startup prewarm | disabled | 部署后不做重预热 | 否 |
+| `analytics-worker` | on-demand profile | DuckDB/Parquet/分析导出需手动拉起 | 否 |
+| `backtest-worker` | 不常驻 | 24M/批量回测不在云端常驻跑 | 否 |
+| Prometheus/Grafana | 不常驻 | 独立监控面板按需恢复 | 否 |
+| active paper | 不恢复 | 模拟盘主动交易/自动任务停止 | 否 |
+
+第一层能解决或明显改善：
+
+- 内存长期吃紧。
+- swap 高。
+- worker、扫描、刷新、回测和 Web 抢 CPU/IO。
+- 页面/API 在数据刷新或策略物化时变慢。
+- runtime 低优先级任务挤占核心任务。
+- 部署后容器资源恢复慢。
+
+第一层不能解决：
+
+- 域名公网 reset。
+- MySQL 慢查询和索引不足。
+- priority board / monitor BFF 查询过重。
+- 外部行情源网络不稳。
+- 本地机器断网导致本地重任务不跑。
+
+### 3.2 第二层：合并调度结构和减少重复任务
+
+目标：让云端保持一个“小而稳”的核心 runtime，减少常驻进程和重复入队。
+
+| 子项 | 目标 | 门槛 |
+|---|---|---|
+| close-refresh dedupe | 同一 trade date 成功后不重复入队 A-key/strategy-tracking | 已部署后继续观察 |
+| worker recycle guard | worker RSS 超阈值后在任务边界正常退出重启 | 先确认线上 env 和日志，阈值建议 `700MiB` 起 |
+| scheduler embed | `runtime-worker` 承接 scheduler，停独立 scheduler | 仅在完整交易日稳定且 worker RSS 有足够余量后执行 |
+| provider timeout/fallback | 慢源进入 degraded/stale，不拖垮热路径 | BFF 和 provider 测试覆盖 |
+| runtime task 互斥 | 核心 materialization 同类任务不重复并发 | 不能影响数据新鲜度 |
+
+当前判断：
+
+- D5 embedded scheduler 不是立即执行项。
+- 若 worker 仍在 `700MiB+ / 768MiB` 区间，保留独立 scheduler 更稳，因为它隔离了 provider/scheduler 压力。
+- scheduler 合并能省常驻内存，但前提是 worker 有余量，否则会把两个风险合并到一个进程。
+
+### 3.3 第三层：处理 MySQL、机器规格和入口根因
+
+目标：从根上减少 OOM、慢接口、连接抖动和公网不可达。
+
+| 根因项 | 处理方式 | 授权级别 |
+|---|---|---|
+| MySQL 内存上限 | 保持 `1536m/2048m` 止血配置，继续观察是否仍 OOM | 已部分执行，继续只读观察 |
+| buffer pool/连接池 | 根据 `Threads_*`、`Slow_queries`、p95 决定是否调整 | 需要授权 |
+| 慢查询/索引 | 抓慢 SQL、EXPLAIN、加索引或改查询 | schema/query 改动需开发与部署授权 |
+| VM 规格 | 若核心服务稳定后 available memory 仍长期 `<500MiB`，优先升级内存 | 需要用户授权和维护窗口 |
+| 域名 TLS/SNI reset | DNS、nginx server block、证书、安全组、CDN/WAF 分轨排查 | 需要授权 |
+| Docker cache/image | 受控 prune，只清 build cache/dangling image，不动 volume | 需要授权 |
+
+## 4. 多 Agent 并行开发编排
+
+### 4.1 执行顺序
+
+遵循 `AGENTS.md` 默认顺序：
+
+1. `trading-quant-lead`
+2. `stock-analysis-specialist`
+3. `product-strategist`
+4. `ui-designer`
+5. `fullstack-builder`
+6. `qa-tester`
+7. `devops-operator`
+
+### 4.2 并行分工
+
+| Agent | 可并行任务 | 交付物 | 不可触碰 |
+|---|---|---|---|
+| `trading-quant-lead` | 策略语义守卫审查 | 确认 `strategy_policy.py`、`production_score`、priority board 口径未变 | 不新增策略规则 |
+| `stock-analysis-specialist` | 市场复盘关闭影响审查 | 确认关闭 `MARKET_REVIEW_ENABLED` 不影响核心选股解释 | 不把主观规则写入生产排序 |
+| `product-strategist` | 功能影响矩阵 | 非核心关闭项对页面/用户功能的影响说明 | 不恢复 paper |
+| `ui-designer` | frontend-next 可用性与旧入口检查 | 页面 smoke、白屏/chunk/堆叠报告 | 不引入旧前端 |
+| `fullstack-builder` | worker guard、dedupe、provider fallback、verifier、测试 | 后端实现和 pytest | 不改策略语义 |
+| `qa-tester` | HTTP/API/p95/交易日稳定性验收 | 验收报告和失败证据 | 不执行线上写入压测 |
+| `devops-operator` | runbook、deploy flag、compose/env、线上只读/授权操作 | 运维步骤、回滚命令、线上验证 | 未授权不改线上 |
+
+### 4.3 串行门禁
+
+本地开发可并行，线上生效必须串行：
+
+1. Gate A：`git status --short` 干净或已记录无关改动。
+2. Gate B：本地测试通过，策略守卫测试通过。
+3. Gate C：只读线上基线通过，核心服务可用。
+4. Gate D：用户授权线上写动作。
+5. Gate E：变更后 `/readyz`、核心 API、页面 smoke 通过。
+6. Gate F：观察 2-4 小时无 OOM、swap 不持续升高。
+7. Gate G：完整交易日 09:15-15:10 观察通过。
+8. Gate H：才允许 D5 scheduler embed。
+9. Gate I：MySQL/机器规格/域名进入独立授权专项。
+
+## 5. 文件改动规划
+
+### 5.1 已有文件继续维护
+
+| 文件 | 责任 |
+|---|---|
+| `docs/operations/cloud-core-worker-resource-runbook.md` | 资源止血、worker recycle、scheduler embed、回滚命令 |
+| `docs/reports/cloud-resource-contention-remediation-2026-06-11.md` | 已执行止血、D6、D5 gate 证据 |
+| `scripts/verify_platform_budget.py` | 资源 profile、worker/scheduler/env 预算检查 |
+| `scripts/deploy_cloud_server.sh` | 显式 embedded scheduler deploy mode |
+| `scripts/quick_cloud_deploy.sh` | embedded scheduler 验证兼容 |
+| `backend/app/workers/runtime_worker.py` | removed paper task skipped、worker recycle guard |
+| `backend/app/services/latest_data_close_refresh.py` | 成功任务 dedupe |
+| `backend/app/services/tasks/queue.py` | skipped 终态和低优先级暂停 |
+| `docker-compose.mysql.yml` | worker/scheduler env、低优先级任务类型、按需 analytics profile |
+
+### 5.2 建议新增文件
+
+| 文件 | 责任 |
+|---|---|
+| `docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md` | 完整交易日稳定性观察，正文记录实际观察日期 |
+| `docs/reports/mysql-runtime-root-cause-review-2026-06-12.md` | MySQL 慢查询、连接池、规格根因 |
+| `docs/reports/domain-entry-tls-reset-review-2026-06-12.md` | 域名公网 reset 独立排查 |
+| `docs/reports/frontend-next-legacy-guard-final-2026-06-12.md` | 旧前端 guard 最终验收 |
+
+### 5.3 不建议新增
+
+- 不新增 `PAPER_RUNTIME_TASKS_ENABLED`。
+- 不新增新的 active paper 页面。
+- 不新增 Web 主进程后台 loop。
+- 不新增大量微服务拆分。
+- 不新增生产策略分数或排序字段。
+
+## 6. 开发任务清单
+
+### Task A: 统一当前事实和状态报告
+
+**Owner:** `trading-platform-supervisor`
+
+**Files:**
+
+- Modify: `docs/reports/cloud-resource-contention-remediation-2026-06-11.md`
+- Create: `docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md`
+
+- [ ] **Step 1: 确认工作区**
+
+```bash
+cd /Users/j/Documents/gupiao
+git status --short
+```
+
+Expected:
+
+- 空输出，或记录并保护无关改动。
+
+- [ ] **Step 2: 汇总已完成和未完成状态**
+
+```bash
+rg -n "D4|D5|D6|worker recycle|scheduler|MySQL|OOM|frontend|paper" \
+  docs/reports/cloud-resource-contention-remediation-2026-06-11.md \
+  docs/reports/online-stability-remaining-7-items-final-2026-06-11.md \
+  docs/reports/online-stability-legacy-frontend-retirement-implementation-2026-06-11.md
+```
+
+Expected:
+
+- 明确 D5 未执行或未通过 gate。
+- 明确旧前端 `frontend/` 当前 absent。
+- 明确模拟盘不恢复。
+
+- [ ] **Step 3: 提交状态报告**
+
+```bash
+git add docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md
+git commit -m "docs: add trading day resource observation plan"
+```
+
+Expected:
+
+- docs-only commit。
+
+### Task B: 第一层非核心 stop profile 验收
+
+**Owner:** `devops-operator` + `qa-tester`
+
+**Files:**
+
+- Modify: `docs/operations/cloud-core-worker-resource-runbook.md`
+- Test: `backend/tests/test_platform_budget_verifier.py`
+- Test: `backend/tests/test_cloud_deploy_scripts.py`
+
+- [ ] **Step 1: 本地 verifier 验证**
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_platform_budget_verifier.py \
+  backend/tests/test_cloud_deploy_scripts.py
+```
+
+Expected:
+
+- PASS。
+- Verifier 能识别 low-priority pause、worker recycle、scheduler embed 状态。
+
+- [ ] **Step 2: 线上只读确认 stop profile**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+set -e
+cd /home/ubuntu/gupiao-upload
+sudo docker exec tquant-runtime-worker-mysql env | sort | egrep "PLATFORM_AUTOPILOT_ENABLED|RUNTIME_LOW_PRIORITY_TASKS_PAUSED|RUNTIME_WORKER_EMBED_SCHEDULER|RUNTIME_WORKER_RECYCLE_RSS_MB" || true
+sudo docker exec tquant-runtime-scheduler-mysql env | sort | egrep "MARKET_REVIEW_ENABLED|RUNTIME_LOW_PRIORITY_TASKS_PAUSED|RUNTIME_WORKER_EMBED_SCHEDULER" || true
+sudo docker stats --no-stream --format "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | sort
+curl -sS -o /tmp/readyz.json -w "readyz %{http_code} %{time_total}\n" --max-time 10 http://127.0.0.1:18090/readyz
+'
+```
+
+Expected:
+
+- 只读。
+- `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`。
+- `PLATFORM_AUTOPILOT_ENABLED=false`。
+- 核心服务 healthy。
+
+### Task C: 第二层 worker/scheduler 稳定性门禁
+
+**Owner:** `fullstack-builder` + `devops-operator`
+
+**Files:**
+
+- Modify: `docs/operations/cloud-core-worker-resource-runbook.md`
+- Modify: `scripts/verify_platform_budget.py`
+- Test: `backend/tests/test_phase4_runtime_worker_tasks.py`
+- Test: `backend/tests/test_independent_runtime_components.py`
+
+- [ ] **Step 1: 确认 worker recycle guard 默认关闭和可启用**
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_phase4_runtime_worker_tasks.py::test_runtime_worker_recycle_guard_defaults_off \
+  backend/tests/test_phase4_runtime_worker_tasks.py::test_runtime_worker_recycle_guard_triggers_after_task \
+  backend/tests/test_independent_runtime_components.py
+```
+
+Expected:
+
+- PASS。
+- Guard 只在任务完成后触发，不中断 running task。
+
+- [ ] **Step 2: 线上只读观察 worker RSS**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+set -e
+date
+free -m
+cd /home/ubuntu/gupiao-upload
+sudo docker stats --no-stream --format "{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}" | egrep "runtime-worker|runtime-scheduler|mysql|app"
+sudo docker logs --since 2h tquant-runtime-worker-mysql 2>&1 | egrep -i "recycle|rss|oom|killed|error" | tail -80 || true
+'
+```
+
+Expected:
+
+- 如果 worker RSS 长期高于 `700MiB`，不得执行 scheduler embed。
+- 如果 recycle guard 已线上启用，检查是否在任务边界正常重启且任务不失败。
+
+- [ ] **Step 3: D5 scheduler embed 执行前门槛**
+
+必须同时满足：
+
+- worker 连续完整交易日 RSS 峰值低于 `650MiB`，或 recycle guard 已证明能稳定释放 RSS。
+- MySQL 无新 OOM。
+- swap 不持续上涨。
+- close-refresh dedupe 后同日 A-key/strategy-tracking 不重复入队。
+- scheduler/provider timeout 不再高频。
+- 用户明确授权停独立 scheduler。
+
+### Task D: provider/BFF 降级和重复任务治理
+
+**Owner:** `fullstack-builder` + `qa-tester`
+
+**Files:**
+
+- Modify only if needed: `backend/app/services/latest_data_close_refresh.py`
+- Modify only if needed: BFF/provider route/service files found by `rg`
+- Test: `backend/tests/test_latest_data_close_refresh.py`
+- Test: `backend/tests/test_bff_monitor_workspace.py`
+- Test: `backend/tests/test_market_quote_cache_refresh.py`
+
+- [ ] **Step 1: 复跑 dedupe 和 BFF/provider 测试**
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_latest_data_close_refresh.py \
+  backend/tests/test_bff_monitor_workspace.py \
+  backend/tests/test_market_quote_cache_refresh.py
+```
+
+Expected:
+
+- PASS。
+- 不改变 priority board 排序和生产分。
+
+- [ ] **Step 2: 线上只读任务分布**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" "
+cd /home/ubuntu/gupiao-upload &&
+sudo docker exec tquant-mysql sh -lc 'mysql -uroot -p\"\$MYSQL_ROOT_PASSWORD\" -D \"\$MYSQL_DATABASE\" -e \"SELECT task_type,status,COUNT(*) cnt,MIN(created_at) oldest,MAX(updated_at) latest FROM runtime_tasks WHERE created_at >= NOW() - INTERVAL 2 HOUR GROUP BY task_type,status ORDER BY cnt DESC LIMIT 40;\"'
+"
+```
+
+Expected:
+
+- 同日已成功的 A-key/strategy-tracking 不再重复大量新增。
+- low-priority 任务不被 worker claim。
+
+### Task E: MySQL 根因专项
+
+**Owner:** `devops-operator` + `fullstack-builder`
+
+**Files:**
+
+- Create: `docs/reports/mysql-runtime-root-cause-review-2026-06-12.md`
+- Modify only after separate approval: DB index migration or query files
+
+- [ ] **Step 1: 只读 MySQL 诊断**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" "
+cd /home/ubuntu/gupiao-upload &&
+sudo docker exec tquant-mysql sh -lc 'mysql -uroot -p\"\$MYSQL_ROOT_PASSWORD\" -D \"\$MYSQL_DATABASE\" -e \"SHOW GLOBAL STATUS LIKE '\''Threads_%'\''; SHOW GLOBAL STATUS LIKE '\''Slow_queries'\''; SHOW VARIABLES LIKE '\''max_connections'\''; SHOW VARIABLES LIKE '\''innodb_buffer_pool_size'\''; SELECT table_schema, ROUND(SUM(data_length+index_length)/1024/1024,2) AS mb FROM information_schema.tables WHERE table_schema NOT IN ('\''mysql'\'','\''performance_schema'\'','\''information_schema'\'','\''sys'\'') GROUP BY table_schema;\"'
+"
+```
+
+Expected:
+
+- 只读。
+- 报告连接数、慢查询累计、buffer pool、表空间。
+
+- [ ] **Step 2: 决策表**
+
+| 条件 | 下一步 |
+|---|---|
+| MySQL 仍 >90% memory 或有新 OOM | 优先升级 VM 内存或继续调整 MySQL limit/buffer pool |
+| Slow_queries 增速高 | 抓慢 SQL、EXPLAIN、加索引或改查询 |
+| Threads_running 长期高 | 查连接池和慢 API |
+| API p95 高但资源稳定 | 查 BFF/priority board 查询路径 |
+| 可用内存完整交易日仍 <500MiB | 优先升配，不再挤压核心服务 |
+
+### Task F: 旧前端最终 guard
+
+**Owner:** `ui-designer` + `qa-tester` + `devops-operator`
+
+**Files:**
+
+- Create: `docs/reports/frontend-next-legacy-guard-final-2026-06-12.md`
+- Test: `backend/tests/test_frontend_next_level1_cutover.py`
+- Test: `backend/tests/test_deploy_scope.py`
+- Test: `backend/tests/test_cloud_deploy_scripts.py`
+
+- [ ] **Step 1: 确认 `frontend/` 当前不存在**
+
+```bash
+test -d frontend; printf "frontend_dir_exit=%s\n" "$?"
+git ls-files frontend | wc -l
+```
+
+Expected:
+
+- `frontend_dir_exit=1`。
+- tracked count `0`。
+
+- [ ] **Step 2: 复跑旧入口防回流测试**
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_frontend_next_level1_cutover.py \
+  backend/tests/test_deploy_scope.py \
+  backend/tests/test_cloud_deploy_scripts.py
+```
+
+Expected:
+
+- PASS。
+- `frontend-hot`、`frontend-legacy` 不可部署。
+- `/__legacy/*` 不恢复。
+- CI/Docker 只构建 `frontend-next/dist`。
+
+### Task G: 前端和核心页面稳定性验收
+
+**Owner:** `ui-designer` + `qa-tester`
+
+**Files:**
+
+- Create: `docs/reports/frontend-next-core-pages-smoke-2026-06-12.md`
+
+- [ ] **Step 1: frontend-next 本地验收**
+
+```bash
+cd frontend-next
+npm run api:check
+npm run typecheck
+npm run lint
+npm test -- --run
+npm run build
+```
+
+Expected:
+
+- PASS。
+- 无 chunk 404、无旧前端回流。
+
+- [ ] **Step 2: 线上页面 smoke**
+
+```bash
+BASE_URL=http://43.143.243.97:18090
+for path in / /readyz /next/monitor /next/monitor/market /next/strategy-tracking /next/analysis /next/backtest /next/data /next/settings; do
+  curl -sS -o /tmp/gupiao-smoke.out -w "$path %{http_code} %{time_total}\n" --max-time 20 "$BASE_URL$path"
+done
+```
+
+Expected:
+
+- 页面 200 或明确重定向。
+- 受保护 API 未登录返回 401，不能 timeout/5xx。
+
+### Task H: 域名入口独立专项
+
+**Owner:** `devops-operator`
+
+**Files:**
+
+- Create: `docs/reports/domain-entry-tls-reset-review-2026-06-12.md`
+
+- [ ] **Step 1: 多入口 curl**
+
+```bash
+curl -vk --max-time 15 https://weisilianghua.cloud/readyz
+curl -vk --resolve weisilianghua.cloud:443:43.143.243.97 --max-time 15 https://weisilianghua.cloud/readyz
+curl -k -v --max-time 15 https://43.143.243.97/readyz
+```
+
+Expected:
+
+- 区分 DNS/CDN/WAF/SNI/nginx/server block 问题。
+
+- [ ] **Step 2: nginx 只读检查**
+
+```bash
+ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
+sudo nginx -t
+sudo nginx -T 2>/tmp/nginxT.err | sed -n "/server_name/p"
+cat /tmp/nginxT.err
+'
+```
+
+Expected:
+
+- 不 reload。
+- 只记录重复 `server_name`、证书/SNI 风险。
+
+## 7. 验收矩阵
+
+| 验收项 | 必须通过 |
+|---|---|
+| Git | 每批开始前 `git status --short`；提交只包含本批文件 |
+| 策略守卫 | `strategy_policy.py` 未改；production score 和 priority board 测试通过 |
+| 核心 API | `/readyz` 200；受保护 API 401 快速返回；无 5xx/timeout |
+| 核心页面 | `/next/monitor`、`/next/monitor/market`、`/next/strategy-tracking`、`/next/analysis`、`/next/backtest`、`/next/data`、`/next/settings` 可打开 |
+| 资源 | MySQL 无 OOM；worker 不持续贴边；swap 不持续上涨 |
+| 任务 | low-priority paused；核心任务完成；同日重复任务不爆量 |
+| 旧前端 | `frontend/` absent；CI/Docker/deploy 不回流旧前端 |
+| 模拟盘 | active paper 不恢复；历史 paper task skipped，不 failed/retry |
+| 长稳 | 完整交易日观察无 P0/P1 |
+| 回滚 | 每个线上写动作都有 backup 和 rollback command |
+
+## 8. 最终决策原则
+
+### 8.1 是否最优
+
+当前三层方案是现阶段最优的低风险方案：
+
+- 它先解决最确定的资源争抢根因。
+- 它不牺牲监控、行情缓存、低吸榜、priority board、策略追踪。
+- 它不把 scheduler 合并这种有风险动作提前执行。
+- 它承认 MySQL、域名、慢查询是独立根因，而不是把所有问题都归因到 worker。
+- 它符合项目“模块化单体优先、重任务 Worker 化、分析/回测按需”的架构基线。
+
+### 8.2 不能承诺彻底解决
+
+本方案不能保证彻底解决所有线上问题，但能基本消掉“服务器资源争抢导致卡顿”这一大类问题。要接近彻底解决，必须组合完成：
+
+1. 第一层非核心任务止血。
+2. 第二层重复任务治理、worker RSS guard、scheduler 合并门槛。
+3. 第三层 MySQL/慢查询/机器规格根因。
+4. 域名公网链路修复。
+5. 完整交易日长稳观察。
+
+## 9. 可复制执行提示词
+
+```text
+你在 /Users/j/Documents/gupiao 项目中工作。请按 docs/superpowers/plans/2026-06-12-cloud-resource-contention-final-integrated-development-plan.md 执行下一批开发/验证。
+
+目标：三层治理线上资源争抢导致的卡顿，并融合旧前端退役与已移除模拟盘残留收口。核心必须持续可用：监控、行情缓存、低吸榜、priority board、策略追踪、watchdog、app/mysql/redis/frontend-next/go-bff/go-market-read/go-scan/runtime-worker。
+
+开始前必须执行：
+1. cd /Users/j/Documents/gupiao && git status --short
+2. 阅读 AGENTS.md、docs/engineering-conventions.md、docs/platform-modular-architecture-uplift-execution-plan-2026-06-04.md
+3. 阅读 docs/superpowers/plans/2026-06-12-cloud-resource-contention-final-integrated-development-plan.md
+4. 阅读 docs/reports/cloud-resource-contention-remediation-2026-06-11.md、docs/reports/online-service-status-audit-2026-06-11.md、docs/reports/online-stability-remaining-7-items-final-2026-06-11.md
+
+硬边界：
+- 不改 backend/app/services/low_buy/strategy_policy.py
+- 不改变生产策略语义、production_score、priority_board 排序和口径
+- 不停止 MySQL、Redis、Web/API、Go hot-read、Go scan、核心 runtime-worker
+- 不把云端改成 Web-only
+- 不恢复 active 模拟盘，不恢复 /paper 或 /next/paper 作为核心路径
+- 未获授权不得改线上 .env、不得重启/重建/停止容器、不得清理 Docker/磁盘、不得改 nginx/MySQL、不得写生产数据库
+
+执行方式：
+- 可多 Agent 并行：trading-quant-lead 做策略守卫，stock-analysis-specialist 做市场复盘关闭影响审查，product-strategist 做功能影响矩阵，ui-designer 做 frontend-next 页面/旧入口检查，fullstack-builder 做后端 guard/dedupe/provider/verifier，qa-tester 做测试和长稳验收，devops-operator 做 runbook/只读线上验证/授权操作。
+- 本地开发可并行，线上生效必须串行：先只读基线，再本地测试，再用户授权，再最小范围变更，再 2-4 小时观察，再完整交易日观察。
+- D5 embedded scheduler 只有在 worker RSS、MySQL、swap、任务队列完整交易日稳定后才能执行；否则继续保留独立 scheduler。
+
+本批优先做：
+1. 更新或新增 docs/reports/cloud-resource-contention-trading-day-observation-2026-06-12.md，记录完整交易日观察模板和当前未完成项。
+2. 复核第一层 stop profile 是否在线生效：PLATFORM_AUTOPILOT_ENABLED=false、RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true、MARKET_REVIEW_ENABLED=false。
+3. 复核 worker recycle guard 是否已启用及是否在任务边界正常工作；未稳定前不得执行 scheduler embed。
+4. 复跑 dedupe、runtime task、priority board、low-buy、frontend-next cutover 相关测试。
+5. 输出下一步授权清单：哪些可以只读，哪些需要用户明确授权。
+
+验收命令至少包含：
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_platform_budget_verifier.py backend/tests/test_runtime_task_queue.py backend/tests/test_phase4_runtime_worker_tasks.py backend/tests/test_independent_runtime_components.py backend/tests/test_cloud_deploy_scripts.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_latest_data_close_refresh.py backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py backend/tests/test_frontend_next_level1_cutover.py backend/tests/test_deploy_scope.py
+cd frontend-next && npm run api:check && npm run typecheck && npm run lint && npm test -- --run && npm run build
+
+输出：
+- 更新/新增 Markdown 报告和必要代码/测试
+- 说明已完成、未完成、需要授权的线上动作
+- 明确本轮是否执行任何写操作/重启/清理/部署
+- 给出下一步最小风险执行顺序
+```
