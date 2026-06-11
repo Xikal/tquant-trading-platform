@@ -322,11 +322,104 @@ Results:
 ### Operations Not Executed
 
 - No online `.env` change.
-- No online deploy.
-- No container restart/recreate/remove.
+- No online deploy in the local-code verification step above.
+- No container restart/recreate/remove in the local-code verification step above.
 - No D5 scheduler embed.
 - No standalone scheduler stop.
 - No DB write.
 - No schema/index change.
 - No MySQL/Redis/Web/API/Go/frontend/nginx change.
 - No Docker cleanup.
+
+## 2026-06-12 Scheduler-Only Online Backoff Rollout
+
+### Pre-Check
+
+Before the rollout, a read-only online check showed the platform was available but scheduler board-breadth provider pressure was still sustained:
+
+| Area | Evidence |
+|---|---|
+| Time | `2026-06-12 03:56 CST` |
+| `/readyz` | `200`, `0.003658s` |
+| Host | load `0.43 / 0.34 / 0.27`; memory available `1389MiB`; swap used `653MiB / 1987MiB` |
+| Scheduler | `tquant-runtime-scheduler-mysql` healthy; `252.1MiB / 640MiB`; started `2026-06-11T19:10:38Z` |
+| Worker | healthy; `273.5MiB / 768MiB`; started `2026-06-11T16:33:27Z` |
+| App | healthy; `60.05MiB / 768MiB`; started `2026-06-11T15:40:10Z` |
+| MySQL | healthy; `860.5MiB / 1.5GiB`; started `2026-06-11T15:42:42Z` |
+| Scheduler provider warnings | `30` lines in the previous 30 minutes, repeating roughly every scheduler market-regime tick |
+
+### Scope
+
+Because the pressure originated in scheduler-side market-regime prewarm, the rollout was intentionally scheduler-only.
+
+| Item | Evidence |
+|---|---|
+| Backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/provider-backoff-20260612035652` |
+| Uploaded sources | `backend/app/core/config.py`, `backend/app/services/market/regime.py`, `docker-compose.mysql.yml`, `scripts/verify_platform_budget.py` |
+| Build | `sudo docker compose -f docker-compose.mysql.yml build runtime-scheduler` |
+| Recreate | `sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-scheduler` |
+| Scheduler after | started `2026-06-11T19:57:06.919385169Z`, restart `0`, healthy |
+| Worker unchanged | started `2026-06-11T16:33:27.439851625Z` before and after |
+| App unchanged | started `2026-06-11T15:40:10.021531795Z` before and after |
+| MySQL unchanged | started `2026-06-11T15:42:42.993726302Z` before and after |
+| Redis/Go unchanged | Redis and Go service start times unchanged in final inspect |
+| Runtime setting | `300.0 1800.0 2.0` inside `tquant-runtime-scheduler-mysql` |
+| `/readyz` after rollout | `200`, `0.005372s` immediately after recreate |
+
+### Short Observation
+
+Board-breadth provider warning cadence after the scheduler-only rollout:
+
+| Checkpoint | Count since scheduler restart | Interpretation |
+|---|---:|---|
+| `03:57 CST` | `5` | initial startup probe |
+| `03:59 CST` | `5` | no 90s repeat |
+| `04:00 CST` | `5` | no short repeat |
+| `04:02 CST` | `5` | no immediate fixed-tick repeat |
+| `04:03 CST` | `10` | second failed probe after roughly 5 minutes |
+| `04:04-04:12 CST` | `10` | no third probe on the old 5 minute cadence |
+| `04:13 CST` | `15` | third failed probe after roughly 10 minutes, matching backoff |
+| `04:14 CST` | `15` | stable after third probe |
+
+Resources remained stable in the same window:
+
+| Container | Observed range |
+|---|---|
+| `tquant-runtime-scheduler-mysql` | about `250-296MiB / 640MiB`; transient CPU spikes returned to idle |
+| `tquant-runtime-worker-mysql` | about `276-296MiB / 768MiB` |
+| `tquant-mysql` | about `862-863MiB / 1.5GiB` |
+| `/readyz` | always `200` in the short observation loop |
+
+### Gate Refresh
+
+The formal collector after the scheduler-only rollout reported:
+
+```text
+status=warning
+blocking=none
+warnings=scheduler_provider_warning_lines_observed=18, mysql_slow_queries=55
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+```
+
+The provider warning condition is no longer a D5 blocker in the fresh 30 minute window, but D5 remains closed because the required full trading-day observation is still incomplete.
+
+Live platform budget verifier after the rollout:
+
+```text
+status=ok
+warnings=none
+blocking=none
+```
+
+### Operations Not Executed In This Rollout
+
+- No online `.env` change.
+- No app/API restart.
+- No core `runtime-worker` restart.
+- No MySQL/Redis/Go/frontend/nginx change.
+- No DB write.
+- No schema/index change.
+- No Docker cleanup.
+- No D5 scheduler embed.
+- No standalone scheduler stop.

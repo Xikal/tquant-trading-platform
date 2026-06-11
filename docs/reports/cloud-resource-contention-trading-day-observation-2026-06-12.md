@@ -407,3 +407,79 @@ Operations not executed in this refresh:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 04:15 CST D6 Scheduler-Only Backoff Rollout And Gate Refresh
+
+With user authorization, the D6 provider backoff change was deployed to the standalone `runtime-scheduler` only. This was not a D5 scheduler-embed cutover.
+
+Online write scope:
+
+| Item | Evidence |
+|---|---|
+| Backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/provider-backoff-20260612035652` |
+| Uploaded files | `backend/app/core/config.py`, `backend/app/services/market/regime.py`, `docker-compose.mysql.yml`, `scripts/verify_platform_budget.py` |
+| Build/recreate | `runtime-scheduler` only |
+| Scheduler after | started `2026-06-11T19:57:06.919385169Z`, healthy, restart `0` |
+| App unchanged | started `2026-06-11T15:40:10.021531795Z` before and after |
+| Worker unchanged | started `2026-06-11T16:33:27.439851625Z` before and after |
+| MySQL unchanged | started `2026-06-11T15:42:42.993726302Z` before and after |
+| Runtime setting | scheduler reports `300.0 1800.0 2.0` for degraded cooldown, max cooldown, and backoff factor |
+
+Short post-rollout observation:
+
+| Time | Board-breadth warning count since scheduler restart | Interpretation |
+|---|---:|---|
+| `03:57 CST` | `5` | initial startup probe |
+| `04:03 CST` | `10` | second probe after roughly 5 minutes |
+| `04:08 CST` | `10` | no third probe on old 5 minute cadence |
+| `04:13 CST` | `15` | third probe after roughly 10 minutes, matching backoff |
+| `04:14 CST` | `15` | stable after third probe |
+
+Formal collector after rollout:
+
+```text
+generated_at=2026-06-11T20:15:46Z
+host_time=2026-06-12 04:15:42 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+blocking=none
+warnings=scheduler_provider_warning_lines_observed=18, mysql_slow_queries=55
+```
+
+Resource snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.50, 0.31, 0.28`; memory available `1349MiB`; swap used `649MiB / 1987MiB` (`32.66%`) | warning |
+| runtime-scheduler | `255.1MiB / 640MiB` (`39.86%`) | pass |
+| runtime-worker | `296.1MiB / 768MiB` (`38.55%`) | pass |
+| MySQL | `863.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=55` | warning |
+| HTTP/pages | `/readyz` 200; all checked `/next/*` pages 200; protected APIs 401 quickly | pass |
+| Runtime tasks | recent summary only `low_buy_materialization_refresh` succeeded, count `6` | pass |
+
+Platform budget verifier after rollout:
+
+```text
+status=ok
+warnings=none
+blocking=none
+```
+
+Decision:
+
+1. The D6 provider pressure blocker is improved in the fresh short window.
+2. D5 embedded scheduler is still not allowed because the full trading-day checkpoint set is incomplete.
+3. Continue standalone `runtime-scheduler` until a full trading-day summary reports `d5_gate.ready=true`.
+
+Operations not executed in this rollout:
+
+- No online `.env` change.
+- No app/API restart.
+- No core `runtime-worker` restart.
+- No MySQL/Redis/Go/frontend/nginx change.
+- No DB write.
+- No schema/index change.
+- No Docker cleanup.
+- No D5 scheduler embed.
+- No standalone scheduler stop.

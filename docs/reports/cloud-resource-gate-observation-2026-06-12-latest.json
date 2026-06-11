@@ -1,0 +1,393 @@
+{
+  "generated_at": "2026-06-11T20:15:46.614633+00:00",
+  "host": {
+    "date": "Fri Jun 12 04:15:42 CST 2026",
+    "uptime": "04:15:42 up 3 days, 16:59, 702 users,  load average: 0.50, 0.31, 0.28",
+    "memory": {
+      "mem": {
+        "total_mb": 3723,
+        "used_mb": 2373,
+        "free_mb": 172,
+        "used_pct": 63.74,
+        "available_mb": 1349
+      },
+      "swap": {
+        "total_mb": 1987,
+        "used_mb": 649,
+        "free_mb": 1338,
+        "used_pct": 32.66
+      }
+    },
+    "root": {
+      "filesystem": "/dev/vda2",
+      "size": "59G",
+      "used": "36G",
+      "available": "22G",
+      "used_pct": 63,
+      "mount": "/"
+    },
+    "root_inode": {
+      "filesystem": "/dev/vda2",
+      "size": "3.8M",
+      "used": "475K",
+      "available": "3.3M",
+      "used_pct": 13,
+      "mount": "/"
+    }
+  },
+  "docker": {
+    "compose_ps": {
+      "rows": [
+        {
+          "name": "tquant-app-mysql",
+          "status": "Up 5 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "status": "Up 7 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "status": "Up 7 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "status": "Up 7 hours (healthy)"
+        },
+        {
+          "name": "tquant-mysql",
+          "status": "Up 5 hours (healthy)"
+        },
+        {
+          "name": "tquant-redis",
+          "status": "Up 2 days (healthy)"
+        },
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "status": "Up 18 minutes (healthy)"
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "status": "Up 4 hours (healthy)"
+        }
+      ],
+      "running": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "healthy": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "missing_expected": []
+    },
+    "stats": {
+      "count": 9,
+      "rows": [
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "255.1MiB / 640MiB",
+          "memory_used_bytes": 267491737,
+          "memory_percent": "39.86%",
+          "memory_pct": 39.86
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "296.1MiB / 768MiB",
+          "memory_used_bytes": 310483353,
+          "memory_percent": "38.55%",
+          "memory_pct": 38.55
+        },
+        {
+          "name": "tquant-mysql",
+          "cpu_percent": "0.38%",
+          "cpu_pct": 0.38,
+          "memory_usage": "863.2MiB / 1.5GiB",
+          "memory_used_bytes": 905130803,
+          "memory_percent": "56.20%",
+          "memory_pct": 56.2
+        },
+        {
+          "name": "tquant-app-mysql",
+          "cpu_percent": "0.12%",
+          "cpu_pct": 0.12,
+          "memory_usage": "60.22MiB / 768MiB",
+          "memory_used_bytes": 63145246,
+          "memory_percent": "7.84%",
+          "memory_pct": 7.84
+        },
+        {
+          "name": "tquant-frontend-web",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "2.707MiB / 128MiB",
+          "memory_used_bytes": 2838495,
+          "memory_percent": "2.11%",
+          "memory_pct": 2.11
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "5.184MiB / 128MiB",
+          "memory_used_bytes": 5435817,
+          "memory_percent": "4.05%",
+          "memory_pct": 4.05
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "8.094MiB / 128MiB",
+          "memory_used_bytes": 8487174,
+          "memory_percent": "6.32%",
+          "memory_pct": 6.32
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "5.828MiB / 128MiB",
+          "memory_used_bytes": 6111100,
+          "memory_percent": "4.55%",
+          "memory_pct": 4.55
+        },
+        {
+          "name": "tquant-redis",
+          "cpu_percent": "0.48%",
+          "cpu_pct": 0.48,
+          "memory_usage": "4.977MiB / 128MiB",
+          "memory_used_bytes": 5218762,
+          "memory_percent": "3.89%",
+          "memory_pct": 3.89
+        }
+      ]
+    },
+    "system_df": "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE\nImages          14        10        14.2GB    10.79GB (75%)\nContainers      13        9         180.2kB   32.77kB (18%)\nLocal Volumes   5         5         10.55GB   0B (0%)\nBuild Cache     135       0         7.414GB   2.678GB"
+  },
+  "http": [
+    {
+      "path": "/readyz",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003832,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.003562,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor/snapshot",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.003128,
+      "error": ""
+    },
+    {
+      "path": "/api/priority-board",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.002731,
+      "error": ""
+    },
+    {
+      "path": "/api/screeners/low-buy/priority-board",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.002557,
+      "error": ""
+    },
+    {
+      "path": "/api/runtime-tasks/summary",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.003045,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.00327,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor/market",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003475,
+      "error": ""
+    },
+    {
+      "path": "/next/strategy-tracking",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003318,
+      "error": ""
+    },
+    {
+      "path": "/next/analysis",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003836,
+      "error": ""
+    },
+    {
+      "path": "/next/backtest",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003525,
+      "error": ""
+    },
+    {
+      "path": "/next/data",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003331,
+      "error": ""
+    },
+    {
+      "path": "/next/settings",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003207,
+      "error": ""
+    }
+  ],
+  "mysql": {
+    "status": {
+      "Threads_cached": "4",
+      "Threads_connected": "9",
+      "Threads_created": "13",
+      "Threads_running": "2",
+      "Slow_queries": "55"
+    },
+    "variables": {
+      "max_connections": "120",
+      "innodb_buffer_pool_size": "536870912"
+    },
+    "table_space": [
+      {
+        "table_schema": "t_quant",
+        "mb": "1452.06"
+      },
+      {
+        "table_schema": "t_quant_migstep_verify_20260516153611",
+        "mb": "0.09"
+      }
+    ]
+  },
+  "runtime_tasks": {
+    "recent_summary": [
+      {
+        "task_type": "low_buy_materialization_refresh",
+        "status": "succeeded",
+        "count": "6",
+        "oldest": "2026-06-11 18:16:45",
+        "latest": "2026-06-11 19:57:59"
+      }
+    ],
+    "nonterminal": [],
+    "heartbeats": [
+      {
+        "key": "platform_component.heartbeat.runtime-scheduler",
+        "updated_at": "2026-06-11 20:15:41",
+        "value_prefix": "{\"component\": \"runtime-scheduler\", \"worker_id\": \"runtime-scheduler\", \"updated_at\": \"2026-06-11T20:15:41\", \"status\": \"running\"}"
+      },
+      {
+        "key": "platform_component.heartbeat.runtime-worker",
+        "updated_at": "2026-06-11 20:15:42",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:15:42\", \"status\": \"running\"}"
+      },
+      {
+        "key": "runtime_worker.heartbeat",
+        "updated_at": "2026-06-11 20:15:42",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-11T20:15:42\", \"status\": \"running\"}"
+      }
+    ]
+  },
+  "logs": {
+    "oom": "",
+    "worker_signals": "",
+    "scheduler_provider_signals": "{\"timestamp\": \"2026-06-11T19:57:25\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-11T19:57:25\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-11T19:57:29\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-11T19:57:29\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-11T19:57:29\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-11T19:57:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-11T19:57:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-11T19:57:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-11T20:02:46\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-11T20:02:46\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-11T20:02:46\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-11T20:02:50\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-11T20:02:50\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-11T20:13:16\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-11T20:13:16\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-11T20:13:16\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-11T20:13:20\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-11T20:13:20\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}"
+  },
+  "raw_sections_present": [
+    "compose_ps",
+    "date",
+    "df_inode_root",
+    "df_root",
+    "docker_stats",
+    "docker_system_df",
+    "free",
+    "heartbeats",
+    "http",
+    "mysql_status",
+    "mysql_table_space",
+    "mysql_variables",
+    "oom_logs",
+    "scheduler_logs",
+    "task_nonterminal",
+    "task_summary",
+    "uptime",
+    "worker_logs"
+  ],
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "project_dir": "/home/ubuntu/gupiao-upload",
+    "app_base_url": "http://127.0.0.1:18090",
+    "journal_since": "2026-06-12 00:00:00",
+    "docker_logs_since": "30m"
+  },
+  "commands": {
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "thresholds": {
+    "worker_memory_warning_pct": 85.0,
+    "worker_memory_blocking_pct": 95.0,
+    "swap_warning_pct": 35.0,
+    "root_warning_pct": 75.0,
+    "duplicate_success_warning_count": 12,
+    "queue_warning_count": 1,
+    "scheduler_provider_warning_blocking_lines": 20
+  },
+  "evaluation": {
+    "status": "warning",
+    "blocking": [],
+    "warnings": [
+      "scheduler_provider_warning_lines_observed=18",
+      "mysql_slow_queries=55"
+    ],
+    "d5_gate": {
+      "ready": false,
+      "blockers": [
+        "full_trading_day_observation_incomplete"
+      ],
+      "full_trading_day_complete": false
+    }
+  }
+}
