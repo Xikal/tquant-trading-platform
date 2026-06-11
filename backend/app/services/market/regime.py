@@ -47,9 +47,12 @@ class MarketRegimeMixin:
     _recent_hot_industries_cache: tuple[float, list[str]] = (0.0, [])
     _recent_hot_industries_ttl_seconds = 300.0
     _provider_degraded_until: dict[str, float] = {}
+    _provider_degraded_failures: dict[str, int] = {}
     _provider_probe_inflight: set[str] = set()
     _provider_degraded_lock = threading.Lock()
     _provider_degraded_default_cooldown_seconds = 5 * 60.0
+    _provider_degraded_default_max_cooldown_seconds = 30 * 60.0
+    _provider_degraded_default_backoff_factor = 2.0
 
     def get_market_regime(
         self,
@@ -319,9 +322,26 @@ class MarketRegimeMixin:
     @classmethod
     def _remember_provider_degraded(cls, operation: str) -> None:
         with cls._provider_degraded_lock:
-            cls._provider_degraded_until[operation] = (
-                time.monotonic() + cls._provider_degraded_cooldown_seconds()
+            failures = cls._provider_degraded_failures.get(operation, 0) + 1
+            cls._provider_degraded_failures[operation] = failures
+            cls._provider_degraded_until[operation] = time.monotonic() + cls._provider_degraded_cooldown_for_failure(
+                failures
             )
+
+    @classmethod
+    def _provider_degraded_cooldown_for_failure(cls, failure_count: int) -> float:
+        base = cls._provider_degraded_cooldown_seconds()
+        if base <= 0:
+            return 0.0
+        max_seconds = cls._provider_degraded_cooldown_max_seconds(base)
+        factor = cls._provider_degraded_backoff_factor()
+        if failure_count <= 1 or factor <= 1.0:
+            return min(base, max_seconds)
+        try:
+            cooldown = base * (factor ** (failure_count - 1))
+        except OverflowError:
+            return max_seconds
+        return min(max(cooldown, 0.0), max_seconds)
 
     @classmethod
     def _provider_degraded_cooldown_seconds(cls) -> float:
@@ -335,9 +355,40 @@ class MarketRegimeMixin:
             return cls._provider_degraded_default_cooldown_seconds
 
     @classmethod
+    def _provider_degraded_cooldown_max_seconds(cls, base: float) -> float:
+        try:
+            value = getattr(
+                get_settings(),
+                "market_regime_provider_degraded_cooldown_max_seconds",
+                cls._provider_degraded_default_max_cooldown_seconds,
+            )
+        except Exception:
+            return max(base, cls._provider_degraded_default_max_cooldown_seconds)
+        try:
+            return max(float(value), base, 0.0)
+        except (TypeError, ValueError):
+            return max(base, cls._provider_degraded_default_max_cooldown_seconds)
+
+    @classmethod
+    def _provider_degraded_backoff_factor(cls) -> float:
+        try:
+            value = getattr(
+                get_settings(),
+                "market_regime_provider_degraded_backoff_factor",
+                cls._provider_degraded_default_backoff_factor,
+            )
+        except Exception:
+            return cls._provider_degraded_default_backoff_factor
+        try:
+            return max(float(value), 1.0)
+        except (TypeError, ValueError):
+            return cls._provider_degraded_default_backoff_factor
+
+    @classmethod
     def _clear_provider_degraded(cls, operation: str) -> None:
         with cls._provider_degraded_lock:
             cls._provider_degraded_until.pop(operation, None)
+            cls._provider_degraded_failures.pop(operation, None)
 
     @classmethod
     def _try_enter_provider_probe(cls, operation: str) -> bool:

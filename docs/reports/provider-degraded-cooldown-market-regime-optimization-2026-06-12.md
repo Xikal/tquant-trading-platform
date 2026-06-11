@@ -257,3 +257,76 @@ warnings=scheduler_provider_warning_lines_observed=18, mysql_slow_queries=51
 ```
 
 The full trading-day requirement is still incomplete, so D5 embedded scheduler remains closed.
+
+## 2026-06-12 Exponential Backoff Follow-Up
+
+### Reason
+
+Follow-up scheduler log review showed the fixed `300` second degraded cooldown still allowed one full `fetch_board_breadth_frame` provider recovery probe on every scheduler market-regime tick during sustained provider outage. Each probe can still traverse local, EastMoney, AkShare, and OpenBB before returning cached/warming state, so a two-hour D5 collector window can still exceed the sustained provider pressure threshold.
+
+### Change
+
+Files changed:
+
+- `backend/app/core/config.py`
+- `backend/app/services/market/regime.py`
+- `backend/tests/test_market_regime_strategy_p2.py`
+- `docker-compose.mysql.yml`
+- `.env.deploy.local.example`
+- `scripts/verify_platform_budget.py`
+- `backend/tests/test_platform_budget_verifier.py`
+
+The market-regime degraded guard now tracks consecutive failed board-breadth probes per operation and applies bounded exponential backoff:
+
+```text
+MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_SECONDS=300
+MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_MAX_SECONDS=1800
+MARKET_REGIME_PROVIDER_DEGRADED_BACKOFF_FACTOR=2
+```
+
+Default retry cadence under sustained provider outage becomes approximately:
+
+| Consecutive failed probe | Cooldown |
+|---:|---:|
+| 1 | `300s` |
+| 2 | `600s` |
+| 3 | `1200s` |
+| 4+ | `1800s` |
+
+The failure counter resets after a successful live board-breadth frame. Invalid or missing settings fall back to safe defaults. Compose now passes the three setting values to `app`, `runtime-worker`, and `runtime-scheduler`, and the platform budget verifier includes them in the safe read-only environment snapshot.
+
+### Behavior Kept
+
+- Live provider data is still used when available.
+- Cached/warming snapshots remain explicitly marked as cached/warming.
+- Provider recovery is delayed during sustained outage, not disabled permanently.
+- No low-buy production policy, `production_score`, priority-board ordering, or strategy semantics changed.
+- D5 scheduler embed remains closed until full trading-day gate passes.
+
+### Local Verification
+
+Executed locally:
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_market_regime_strategy_p2.py backend/tests/test_v4_remaining_contracts.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_cloud_resource_gate_observation.py backend/tests/test_platform_budget_verifier.py backend/tests/test_runtime_task_queue.py backend/tests/test_cloud_deploy_scripts.py backend/tests/test_independent_runtime_components.py
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_low_buy_read_paths.py backend/tests/test_low_buy_priority_board_strategy_variants.py backend/tests/test_low_buy_production_scoring.py
+```
+
+Results:
+
+- Market regime / provider contracts: `30 passed`
+- Plan-required platform/runtime/deploy/gate regression: `85 passed`
+- Low-buy / priority-board / production-scoring guard: `32 passed`
+
+### Operations Not Executed
+
+- No online `.env` change.
+- No online deploy.
+- No container restart/recreate/remove.
+- No D5 scheduler embed.
+- No standalone scheduler stop.
+- No DB write.
+- No schema/index change.
+- No MySQL/Redis/Web/API/Go/frontend/nginx change.
+- No Docker cleanup.

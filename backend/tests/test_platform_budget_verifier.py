@@ -71,6 +71,9 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "DB_MAX_OVERFLOW": "2",
                 "RUNTIME_BACKGROUND_ROLE": "scheduler",
                 "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED": "true",
+                "MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_SECONDS": "300",
+                "MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_MAX_SECONDS": "1800",
+                "MARKET_REGIME_PROVIDER_DEGRADED_BACKOFF_FACTOR": "2",
                 "RUNTIME_QUOTE_CACHE_REFRESH_INTERVAL_SECONDS": "180",
                 "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
             },
@@ -253,12 +256,14 @@ def test_platform_budget_compose_parser_redacts_sensitive_environment() -> None:
         "      MYSQL_PASSWORD: should-not-leak\n"
         "      DB_POOL_SIZE: \"4\"\n"
         "      DB_MAX_OVERFLOW: \"4\"\n"
+        "      MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_MAX_SECONDS: \"1800\"\n"
         "      RUNTIME_BACKGROUND_JOBS_ENABLED: \"false\"\n"
     )
 
     assert payload["service_env"]["app"] == {
         "DB_POOL_SIZE": "4",
         "DB_MAX_OVERFLOW": "4",
+        "MARKET_REGIME_PROVIDER_DEGRADED_COOLDOWN_MAX_SECONDS": "1800",
         "RUNTIME_BACKGROUND_JOBS_ENABLED": "false",
     }
     dumped = json.dumps(payload)

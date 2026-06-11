@@ -64,6 +64,8 @@ class AppSettings(BaseSettings):
     runtime_watchlist_refresh_interval_seconds: int = 45
     runtime_market_regime_refresh_interval_seconds: int = 5 * 60
     market_regime_provider_degraded_cooldown_seconds: float = 5 * 60
+    market_regime_provider_degraded_cooldown_max_seconds: float = 30 * 60
+    market_regime_provider_degraded_backoff_factor: float = 2.0
     runtime_quote_cache_refresh_interval_seconds: int = 30
     runtime_hourly_market_snapshot_interval_seconds: int = 60
     runtime_materialization_refresh_interval_seconds: int = 300

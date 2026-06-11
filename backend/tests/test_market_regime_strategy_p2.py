@@ -248,6 +248,45 @@ class MarketRegimeStrategyP2Tests(unittest.TestCase):
                 MarketRegimeMixin._provider_degraded_default_cooldown_seconds,
             )
 
+    def test_provider_degraded_cooldown_backs_off_consecutive_failures(self) -> None:
+        with patch(
+            "app.services.market.regime.get_settings",
+            return_value=SimpleNamespace(
+                market_regime_provider_degraded_cooldown_seconds=10.0,
+                market_regime_provider_degraded_cooldown_max_seconds=60.0,
+                market_regime_provider_degraded_backoff_factor=2.0,
+            ),
+        ):
+            with patch("app.services.market.regime.time.monotonic", return_value=1000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+            with patch("app.services.market.regime.time.monotonic", return_value=2000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+            with patch("app.services.market.regime.time.monotonic", return_value=3000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+            with patch("app.services.market.regime.time.monotonic", return_value=4000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+
+        self.assertEqual(MarketRegimeMixin._provider_degraded_until["fetch_board_breadth_frame"], 4060.0)
+
+    def test_provider_degraded_clear_resets_backoff(self) -> None:
+        with patch(
+            "app.services.market.regime.get_settings",
+            return_value=SimpleNamespace(
+                market_regime_provider_degraded_cooldown_seconds=10.0,
+                market_regime_provider_degraded_cooldown_max_seconds=60.0,
+                market_regime_provider_degraded_backoff_factor=2.0,
+            ),
+        ):
+            with patch("app.services.market.regime.time.monotonic", return_value=1000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+            with patch("app.services.market.regime.time.monotonic", return_value=2000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+            MarketRegimeMixin._clear_provider_degraded("fetch_board_breadth_frame")
+            with patch("app.services.market.regime.time.monotonic", return_value=3000.0):
+                MarketRegimeMixin._remember_provider_degraded("fetch_board_breadth_frame")
+
+        self.assertEqual(MarketRegimeMixin._provider_degraded_until["fetch_board_breadth_frame"], 3010.0)
+
     def test_hot_overlap_uses_ranked_yesterday_today_continuity(self) -> None:
         stable = MarketRegimeMixin._compute_hot_overlap_ratio(
             [["人工智能", "机器人", "算力"], ["人工智能", "机器人", "传媒"]]
