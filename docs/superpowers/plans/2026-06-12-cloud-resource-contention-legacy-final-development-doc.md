@@ -28,6 +28,31 @@
 - `docs/reports/runtime-task-summary-read-model-optimization-2026-06-12.md`
 - `docs/reports/daily-bar-coverage-read-model-optimization-2026-06-12.md`
 
+### 0.1 执行入口
+
+后续执行只以本文件作为总入口。若需要拆分给多个 Agent，同一批次只能在本文件列出的 P1-P7 包内领取任务，不得新增第八个隐形工作面。
+
+执行规则：
+
+1. 每个 Agent 开始前必须运行 `git status --short`，记录并保护无关脏文件。
+2. 本地代码、测试、文档可以并行；线上生效、重启、清理、配置变更必须串行并等待用户明确授权。
+3. 每个 P 包单独提交；不要把报告、代码、部署脚本、格式化和无关清理混成一个提交。
+4. 若发现必须写线上环境才能修复，只记录证据、影响、建议命令和回滚命令，不直接执行。
+5. 任何触碰 low-buy、priority board、策略分数、生产排序的改动，必须先由 `trading-quant-lead` 做策略守卫审查。
+
+### 0.2 交付物
+
+最终交付必须包含：
+
+- P1-P7 每包 PASS/WARN/FAIL 结果。
+- 每包提交 hash，或未提交原因。
+- 本地测试命令和结果。
+- 线上只读证据：资源、容器、HTTP/API、任务队列、heartbeat、前端页面。
+- 核心功能影响结论：监控、行情缓存、低吸榜、priority board、策略追踪是否正常。
+- D5 scheduler embed 是否允许执行；若不允许，列 blocker。
+- 需要用户授权的下一步清单。
+- 本轮是否执行任何线上写操作、重启、清理、部署。
+
 ## 1. 当前结论
 
 ### 1.1 能解决什么
@@ -68,6 +93,46 @@
 | 持续观察项 | MySQL slow queries、worker RSS、swap、runtime queue |
 
 结论：不能停独立 `runtime-scheduler`，不能启用 embedded scheduler，必须继续完整交易日观察。provider warning 是 D5 的重要观察项；只有达到采集器定义的 sustained provider pressure 阈值或导致 `d5_gate.ready=false` 的明确 blocker 时，才作为硬阻塞。低频 warning 只记录为风险，不单独替代完整交易日 gate；当前 `2026-06-12 03:36 CST` 只读快照为 `scheduler_provider_warning_lines=28`，已超过阈值 `20`，所以属于本轮 D5 blocker。
+
+### 1.4 模拟盘状态判定
+
+active 模拟盘已经不作为当前核心功能恢复。本计划里的“模拟盘残留收口”不是重新建设模拟盘，而是处理已移除功能留下的运行时噪声：
+
+| 项 | 判定 | 本计划动作 |
+|---|---|---|
+| active paper 自动任务 | 不恢复 | 不新增开关、不重新入队、不常驻运行 |
+| `/paper`、`/next/paper` | 不作为核心路径 | 不纳入核心 smoke；如仍存在历史入口，只能只读或隐藏 |
+| `paper_*` runtime task | removed-feature 残留 | 标记 `skipped`/`cancelled`，不 failed/retry storm |
+| paper 账本历史数据 | 历史数据 | 不清表、不迁移、不写生产库，除非单独授权 |
+| paper 相关前端引用 | 退役检查对象 | 确认不回到主导航、不影响核心页面 |
+
+因此，P2 的目标是降噪和防误恢复，不是恢复模拟盘交易能力。任何实现如果把 active paper 重新接回调度、策略门控或核心页面，必须立即停止并升级为 P0。
+
+### 1.5 旧前端状态判定
+
+旧前端收口分为“运行链路退役”和“源码物理删除”两件事，不能混为一谈。
+
+| 层级 | 当前目标 | 验收 |
+|---|---|---|
+| 运行入口 | `frontend-next` 是唯一默认入口 | `/` 和 `/next/*` 不回到旧 React/AntD 产物 |
+| CI/Docker/deploy | 不再构建、上传、部署旧前端 | `frontend-hot`、`frontend-legacy` 被阻断 |
+| 后端静态服务 | 不服务旧前端 dist | `/__legacy/*` 不恢复静态资源 |
+| 源码目录 `frontend/` | 只作为 retired source/archive candidate | 物理删除必须单独授权 |
+| 回滚策略 | 短期靠 tag/branch/归档，不靠默认入口保留旧前端 | 删除前完成引用复扫和回滚说明 |
+
+P6 只负责防回流和删除门槛。物理删除 `frontend/` 需要额外满足 1-2 个交易日稳定观察、native/mobile owner review、引用复扫、归档或可回滚 tag、用户明确授权。
+
+### 1.6 当前未完成清单
+
+| 编号 | 未完成项 | 当前处理 |
+|---|---|---|
+| U1 | D5 完整交易日 gate 未通过 | 继续采集 09:15、09:35、10:30、11:30、13:05、14:55、15:10、15:30 checkpoint |
+| U2 | `runtime-scheduler` 不能停 | 保持独立 scheduler，直到 `d5_gate.ready=true` 且用户授权维护窗口 |
+| U3 | provider warning 仍可能阻塞 D5 | 继续用 collector 区分 sustained pressure 与低频 warning |
+| U4 | MySQL 慢查询/规格仍是根因专项 | 先只读诊断；索引、buffer pool、连接池、升配都需授权 |
+| U5 | 旧前端物理删除未完成 | P6 先做防回流报告，删除另开授权批次 |
+| U6 | active paper 残留需要持续降噪 | `paper_*` 任务进入 skipped/cancelled，不恢复 active paper |
+| U7 | 前端长稳和 chunk 验证需要持续 | P7 输出页面 smoke 和完整交易日长稳证据 |
 
 ## 2. 硬边界
 
