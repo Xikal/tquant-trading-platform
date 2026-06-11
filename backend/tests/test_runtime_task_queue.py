@@ -230,6 +230,46 @@ def test_runtime_task_summary_reports_paused_low_priority_backlog(monkeypatch):
     }
 
 
+def test_runtime_task_summary_type_counts_use_recent_or_active_window(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda event: None)
+    now = datetime.utcnow()
+    old = now - timedelta(days=7)
+
+    for _ in range(20):
+        db.add(
+            RuntimeTask(
+                task_type="historical_heavy_report",
+                status="succeeded",
+                payload_json="{}",
+                result_json="{}",
+                created_at=old,
+                updated_at=old,
+                finished_at=old,
+            )
+        )
+    db.commit()
+
+    queue.enqueue(RuntimeTaskCreate(task_type="monitor_snapshot_refresh", payload={}, priority=50))
+    recent = queue.enqueue(RuntimeTaskCreate(task_type="analytics_export_daily_bars", payload={}, priority=50))
+    recent_row = db.get(RuntimeTask, recent.id)
+    assert recent_row is not None
+    recent_row.status = "succeeded"
+    recent_row.finished_at = now
+    recent_row.updated_at = now
+    db.commit()
+
+    summary = queue.summary(recent_hours=24)
+    type_counts = {item.task_type: item.count for item in summary.task_type_counts}
+    status_counts = {item.status: item.count for item in summary.status_counts}
+
+    assert "historical_heavy_report" not in type_counts
+    assert type_counts["monitor_snapshot_refresh"] == 1
+    assert type_counts["analytics_export_daily_bars"] == 1
+    assert status_counts["succeeded"] == 21
+
+
 def test_runtime_task_queue_pauses_backtest_parquet_export_tasks(monkeypatch):
     db = _db()
     queue = RuntimeTaskQueue(db)

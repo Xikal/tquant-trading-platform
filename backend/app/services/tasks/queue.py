@@ -144,6 +144,12 @@ class RuntimeTaskQueue:
         ).scalar_one_or_none()
         type_rows = self.db.execute(
             select(RuntimeTask.task_type, func.count(RuntimeTask.id))
+            .where(
+                or_(
+                    RuntimeTask.created_at >= recent_cutoff,
+                    ~RuntimeTask.status.in_(TERMINAL_STATUSES),
+                )
+            )
             .group_by(RuntimeTask.task_type)
             .order_by(func.count(RuntimeTask.id).desc(), RuntimeTask.task_type.asc())
             .limit(12)

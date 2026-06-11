@@ -829,6 +829,14 @@ The first D6 read-path mitigation was implemented locally without schema/index c
 
 This keeps raw daily-bar history fetches, priority board ordering, `production_score`, and strategy semantics unchanged. It directly addresses the root-cause evidence that broad `daily_bar_snapshots` coverage/group-by queries were scanning large historical ranges.
 
+### D6 Runtime Task Summary Read Model Local Optimization - 2026-06-12
+
+Implementation report: `docs/reports/runtime-task-summary-read-model-optimization-2026-06-12.md`.
+
+The second D6 read-path mitigation was implemented locally without schema/index changes. `RuntimeTaskQueue.summary()` now keeps all-time `status_counts` semantics but limits `task_type_counts` to tasks created inside the recent summary window or active non-terminal tasks. This prevents old terminal task history from dominating the task-type aggregate and reduces pressure from broad historical runtime-task summary reads.
+
+This keeps runtime queue claim/retry/skip semantics, low-priority pause visibility, and strategy behavior unchanged. D5 embedded scheduler remains closed until the full trading-day gate passes.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |
