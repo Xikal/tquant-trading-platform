@@ -436,12 +436,127 @@ PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q backend/tests/test_lo
 
 Results: `14 passed`, `73 passed`, `32 passed`; only the existing LibreSSL urllib3 warning appeared.
 
-D6 deployment gate:
+D6 deployment gate at this observation point:
 
-- This mitigation is committed locally only after review; it has not been deployed in this observation window.
+- This mitigation was committed locally only after review; it had not been deployed in this `23:54 CST` observation window.
 - Deploying it should reduce repeated worker-heavy materialization after the first successful same-day run.
 - After deployment, observe whether `a_key_level_materialization_refresh` drops from dozens per 2h to at most one successful same-day run plus any active/retry case.
 - D5 scheduler embed should still wait until this D6 mitigation is deployed and observed, because collapsing scheduler into a worker already near `768MiB` would increase risk.
+
+## D6 Minimal Online Code Deploy - 2026-06-12 00:10 CST
+
+The repeated close-refresh dedupe fix was deployed through the narrowest available live path: backup and upload one Python source file, rebuild the shared Python image, and recreate only `runtime-scheduler`. The target source of the repeated enqueue was the scheduler. `app`, `runtime-worker`, MySQL, Redis, Go services, frontend/nginx, DB data, nginx, systemd, volumes, and cleanup paths were not touched in this step.
+
+### Executed Write Operations
+
+| Item | Value |
+|---|---|
+| Remote source backup | `/home/ubuntu/gupiao-upload/backend/app/services/latest_data_close_refresh.py.d6-dedupe-backup.20260612000708` |
+| Uploaded source | `/home/ubuntu/gupiao-upload/backend/app/services/latest_data_close_refresh.py` |
+| Backup source size | `15417` bytes |
+| Uploaded source size | `16360` bytes |
+| Uploaded source checksum | `98572760c7b9117045935e74561ef257a36ea3d66afa1ba27c9cdb3bf26c2680` |
+| Build command | `sudo docker compose -f docker-compose.mysql.yml build runtime-scheduler` |
+| Recreate command | `sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --no-build --force-recreate runtime-scheduler` |
+| Scheduler new image | `sha256:02b58e3659d76ebbc9ac68a06b5369ef30f356cb363c3b1cc9f971840372ef0f` |
+| Scheduler started at | `2026-06-11T16:10:54.689527959Z` (`2026-06-12 00:10:54 CST`) |
+
+### Container Scope Verification
+
+| Container | Image / start evidence | Result |
+|---|---|---|
+| `tquant-runtime-scheduler-mysql` | image `sha256:02b58e...`, started `2026-06-11T16:10:54Z`, `restart=0`, `oom=false`, `health=healthy` | recreated as intended |
+| `tquant-runtime-worker-mysql` | image `sha256:e98cc59...`, started `2026-06-11T15:42:45Z`, `health=healthy` | unchanged in this step |
+| `tquant-app-mysql` | image `sha256:e98cc59...`, started `2026-06-11T15:40:10Z`, `health=healthy` | unchanged |
+| `tquant-mysql` | image `sha256:669b2d...`, started `2026-06-11T15:42:42Z`, `health=healthy` | unchanged |
+| `tquant-redis` | image `sha256:286bd4...`, started `2026-06-09T08:04:11Z`, `health=healthy` | unchanged |
+| Go BFF/read/scan | started `2026-06-11T13:44:13-19Z`, all healthy | unchanged |
+| `tquant-frontend-web` | started `2026-06-11T13:44:20Z`, healthy | unchanged |
+
+### Code Load Verification
+
+The scheduler container loaded the expected dedupe code:
+
+```text
+has_dedupe True
+has_strategy_tracking_helper True
+def _enqueue_unless_succeeded(db: Session, payload: RuntimeTaskCreate) -> RuntimeTaskOut:
+    if payload.idempotency_key and hasattr(db, "execute"):
+        existing = _succeeded_task(db, payload.idempotency_key)
+        if existing is not None:
+            return RuntimeTaskQueue(db).get(int(existing.id))
+    return RuntimeTaskQueue(db).enqueue(payload)
+```
+
+### Post-Deploy Health Snapshot
+
+| Area | Evidence | Result |
+|---|---|---|
+| host load after cooldown | `0.54 / 1.05 / 1.04` | acceptable |
+| memory after cooldown | `3723MiB total / 2584MiB used / 1139MiB available` | materially better than D0 |
+| swap after build cooldown | `919MiB used / 1987MiB` | elevated by live build; observe |
+| root disk / inode | `/` `60%`; inode `12%` | ok |
+| MySQL | `622.6MiB / 1.5GiB`, `Threads_connected=10`, `Threads_running=2`, `Slow_queries=14` | healthy, no new OOM |
+| runtime worker | `712.1MiB / 768MiB` | still close to limit; keep D5 gated |
+| runtime scheduler | `342.9MiB / 640MiB` | healthy after recreate |
+| Redis | `used_memory=1.28M`, `evicted_keys=0`, `connected_clients=5`, `dbsize=8` | healthy |
+| OOM since scheduler deploy | no kernel OOM entries since `2026-06-12 00:10:00` | ok |
+
+HTTP/API checks:
+
+| URL | Result | Notes |
+|---|---|---|
+| `http://127.0.0.1:18090/readyz` | `200`, `0.031632s` | ok |
+| `http://127.0.0.1:18090/api/monitor/snapshot` | `401`, `0.006349s` | expected auth guard |
+| `http://127.0.0.1:18090/api/screeners/low-buy/priority-board` | `401`, `0.008704s` | expected auth guard |
+| `http://127.0.0.1:18090/api/runtime-tasks/summary` | `401`, `0.004691s` | expected admin guard |
+| `/next/monitor` | `200`, `0.006479s` | SPA shell reachable |
+| `/next/monitor/market` | `200`, `0.004981s` | SPA shell reachable |
+| `/next/strategy-tracking` | `200`, `0.003997s` | SPA shell reachable |
+| `https://43.143.243.97/readyz` | local `200`, `0.107719s`; server-side `200`, `0.063657s` | ok |
+| `https://weisilianghua.cloud/readyz` | local TLS reset once; server-side `200`, `0.275077s` |公网链路/SNI风险仍未解决 |
+| `https://www.aigupiao.me/readyz` | local timeout; server-side connect failed | not a confirmed live entry |
+
+### Runtime Queue Verification
+
+After the scheduler was recreated, the dedupe-sensitive same-day tasks stopped being repeatedly created:
+
+| Window | Evidence | Interpretation |
+|---|---|---|
+| last 20 minutes at `00:14:57 CST` | `strategy_tracking_snapshot_refresh` succeeded `8`, latest `15:59:40 UTC`; `a_key_level_materialization_refresh` succeeded `4`, latest `15:59:40 UTC` | these were pre-deploy rows |
+| since scheduler deploy at `16:10:54 UTC` | only `low_buy_materialization_refresh` succeeded `1`, created `16:11:31 UTC` | no new A-key or strategy-tracking duplicate rows after deploy |
+| latest sensitive rows | newest A-key `id=46184`, created `15:59:40 UTC`; newest strategy-tracking `id=46185`, created `15:59:40 UTC` | dedupe working for the repeated close-refresh path |
+| non-terminal queue | old `data_quality_sla_refresh` ids `41913`, `44330` only | no new core backlog from this deploy |
+
+Heartbeat source remains `system_settings`:
+
+| Key | Updated at | Value summary |
+|---|---|---|
+| `platform_component.heartbeat.runtime-scheduler` | `2026-06-11 16:15:59` | `worker_id=runtime-scheduler`, `status=running` |
+| `platform_component.heartbeat.runtime-worker` | `2026-06-11 16:15:57` | `worker_id=runtime-758c134e30fc`, `status=running` |
+| `runtime_worker.heartbeat` | `2026-06-11 16:15:57` | same runtime-worker payload |
+
+### Remaining Risk After Deploy
+
+| Severity | Finding | Evidence | Decision |
+|---|---|---|---|
+| P1 | runtime worker memory remains close to the `768MiB` cap | `712.1MiB / 768MiB` after cooldown | do not execute D5 until a longer stability window passes |
+| P1 | domain public path remains unstable from at least one client path | local `weisilianghua.cloud` returned TLS reset while server-side curl returned `200` | handle in D7 network-entry workstream |
+| P2 | market provider failures continue | scheduler logs show EastMoney/AkShare timeouts/circuit-open warnings | separate provider/network-pressure diagnosis |
+| P2 | swap is still non-zero after live image build | `919MiB` at cooldown sample | observe after build pressure decays; not enough for D5 approval |
+
+### Rollback Command Not Executed
+
+Recorded for controlled rollback only:
+
+```bash
+cd /home/ubuntu/gupiao-upload
+cp backend/app/services/latest_data_close_refresh.py.d6-dedupe-backup.20260612000708 backend/app/services/latest_data_close_refresh.py
+sudo docker compose -f docker-compose.mysql.yml build runtime-scheduler
+sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --no-build --force-recreate runtime-scheduler
+```
+
+Rollback is not recommended unless the scheduler shows new enqueue regressions or health failures. The deployed change only affects duplicate enqueue behavior after a same-idempotency task has already succeeded; it does not change strategy policy, scoring, or priority-board ordering.
 
 ## Write Operation Summary So Far
 
@@ -449,7 +564,9 @@ D6 deployment gate:
 |---|---|---|
 | Local docs/code commits | yes | D1-D3 local implementation and this report update |
 | Online `.env` changes | yes | D4 non-core stop flags, D6 MySQL memory limits |
-| Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql |
+| Online source upload | yes | D6 minimal upload of `latest_data_close_refresh.py` with remote backup |
+| Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql; D6 minimal runtime-scheduler recreate |
+| Docker build | yes | D6 minimal rebuild of `runtime-scheduler` image only |
 | Docker cleanup/image prune/volume prune | no | not executed |
 | DB schema/data changes | no | not executed |
 | nginx/systemd changes | no | not executed |
