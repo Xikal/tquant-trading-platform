@@ -879,6 +879,32 @@ warnings=scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, 
 | HTTP/pages | `/readyz` `200`; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` |
 | Residual warning | final scheduler logs no longer showed the earlier intraday fallback chain, but board-breadth provider warnings still appeared |
 
+### D6 Authorized Non-Core Queue Cleanup - 2026-06-12 02:53 CST
+
+The two stale queued `data_quality_sla_refresh` rows identified in the D6 MySQL/runtime review were cancelled after authorization. This used the existing `RuntimeTaskQueue.cancel()` API from `tquant-app-mysql`, not raw SQL, so `runtime_task_events` captured cancellation events.
+
+| Task id | Before | After | Reason |
+|---:|---|---|---|
+| `41913` | `queued data_quality_sla_refresh` | `cancelled` | stale non-core data repair residue |
+| `44330` | `queued data_quality_sla_refresh` | `cancelled` | stale non-core data repair residue |
+
+Post-cleanup gate collector:
+
+```text
+generated_at=2026-06-11T18:54:10Z
+host_time=2026-06-12 02:54:06 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present
+warnings=scheduler_provider_warnings_present, mysql_slow_queries=48
+```
+
+Impact:
+
+- Removed `runtime_nonterminal_task_count=2` from the D5 blocker list.
+- Did not delete business data or task rows.
+- Did not change schema/indexes, `.env`, containers, nginx/systemd, Docker images, service topology, strategy policy, `production_score`, or priority-board ordering.
+
 ## Write Operation Summary So Far
 
 | Category | Executed? | Details |
@@ -888,9 +914,10 @@ warnings=scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, 
 | Online source upload | yes | D6 minimal upload of `latest_data_close_refresh.py`; D6 worker guard upload of `config.py`, `runtime_worker.py`, `docker-compose.mysql.yml`; D6 provider-degraded uploads of `market/providers/router.py` and `market/regime.py`, each with remote backup |
 | Container recreates | yes | D4 app/runtime-worker/runtime-scheduler; D6 mysql; D6 minimal runtime-scheduler recreate; D6 worker guard runtime-worker recreate; D6 provider-degraded scheduler-only recreates |
 | Docker build | yes | D6 rebuilds of `runtime-scheduler` for dedupe and provider-degraded guard; D6 rebuild of `runtime-worker` |
-| D5 scheduler embed | no | not executed; current worker memory fails the gate |
+| D5 scheduler embed | no | not executed; full trading-day observation is incomplete and scheduler provider warnings still fail the gate |
 | Worker recycle guard live enablement | yes | `RUNTIME_WORKER_RECYCLE_RSS_MB=700`; current worker healthy with RSS about `162MiB / 768MiB` |
 | Docker cleanup/image prune/volume prune | no | not executed |
-| DB schema/data changes | no | not executed |
+| DB schema/business data changes | no | not executed |
+| Runtime task metadata writes | yes | D6 cancelled stale non-core `data_quality_sla_refresh` task ids `41913` and `44330` through `RuntimeTaskQueue.cancel()` |
 | nginx/systemd changes | no | not executed |
 | strategy policy or scoring changes | no | `strategy_policy.py`, `production_score`, priority ordering untouched |

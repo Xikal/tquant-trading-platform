@@ -172,7 +172,7 @@ Recent two-hour task summary:
 | `hermes_platform_autopilot` | succeeded | `4` | `2026-06-11 15:38:56` |
 | `low_buy_materialization_refresh` | succeeded | `2` | `2026-06-11 17:11:48` |
 
-Non-terminal tasks:
+Non-terminal tasks at the original `01:20 CST` review:
 
 | Status | Task | Priority | Count | Oldest |
 |---|---|---:|---:|---|
@@ -423,9 +423,28 @@ Only after authorization:
 - Archive or mark historical failed `low_buy_materialization_refresh` noise if agreed.
 - Do not delete business data.
 
+## Authorized Queue Cleanup Executed - 2026-06-12 02:53 CST
+
+The stale non-core `data_quality_sla_refresh` queue residue was cancelled after authorization. This used `RuntimeTaskQueue.cancel()` from the app container rather than raw SQL, so task events were recorded consistently.
+
+| Task id | Before | After | Reason |
+|---:|---|---|---|
+| `41913` | `queued data_quality_sla_refresh` | `cancelled` | stale non-core data repair residue |
+| `44330` | `queued data_quality_sla_refresh` | `cancelled` | stale non-core data repair residue |
+
+Post-check:
+
+| Evidence | Result |
+|---|---|
+| `runtime_tasks` rows | both rows `cancelled` with `finished_at` set |
+| `runtime_task_events` | latest event for both rows is `cancelled` |
+| D5 gate collector | `runtime_nonterminal_task_count=2` removed from blockers |
+
+This was a runtime task metadata write only. It did not delete data, change schema/indexes, modify `.env`, restart containers, stop scheduler, change strategy policy, or alter priority-board/scoring semantics.
+
 ## Suggested Authorized Commands For Later
 
-These commands are recorded for review only. They were not executed.
+These commands were the earlier raw-SQL review examples. They are now superseded for `data_quality_sla_refresh` by the executed queue-API cancellation above. Any future historical failed-task archive remains a separate DB-write decision.
 
 ```sql
 -- Example only: exact task IDs/statuses must be reviewed before use.
@@ -449,7 +468,6 @@ sudo docker builder prune --filter until=72h
 - No `.env` change.
 - No Docker restart/recreate/remove.
 - No scheduler stop.
-- No DB write.
 - No schema/index change.
 - No nginx/systemd change.
 - No Docker cleanup.

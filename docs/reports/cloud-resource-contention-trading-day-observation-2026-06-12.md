@@ -12,7 +12,7 @@ Reason: the worker recycle guard is now live and the current worker RSS is low, 
 
 Latest read-only gate snapshot: `docs/reports/cloud-resource-gate-observation-2026-06-12-latest.md`.
 
-At `2026-06-12 02:48:43 CST`, the platform is online and no P0 blocker was observed, but D5 remains blocked because the observation is not a full trading day, scheduler provider warnings are still present, and two old `data_quality_sla_refresh` tasks remain queued. The previous duplicate A-key / strategy-tracking two-hour window warning is no longer present in the latest collector output.
+At `2026-06-12 02:54:06 CST`, the platform is online and no P0 blocker was observed, but D5 remains blocked because the observation is not a full trading day and scheduler provider warnings are still present. The previous duplicate A-key / strategy-tracking two-hour window warning is absent, and the two old `data_quality_sla_refresh` non-terminal rows were cancelled through the authorized D6 queue cleanup recorded below.
 
 ## Must Keep Running
 
@@ -106,10 +106,10 @@ All criteria must pass before enabling embedded scheduler:
 
 | Criterion | Required evidence | Current status |
 |---|---|---|
-| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | short-window pass with slow-query warning; `tquant-mysql` `852.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` |
+| MySQL stability | no new kernel OOM; MySQL healthy; memory below limit | short-window pass with slow-query warning; `tquant-mysql` `853MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` |
 | Worker headroom | worker RSS remains controlled across task cycles; no restart loop | short-window pass; `tquant-runtime-worker-mysql` `294.8MiB / 768MiB` (`38.39%`) |
 | Scheduler pressure | provider/circuit warnings do not cause sustained CPU/RSS pressure | not passed; scheduler provider warning lines still present after D6 provider guard |
-| Queue health | no sustained core backlog; no repeated A-key/strategy-tracking duplicates after successful same-day task | warning; old queued `data_quality_sla_refresh=2`; latest two-hour window no longer shows duplicate A-key / strategy-tracking successes |
+| Queue health | no sustained core backlog; no repeated A-key/strategy-tracking duplicates after successful same-day task | short-window pass; non-terminal queue is empty after authorized stale `data_quality_sla_refresh` cancellation |
 | API/page health | `/readyz` 200; core pages 200; protected APIs fast 401 when unauthenticated | short-window pass; `/readyz` 200; all checked `/next/*` pages 200; protected APIs 401 |
 | Strategy semantics | low-buy read path and production scoring tests pass | passed locally before this template |
 | Authorization | user explicitly authorizes D5 maintenance action | already broadly authorized, but gate still pending |
@@ -118,35 +118,68 @@ All criteria must pass before enabling embedded scheduler:
 
 | Area | Evidence | Status |
 |---|---|---|
-| Host | load average `0.21, 0.20, 0.32`; memory available `1378MiB`; swap used `662MiB / 1987MiB` (`33.32%`) | warning |
+| Host | load average `0.45, 0.28, 0.30`; memory available `1418MiB`; swap used `661MiB / 1987MiB` (`33.27%`) | warning |
 | Disk | root `34G / 59G` (`62%`); inode `13%` | pass |
-| app/API | `tquant-app-mysql` `52.54MiB / 768MiB`; `/readyz` `200` in `0.003816s` | pass |
+| app/API | `tquant-app-mysql` `59.37MiB / 768MiB`; `/readyz` `200` in `0.003887s` | pass |
 | runtime-worker | `294.8MiB / 768MiB` (`38.39%`) | pass |
-| runtime-scheduler | `255.3MiB / 640MiB` (`39.89%`) | warning: provider logs still present |
-| MySQL | `852.2MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` | warning: slow query count exists |
-| Redis | `4.961MiB / 128MiB` | pass |
+| runtime-scheduler | `254.4MiB / 640MiB` (`39.75%`) | warning: provider logs still present |
+| MySQL | `853MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=48` | warning: slow query count exists |
+| Redis | `4.957MiB / 128MiB` | pass |
 | frontend-next | `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all `200` | pass |
 | protected APIs | `/api/monitor/snapshot`, `/api/screeners/low-buy/priority-board`, `/api/runtime-tasks/summary` all `401` quickly | pass |
-| queue | queued `data_quality_sla_refresh=2`; recent summary only shows `low_buy_materialization_refresh` successes | warning |
+| queue | no queued/running rows; recent summary only shows `low_buy_materialization_refresh` successes | pass |
 
 Automated evaluation:
 
 ```text
 status=warning
 d5_gate.ready=false
-d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present, runtime_nonterminal_task_count=2
-warnings=scheduler_provider_warnings_present, runtime_nonterminal_task_count=2, mysql_slow_queries=48
+d5_gate.blockers=full_trading_day_observation_incomplete, scheduler_provider_warnings_present
+warnings=scheduler_provider_warnings_present, mysql_slow_queries=48
 ```
 
-## 2026-06-12 02:48 CST Decision Update
+## 2026-06-12 02:54 CST Decision Update
 
-The latest gate refresh keeps the same decision as the `02:29 CST` snapshot: no blocking condition and core HTTP/page checks remain healthy, but D5 is still not allowed. After the scheduler-only D6 provider-degraded guard rollout, the earlier intraday fallback chain was reduced, but board-breadth provider warnings are still visible in the standalone scheduler logs. The full trading-day requirement is incomplete, provider pressure is not proven stable, and two old `data_quality_sla_refresh` tasks remain non-terminal.
+The latest gate refresh improves the queue signal compared with the `02:48 CST` snapshot: the old non-terminal `data_quality_sla_refresh` rows are no longer blockers. Core HTTP/page checks remain healthy and no blocking condition was observed. D5 is still not allowed because the full trading-day requirement is incomplete and board-breadth provider warnings are still visible in the standalone scheduler logs.
 
 Recommended next action:
 
 1. Do not stop `runtime-scheduler` and do not enable embedded scheduler yet.
 2. Continue the full trading-day collector checkpoints with the provider guard already deployed to `runtime-scheduler`.
 3. Re-run the collector at the required trading-day checkpoints and only consider D5 after `d5_gate.ready=true` with `--full-trading-day-complete`.
+
+## D6 Authorized Non-Core Queue Cleanup - 2026-06-12 02:53 CST
+
+The D6 root-cause review had identified two old queued `data_quality_sla_refresh` rows as non-core data repair residue. With the user's broad execution authorization, these rows were cancelled through the existing `RuntimeTaskQueue.cancel()` API instead of raw SQL, so each row also received a `runtime_task_events` cancellation event.
+
+Pre-check target rows:
+
+| Task id | Task type | Status | Priority | Created at | Active key |
+|---:|---|---|---:|---|---|
+| `41913` | `data_quality_sla_refresh` | `queued` | `22` | `2026-06-10 07:01:31` | `data_quality_sla_refresh:daily_bars:production_universe:2026-06-10` |
+| `44330` | `data_quality_sla_refresh` | `queued` | `22` | `2026-06-11 07:01:19` | `data_quality_sla_refresh:daily_bars:production_universe:2026-06-11` |
+
+Execution:
+
+```text
+RuntimeTaskQueue.cancel(41913)
+RuntimeTaskQueue.cancel(44330)
+reason=cancelled after cloud resource remediation review: stale non-core data_quality_sla_refresh queued task
+```
+
+Post-check evidence:
+
+| Task id | Status | Finished at | Latest event |
+|---:|---|---|---|
+| `41913` | `cancelled` | `2026-06-11 18:53:58 UTC` | `cancelled` |
+| `44330` | `cancelled` | `2026-06-11 18:53:59 UTC` | `cancelled` |
+
+Impact:
+
+- Removed `runtime_nonterminal_task_count=2` from the D5 blocker list.
+- Did not delete rows or business data.
+- Did not touch MySQL schema, indexes, low-buy strategy policy, `production_score`, or priority-board ordering.
+- Did not change `.env`, containers, nginx/systemd, Docker images, or service topology.
 
 ## D5 Command Not Executed
 
@@ -192,9 +225,10 @@ Expected post-D5 heartbeat if later executed:
 - No `.env` change.
 - No D5 Docker restart/recreate/remove.
 - No scheduler stop.
-- No DB write.
+- No D5 DB write.
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
 
 The D6 provider-degraded guard was deployed separately as a scheduler-only mitigation and is recorded in `docs/reports/provider-degraded-cooldown-market-regime-optimization-2026-06-12.md` and `docs/reports/cloud-resource-contention-remediation-2026-06-11.md`.
+The D6 non-core queue metadata write is recorded above and is separate from D5 scheduler embed.
