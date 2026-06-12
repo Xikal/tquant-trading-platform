@@ -39,13 +39,18 @@ def apply_priority_board_live_overlay(response: LowBuyPriorityBoardResponse) -> 
         timeout_ms=getattr(settings, "priority_board_live_overlay_timeout_ms", 80),
     )
     if not quote_map:
-        return response
+        result = _mark_priority_overlay_degraded(response, symbols=symbols, quote_map={})
+        if getattr(settings, "priority_board_overlay_cache_enabled", True):
+            _set_overlay_cache(cache_key, result, getattr(settings, "priority_board_overlay_cache_ttl_seconds", 2))
+        return result
     items = [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in response.items]
     sections = [
         section.model_copy(update={"items": [_overlay_priority_item(item, quote_map.get(item.symbol)) for item in section.items]})
         for section in response.family_sections
     ]
     result = response.model_copy(update={"items": items, "family_sections": sections})
+    if _missing_priority_quote_count(symbols, quote_map) > 0:
+        result = _mark_priority_overlay_degraded(result, symbols=symbols, quote_map=quote_map)
     if getattr(settings, "priority_board_overlay_cache_enabled", True):
         _set_overlay_cache(cache_key, result, getattr(settings, "priority_board_overlay_cache_ttl_seconds", 2))
     return result
@@ -160,6 +165,63 @@ def _quote_map(symbols: list[str]) -> dict[str, QuoteSnapshot]:
         else:
             record_live_overlay_miss(_SOURCE)
     return quotes
+
+
+def _mark_priority_overlay_degraded(
+    response: LowBuyPriorityBoardResponse,
+    *,
+    symbols: list[str],
+    quote_map: dict[str, QuoteSnapshot],
+) -> LowBuyPriorityBoardResponse:
+    requested_count = len(_unique_symbols(symbols))
+    missing_count = _missing_priority_quote_count(symbols, quote_map)
+    if requested_count <= 0 or missing_count <= 0:
+        return response
+    tag = "live_overlay_degraded" if missing_count == requested_count else "live_overlay_partial"
+    text = "实时行情降级，当前展示榜单快照价格。" if tag == "live_overlay_degraded" else "实时行情部分降级，缺失股票展示榜单快照价格。"
+    return response.model_copy(
+        update={
+            "data_quality": _overlay_data_quality(response.data_quality, tag),
+            "data_quality_text": _append_quality_text(response.data_quality_text, text),
+            "data_quality_tags": _unique_tags([*(response.data_quality_tags or []), tag]),
+            "stale_reason": _append_quality_text(response.stale_reason, text),
+        }
+    )
+
+
+def _missing_priority_quote_count(symbols: list[str], quote_map: dict[str, QuoteSnapshot]) -> int:
+    requested = _unique_symbols(symbols)
+    return sum(1 for symbol in requested if symbol not in quote_map)
+
+
+def _unique_symbols(symbols: list[str]) -> list[str]:
+    requested: list[str] = []
+    seen: set[str] = set()
+    for symbol in symbols:
+        clean = str(symbol or "").strip()
+        if not clean or clean in seen:
+            continue
+        seen.add(clean)
+        requested.append(clean)
+    return requested
+
+
+def _unique_tags(tags: list[str]) -> list[str]:
+    return list(dict.fromkeys(str(tag) for tag in tags if str(tag)))
+
+
+def _append_quality_text(current: str, text: str) -> str:
+    if not current:
+        return text
+    if text in current:
+        return current
+    return f"{current}；{text}"
+
+
+def _overlay_data_quality(current: str, tag: str) -> str:
+    if current in {"unavailable", "limited", "stale", "degraded"}:
+        return current
+    return "degraded" if tag == "live_overlay_degraded" else "partial"
 
 
 def _quote_map_with_budget(symbols: list[str], *, timeout_ms: int | float | None) -> dict[str, QuoteSnapshot]:

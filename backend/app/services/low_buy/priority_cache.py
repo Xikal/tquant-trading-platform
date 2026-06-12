@@ -14,6 +14,8 @@ from app.services.performance.read_model_metrics import (
 from app.services.shared.distributed_cache import get_text_cache, set_text_cache
 
 PRIORITY_RESPONSE_CACHE_VERSION = "priority-response-v1"
+PRIORITY_BOARD_CACHE_EPOCH_FALLBACK = "0"
+PRIORITY_BOARD_CACHE_EPOCH_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 def get_priority_base_cache(service, cache_key: str) -> PriorityBaseSnapshot | None:
@@ -84,9 +86,44 @@ def set_priority_response_cache(service, cache_key: str, payload: LowBuyPriority
         )
 
 
+def priority_board_cache_epoch(trade_date: str) -> str:
+    value = get_text_cache(_cache_epoch_key(trade_date), fail_open=True)
+    return str(value or PRIORITY_BOARD_CACHE_EPOCH_FALLBACK)
+
+
+def bump_priority_board_cache_epoch(trade_date: str, *, reason: str = "priority_board_cache_invalidation") -> dict[str, object]:
+    clean_trade_date = str(trade_date or "").strip()
+    if not clean_trade_date:
+        return {
+            "ok": False,
+            "trade_date": "",
+            "cache_epoch": "",
+            "stored": False,
+            "reason": "missing_trade_date",
+        }
+    epoch = str(time.time_ns())
+    stored = set_text_cache(
+        _cache_epoch_key(clean_trade_date),
+        epoch,
+        PRIORITY_BOARD_CACHE_EPOCH_TTL_SECONDS,
+        fail_open=True,
+    )
+    return {
+        "ok": bool(stored),
+        "trade_date": clean_trade_date,
+        "cache_epoch": epoch,
+        "stored": bool(stored),
+        "reason": reason,
+    }
+
+
 def _distributed_key(cache_key: str) -> str:
     return f"tquant:low_buy:priority_response:{cache_key}"
 
 
 def _versioned_local_key(cache_key: str) -> str:
     return f"{PRIORITY_RESPONSE_CACHE_VERSION}:{cache_key}"
+
+
+def _cache_epoch_key(trade_date: str) -> str:
+    return f"tquant:low_buy:priority_board_epoch:{str(trade_date or 'unknown').strip() or 'unknown'}"

@@ -111,6 +111,29 @@ def test_priority_board_fast_path_returns_latest_stale_without_rebuild(monkeypat
     assert service.rebuild_count == 0
 
 
+def test_priority_board_cache_key_includes_materialization_epoch(monkeypatch):
+    service = _Service()
+    seen_keys: list[tuple[str, bool]] = []
+
+    def fake_cache(_service, key, *, allow_stale=False):  # noqa: ANN001
+        seen_keys.append((key, allow_stale))
+        return _board() if not allow_stale else None
+
+    monkeypatch.setattr("app.services.low_buy.priority_board.get_priority_response_cache", fake_cache)
+    monkeypatch.setattr(
+        "app.services.low_buy.priority_board.priority_board_cache_epoch",
+        lambda trade_date: "epoch-42",
+        raising=False,
+    )
+    monkeypatch.setattr("app.services.low_buy.priority_board.published_low_buy_trade_date", lambda db: "2026-05-27")
+
+    result = service.priority_board(SimpleNamespace(), limit=12)
+
+    assert result.latest_trade_date == "2026-05-26"
+    assert seen_keys == [("date=2026-05-27:limit=12:variant=baseline:epoch=epoch-42", False)]
+    assert service.rebuild_count == 0
+
+
 def test_priority_board_async_empty_returns_placeholder_and_queues(monkeypatch):
     service = _Service()
     monkeypatch.setattr(

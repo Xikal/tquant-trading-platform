@@ -15,6 +15,7 @@ from app.services.latest_data_status import (
     publish_latest_trade_date_if_ready,
 )
 from app.core.config import get_settings
+from app.services.low_buy.priority_cache import bump_priority_board_cache_epoch
 from app.services.low_buy.strategy_lanes import STRATEGY_VARIANTS
 from app.services.low_buy.strategy_policy import (
     OBSERVATION_LAYER_STRATEGIES,
@@ -244,12 +245,29 @@ def warm_priority_board_read_models(
     *,
     variants: list[str] | tuple[str, ...] | None = None,
     limits: list[int] | tuple[int, ...] | None = None,
+    trade_date: str | None = None,
     reason: str = "latest_low_buy_materialization",
 ) -> dict[str, Any]:
     active_variants = [item for item in (variants or STRATEGY_VARIANTS) if item]
     active_limits = sorted({max(1, min(int(item or 12), 50)) for item in (limits or PRIORITY_BOARD_WARM_LIMITS)})
+    cache_invalidation = _skip_priority_board_cache_invalidation(trade_date)
+    if trade_date:
+        cache_invalidation = invalidate_priority_board_caches_for_trade_date(
+            trade_date=str(trade_date),
+            variants=active_variants,
+            limits=active_limits,
+            reason=reason,
+        )
+    cache_invalidation_ok = cache_invalidation.get("ok") is not False
     if not active_variants or not active_limits:
-        return {"ok": True, "reason": reason, "warmed": [], "skipped": []}
+        return {
+            "ok": True,
+            "cache_consistency_ok": cache_invalidation_ok,
+            "reason": reason,
+            "cache_invalidation": cache_invalidation,
+            "warmed": [],
+            "skipped": [],
+        }
 
     from app.services.low_buy_screener import LowBuyScreenerService
 
@@ -284,9 +302,12 @@ def warm_priority_board_read_models(
 
     return {
         "ok": not skipped,
+        "cache_consistency_ok": cache_invalidation_ok,
         "reason": reason,
         "variants": active_variants,
         "limits": active_limits,
+        "trade_date": str(trade_date or ""),
+        "cache_invalidation": cache_invalidation,
         "warmed": warmed,
         "skipped": skipped,
     }
@@ -300,7 +321,37 @@ def _warm_priority_board_after_publish(publish_status: dict[str, Any]) -> dict[s
             "warmed": [],
             "skipped": [{"reason": str(publish_status.get("status") or "unknown")}],
         }
-    return warm_priority_board_read_models(reason="latest_low_buy_materialization_published")
+    return warm_priority_board_read_models(
+        reason="latest_low_buy_materialization_published",
+        trade_date=str(publish_status.get("published_trade_date") or ""),
+    )
+
+
+def invalidate_priority_board_caches_for_trade_date(
+    *,
+    trade_date: str,
+    variants: list[str],
+    limits: list[int],
+    reason: str = "latest_low_buy_materialization",
+) -> dict[str, Any]:
+    epoch_result = bump_priority_board_cache_epoch(trade_date, reason=reason)
+    return {
+        **epoch_result,
+        "variants": list(variants),
+        "limits": list(limits),
+        "invalidation_mode": "cache_epoch",
+    }
+
+
+def _skip_priority_board_cache_invalidation(trade_date: str | None) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "trade_date": str(trade_date or ""),
+        "cache_epoch": "",
+        "stored": False,
+        "reason": "trade_date_not_provided",
+        "invalidation_mode": "skipped",
+    }
 
 
 def warm_main_force_shadow_observations(

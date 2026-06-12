@@ -21,6 +21,7 @@ from app.services.low_buy.priority_scoring import LowBuyPriorityScoringMixin
 from app.services.low_buy.priority_cache import (
     get_priority_base_cache,
     get_priority_response_cache,
+    priority_board_cache_epoch,
     set_priority_base_cache,
     set_priority_response_cache,
 )
@@ -103,7 +104,8 @@ class LowBuyPriorityBoardMixin(LowBuyPriorityScoringMixin):
     ) -> LowBuyPriorityBoardResponse:
         variant = normalize_strategy_variant(strategy_variant, front_row_only=front_row_only)
         target_trade_date = published_low_buy_trade_date(db) or expected_low_buy_trade_date(db)
-        cache_key = f"date={target_trade_date}:limit={limit}:variant={variant}"
+        cache_epoch = priority_board_cache_epoch(target_trade_date)
+        cache_key = f"date={target_trade_date}:limit={limit}:variant={variant}:epoch={cache_epoch}"
         normalized_refresh = str(refresh_mode or "cache").strip().lower()
         if normalized_refresh not in {"cache", "async", "sync"}:
             normalized_refresh = "cache"

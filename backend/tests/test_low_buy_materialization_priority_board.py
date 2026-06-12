@@ -54,8 +54,78 @@ def test_warm_priority_board_read_models_materializes_all_display_lanes(monkeypa
     ]
 
 
+def test_warm_priority_board_read_models_invalidates_trade_date_caches_before_warming(monkeypatch):
+    calls: list[tuple[int, str, str]] = []
+    invalidations: list[dict] = []
+
+    class _FakeScreener:
+        def priority_board(self, *, db, limit, refresh_mode, strategy_variant):  # noqa: ANN001
+            calls.append((limit, refresh_mode, strategy_variant))
+            return SimpleNamespace(
+                latest_trade_date="2026-06-12",
+                items=[SimpleNamespace(symbol=f"{strategy_variant}-{limit}")],
+                total_candidates=1,
+                read_path="priority_board_sync_warmup",
+            )
+
+    monkeypatch.setattr(materialization, "SessionLocal", lambda: _FakeSession())
+    monkeypatch.setattr("app.services.low_buy_screener.LowBuyScreenerService", lambda: _FakeScreener())
+    monkeypatch.setattr(
+        materialization,
+        "invalidate_priority_board_caches_for_trade_date",
+        lambda **kwargs: invalidations.append(kwargs) or {"ok": True, "cache_epoch": "epoch-1"},
+        raising=False,
+    )
+
+    result = materialization.warm_priority_board_read_models(
+        variants=("baseline",),
+        limits=(12,),
+        trade_date="2026-06-12",
+    )
+
+    assert invalidations == [
+        {
+            "trade_date": "2026-06-12",
+            "variants": ["baseline"],
+            "limits": [12],
+            "reason": "latest_low_buy_materialization",
+        }
+    ]
+    assert result["cache_invalidation"]["cache_epoch"] == "epoch-1"
+    assert calls == [(12, "sync", "baseline")]
+
+
+def test_warm_priority_board_read_models_reports_cache_epoch_failure_without_failing_warmup(monkeypatch):
+    class _FakeScreener:
+        def priority_board(self, *, db, limit, refresh_mode, strategy_variant):  # noqa: ANN001
+            return SimpleNamespace(
+                latest_trade_date="2026-06-12",
+                items=[],
+                total_candidates=0,
+                read_path="priority_board_sync_warmup",
+            )
+
+    monkeypatch.setattr(materialization, "SessionLocal", lambda: _FakeSession())
+    monkeypatch.setattr("app.services.low_buy_screener.LowBuyScreenerService", lambda: _FakeScreener())
+    monkeypatch.setattr(
+        materialization,
+        "invalidate_priority_board_caches_for_trade_date",
+        lambda **_kwargs: {"ok": False, "cache_epoch": "", "stored": False, "reason": "redis_unavailable"},
+    )
+
+    result = materialization.warm_priority_board_read_models(
+        variants=("baseline",),
+        limits=(12,),
+        trade_date="2026-06-12",
+    )
+
+    assert result["ok"] is True
+    assert result["cache_consistency_ok"] is False
+    assert result["cache_invalidation"]["reason"] == "redis_unavailable"
+
+
 def test_refresh_latest_materialization_warms_priority_board_after_publish(monkeypatch):
-    warmed: list[str] = []
+    warmed: list[dict] = []
 
     monkeypatch.setattr(
         "app.services.low_buy.go_scan_worker.run_go_scan_worker",
@@ -73,7 +143,7 @@ def test_refresh_latest_materialization_warms_priority_board_after_publish(monke
     monkeypatch.setattr(
         materialization,
         "warm_priority_board_read_models",
-        lambda **_kwargs: warmed.append("priority_board") or {"ok": True, "warmed": [], "skipped": []},
+        lambda **kwargs: warmed.append(kwargs) or {"ok": True, "warmed": [], "skipped": []},
     )
     monkeypatch.setattr(
         materialization,
@@ -87,7 +157,7 @@ def test_refresh_latest_materialization_warms_priority_board_after_publish(monke
     )
 
     assert result["ok"] is True
-    assert warmed == ["priority_board"]
+    assert warmed == [{"reason": "latest_low_buy_materialization_published", "trade_date": "2026-06-05"}]
     assert result["priority_board_read_models"]["ok"] is True
 
 
@@ -269,7 +339,7 @@ def test_refresh_latest_materialization_reports_incomplete_when_priority_board_w
 
 
 def test_python_fallback_materialization_also_warms_priority_board(monkeypatch):
-    warmed: list[str] = []
+    warmed: list[dict] = []
 
     class _FakeScreener:
         def refresh_full_scan_cache(self, **_kwargs):  # noqa: ANN001
@@ -289,7 +359,7 @@ def test_python_fallback_materialization_also_warms_priority_board(monkeypatch):
     monkeypatch.setattr(
         materialization,
         "warm_priority_board_read_models",
-        lambda **_kwargs: warmed.append("priority_board") or {"ok": True, "warmed": [], "skipped": []},
+        lambda **kwargs: warmed.append(kwargs) or {"ok": True, "warmed": [], "skipped": []},
     )
 
     result = materialization.refresh_latest_low_buy_materialization(
@@ -299,5 +369,5 @@ def test_python_fallback_materialization_also_warms_priority_board(monkeypatch):
 
     assert result["ok"] is True
     assert result["source"] == "python"
-    assert warmed == ["priority_board"]
+    assert warmed == [{"reason": "latest_low_buy_materialization_published", "trade_date": "2026-06-05"}]
     assert result["priority_board_read_models"]["ok"] is True

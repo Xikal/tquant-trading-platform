@@ -48,6 +48,28 @@ def test_priority_board_live_overlay_updates_quote_fields_without_resorting(monk
     assert snapshot["live_overlay_misses"]["local_quote_cache"] == 1
 
 
+def test_priority_board_live_overlay_marks_degraded_when_quote_cache_misses(monkeypatch) -> None:
+    live_quote_overlay.clear_priority_board_overlay_cache()
+    response = LowBuyPriorityBoardResponse(
+        as_of_date="2026-06-03",
+        latest_trade_date="2026-06-03",
+        updated_at="2026-06-03 10:00:00",
+        items=[
+            _priority_item("000001", 91.0),
+            _priority_item("000002", 88.0),
+        ],
+    )
+    monkeypatch.setattr(live_quote_overlay, "read_local_quote_snapshots", lambda symbols: {})
+
+    overlaid = apply_priority_board_live_overlay(response)
+
+    assert [item.latest_price for item in overlaid.items] == [10.0, 10.0]
+    assert overlaid.stale is False
+    assert "live_overlay_degraded" in overlaid.data_quality_tags
+    assert "实时行情降级" in overlaid.data_quality_text
+    assert "实时行情降级" in overlaid.stale_reason
+
+
 def test_priority_board_live_overlay_includes_family_section_symbols(monkeypatch) -> None:
     response = LowBuyPriorityBoardResponse(
         as_of_date="2026-06-03",
@@ -98,6 +120,34 @@ def test_priority_board_overlay_cache_returns_same_payload_as_uncached(monkeypat
     second = apply_priority_board_live_overlay(response)
 
     assert second.model_dump() == first.model_dump()
+    assert calls == [["000001"]]
+
+
+def test_priority_board_overlay_cache_caches_degraded_payload(monkeypatch) -> None:
+    live_quote_overlay.clear_priority_board_overlay_cache()
+    response = LowBuyPriorityBoardResponse(
+        as_of_date="2026-06-03",
+        latest_trade_date="2026-06-03",
+        updated_at="2026-06-03 10:00:00",
+        items=[_priority_item("000001", 91.0)],
+    )
+    calls: list[list[str]] = []
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "local_quote_cache_marker",
+        lambda: {"version": "v1", "as_of": "2026-06-03 10:30:00"},
+    )
+    monkeypatch.setattr(
+        live_quote_overlay,
+        "read_local_quote_snapshots",
+        lambda symbols: calls.append(symbols) or {},
+    )
+
+    first = apply_priority_board_live_overlay(response)
+    second = apply_priority_board_live_overlay(response)
+
+    assert first.model_dump() == second.model_dump()
+    assert "live_overlay_degraded" in second.data_quality_tags
     assert calls == [["000001"]]
 
 
@@ -171,7 +221,8 @@ def test_priority_board_live_overlay_timeout_returns_original_payload(monkeypatc
     overlaid = apply_priority_board_live_overlay(response)
 
     assert (time.perf_counter() - started) < 0.03
-    assert overlaid.model_dump() == response.model_dump()
+    assert overlaid.items[0].latest_price == response.items[0].latest_price
+    assert "live_overlay_degraded" in overlaid.data_quality_tags
 
 
 def test_strategy_tracking_overlay_preserves_current_return_pct(monkeypatch) -> None:
