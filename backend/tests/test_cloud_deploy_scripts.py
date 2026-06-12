@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import tarfile
 from pathlib import Path
@@ -65,6 +66,7 @@ def test_production_env_example_documents_resource_stop_profile_only() -> None:
     assert "PLATFORM_AUTOPILOT_ENABLED=false" in production_example
     assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true" in production_example
     assert "MARKET_REVIEW_ENABLED=false" in production_example
+    assert "DATA_QUALITY_SLA_ENABLED=false" in production_example
     assert "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED=false" in production_example
     assert "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED=false" in production_example
     assert "RUNTIME_WORKER_EMBED_SCHEDULER=false" in production_example
@@ -74,6 +76,17 @@ def test_production_env_example_documents_resource_stop_profile_only() -> None:
     assert "PAPER_PERF_ARCHIVE_ENABLED" not in production_example
     assert "MYSQL_ROOT_PASSWORD" not in production_example
     assert "AUTH_SECRET_KEY" not in production_example
+
+
+def test_mysql_compose_passes_data_quality_sla_flag_to_app_and_workers() -> None:
+    compose = read_repo_file("docker-compose.mysql.yml")
+
+    assert compose.count("DATA_QUALITY_SLA_ENABLED: ${DATA_QUALITY_SLA_ENABLED:-true}") >= 4
+    for service in ("app:", "runtime-worker:", "runtime-scheduler:", "analytics-worker:"):
+        match = re.search(rf"^  {re.escape(service)}\n(?P<body>.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)", compose, re.M | re.S)
+        assert match is not None
+        chunk = match.group("body")
+        assert "DATA_QUALITY_SLA_ENABLED: ${DATA_QUALITY_SLA_ENABLED:-true}" in chunk
 
 
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
