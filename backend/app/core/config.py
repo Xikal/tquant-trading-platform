@@ -162,7 +162,7 @@ class AppSettings(BaseSettings):
     priority_board_live_overlay_timeout_ms: int = 80
     priority_board_filter_cache_enabled: bool = True
     priority_board_stable_read_model_enabled: bool = True
-    priority_board_stable_read_model_ttl_seconds: int = 45
+    priority_board_stable_read_model_ttl_seconds: int = 6 * 60 * 60
     response_payload_metrics_enabled: bool = True
     distributed_cache_fail_open_enabled: bool = True
     derived_indicator_cache_enabled: bool = True

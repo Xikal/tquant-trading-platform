@@ -60,6 +60,15 @@ def test_backend_refactor_settings_expose_pool_and_bff_cache_controls() -> None:
     assert settings.rust_finance_math_enabled is True
 
 
+def test_priority_board_read_model_default_ttl_covers_intraday_hot_reads() -> None:
+    settings = AppSettings(
+        auth_secret_key="x" * 64,
+        tquant_settings_encryption_key="y" * 64,
+    )
+
+    assert settings.priority_board_stable_read_model_ttl_seconds >= 6 * 60 * 60
+
+
 def test_main_force_model_defaults_are_safe() -> None:
     settings = AppSettings(
         auth_secret_key="x" * 64,
