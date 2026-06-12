@@ -89,6 +89,20 @@ def test_mysql_compose_passes_data_quality_sla_flag_to_app_and_workers() -> None
         assert "DATA_QUALITY_SLA_ENABLED: ${DATA_QUALITY_SLA_ENABLED:-true}" in chunk
 
 
+def test_cloud_deploy_can_upsert_data_quality_sla_flag() -> None:
+    deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
+    quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+
+    assert 'DATA_QUALITY_SLA_ENABLED="${DATA_QUALITY_SLA_ENABLED:-}"' in deploy_script
+    assert deploy_script.count('DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED"') >= 2
+    assert deploy_script.count('upsert_env_value DATA_QUALITY_SLA_ENABLED "$DATA_QUALITY_SLA_ENABLED"') >= 2
+    assert 'if test -n "${DATA_QUALITY_SLA_ENABLED:-}"; then' in deploy_script
+
+    assert 'DATA_QUALITY_SLA_ENABLED="${DATA_QUALITY_SLA_ENABLED:-}"' in quick_script
+    assert "export DATA_QUALITY_SLA_ENABLED" in quick_script
+    assert 'DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED"' in quick_script
+
+
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
 
