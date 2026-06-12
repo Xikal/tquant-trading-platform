@@ -81,6 +81,11 @@ and close-publish behavior. Roll back by setting
 
 ## Analytics Worker
 
+Analytics, long backtest, ML, and factor-mining work is not part of the
+small-host always-on profile. Keep these task families gated by
+`RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true` on resident runtime processes, and run
+`analytics-worker` only for an explicit maintenance window or one-shot job.
+
 Health:
 
 - `duckdb` and `pyarrow` import successfully
@@ -110,6 +115,11 @@ Stop after low-frequency analytics work completes:
 ```bash
 docker compose --profile analytics -f docker-compose.mysql.yml stop analytics-worker
 ```
+
+Before making analytics-worker resident, record the reason, expected runtime,
+resource budget, rollback command, and confirmation that core monitor,
+low-buy, priority-board, strategy tracking, latest-data watchdog, MySQL, Redis,
+and Go hot-read services will not be stopped.
 
 ## Backtest Worker
 

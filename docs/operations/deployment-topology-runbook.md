@@ -64,10 +64,21 @@ scripts/quick_cloud_deploy.sh --verify-only
 Scoped paths:
 
 ```bash
-scripts/one_click_cloud_deploy.sh --scope frontend-hot --frontend-hot-required
+scripts/one_click_cloud_deploy.sh --scope frontend-next --frontend-next-required
 scripts/one_click_cloud_deploy.sh --scope go
 scripts/one_click_cloud_deploy.sh --scope all --full
 ```
+
+Retired frontend scopes are intentionally blocked:
+
+```bash
+python3 scripts/deploy_scope.py --scope frontend-hot
+python3 scripts/deploy_scope.py --scope frontend-legacy
+```
+
+Both commands must return `blocked` and tell the operator to deploy
+`frontend-next` instead. Do not reintroduce `frontend-hot`,
+`frontend-legacy`, `html-root`, or `/__legacy/assets/` as a production path.
 
 Delta upload path:
 

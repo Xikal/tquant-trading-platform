@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-06-12T14:48:51.068792+00:00",
+  "status": "blocked",
+  "summary": {
+    "overall_status": "blocked",
+    "complete": 3,
+    "blocked": 1,
+    "observation_required": 1,
+    "needs_authorization": 2,
+    "needs_investigation": 2,
+    "partial": 0
+  },
+  "checks": [
+    {
+      "id": "d5.full_trading_day_observation",
+      "requirement": "Complete a full valid trading-day stability observation before scheduler consolidation.",
+      "status": "observation_required",
+      "evidence": "d5_ready=False; full_trading_day_complete=False; missing_checkpoints=10:30,11:30,13:05,15:10,15:30",
+      "next_action": "Collect the missing formal trading-day checkpoints and regenerate the D5 summary."
+    },
+    {
+      "id": "d5.scheduler_embed_cutover",
+      "requirement": "Do not stop standalone runtime-scheduler until D5 is ready and user authorizes the cutover.",
+      "status": "blocked",
+      "evidence": "d5_ready=False; blockers=full_trading_day_observation_incomplete,kernel_oom_logs_present,runtime_nonterminal_task_count=1,runtime_nonterminal_task_count=2,runtime_nonterminal_task_count=4,runtime_worker_memory_pct=99.96,runtime_worker_signal_logs_present,scheduler_provider_warning_lines=160",
+      "next_action": "If and only if D5 is ready, run the scheduler embed maintenance-window plan with rollback prepared."
+    },
+    {
+      "id": "mysql.root_cause",
+      "requirement": "Close MySQL slow-query, connection-pool, index, and machine-size root causes.",
+      "status": "needs_investigation",
+      "evidence": "budget_status=ok; mysql_warnings=mysql_slow_queries=117,mysql_slow_queries=133,mysql_slow_queries=145,mysql_slow_queries=55,mysql_slow_queries=71,mysql_slow_queries=72,mysql_slow_queries=89",
+      "next_action": "Run a slow-query/index/p95 review; change indexes or machine size only after evidence and authorization."
+    },
+    {
+      "id": "domain.tls_sni_reset",
+      "requirement": "Resolve public domain TLS/SNI reset separately from resource contention work.",
+      "status": "needs_authorization",
+      "evidence": "domain_runbook_present=True",
+      "next_action": "Capture nginx/DNS/CDN/WAF evidence, then authorize a domain-entry maintenance change or provider ticket."
+    },
+    {
+      "id": "provider.scheduler_warning_residual",
+      "requirement": "Eliminate residual provider warning bursts before scheduler embed.",
+      "status": "needs_investigation",
+      "evidence": "guard_report_present=True; provider_signals=scheduler_provider_warning_lines=160,scheduler_provider_warning_lines_observed=10,scheduler_provider_warning_lines_observed=5,scheduler_provider_warning_lines_observed=8,scheduler_provider_warning_lines=160",
+      "next_action": "Recheck scheduler logs during the next trading window and tune provider cooldown/cache only with fresh evidence."
+    },
+    {
+      "id": "runtime_tasks.historical_failed_noise",
+      "requirement": "Reduce historical failed RuntimeTask noise without deleting production evidence casually.",
+      "status": "needs_authorization",
+      "evidence": "historical_failed_noise_recorded=True",
+      "next_action": "Prepare an archive/marking migration and execute only after DB-write authorization and backup confirmation."
+    },
+    {
+      "id": "legacy_frontend.retirement_guard",
+      "requirement": "Keep frontend-hot/frontend-legacy/__legacy retired and prevent old frontend re-entry.",
+      "status": "complete",
+      "evidence": "frontend_hot_blocked=True; frontend_legacy_blocked=True; legacy_route_findings=0; retired_assets=True; runbook_current=True; legacy_doc_mentions_scope=True",
+      "next_action": "If partial, update runbooks/tests before any frontend deploy."
+    },
+    {
+      "id": "optional_workers.on_demand_runbook",
+      "requirement": "Document on-demand analytics/backtest/ML/factor operation without making them resident.",
+      "status": "complete",
+      "evidence": "missing_terms=none",
+      "next_action": "Fill missing runbook terms and keep analytics/backtest/ML/factor outside the always-on profile."
+    },
+    {
+      "id": "data_quality_sla.non_core_requeue",
+      "requirement": "Stop non-core data_quality_sla_refresh from re-entering queue while analytics-worker is non-resident.",
+      "status": "complete",
+      "evidence": "sla_rollout_recorded=True",
+      "next_action": "Keep DATA_QUALITY_SLA_ENABLED=false in the small-host profile unless analytics-worker is made resident."
+    }
+  ]
+}

@@ -6,6 +6,9 @@
 
 - `/backtests`
 - `/research`
+- `frontend-hot` deploy scope
+- `frontend-legacy` deploy scope
+- `/__legacy/*` static assets
 
 默认返回结构化 `410 LEGACY_ROUTE_REMOVED`，提示使用新的策略工作台入口。若需要短期兼容旧书签或外部脚本，可显式开启：
 
@@ -35,3 +38,6 @@ python3 scripts/audit_legacy_routes.py --strict
 - 第一方代码不得依赖 `/backtests` 或 `/research`。
 - 新页面、Hermes workflow、飞书机器人和 QA 脚本必须使用 `/strategy` 或 `/api/backtests`。
 - 兼容开关仅作为临时回滚手段，不作为长期入口。
+- 显式部署 scope `frontend-hot` 和 `frontend-legacy` 必须保持 blocked。
+- `/__legacy/*` 必须保持结构化 404，不得恢复旧静态资源。
+- 生产入口必须使用 `frontend-next`；任何旧前端物理删除或归档必须单独授权。
