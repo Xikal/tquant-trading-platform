@@ -610,6 +610,94 @@ Operations not executed in this checkpoint:
 - No Docker cleanup.
 - No deployment or cutover.
 
+## 2026-06-12 14:55 CST Formal Checkpoint
+
+The `14:55` checkpoint was collected late at `15:07 CST` after the user asked to
+continue collecting formal checkpoints. This snapshot is still useful because it
+captured close-pressure behavior.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label 14:55 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-1455.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-1455.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-12T07:08:09Z
+host_time=2026-06-12 15:07:57 CST
+status=blocking
+d5_gate.ready=false
+d5_gate.blockers=runtime_worker_memory_pct=99.96, kernel_oom_logs_present, full_trading_day_observation_incomplete, runtime_worker_signal_logs_present, runtime_nonterminal_task_count=4
+blocking=runtime_worker_memory_pct=99.96, kernel_oom_logs_present
+warnings=swap_used_pct=35.28, runtime_worker_signal_logs_present, scheduler_provider_warning_lines_observed=8, runtime_nonterminal_task_count=4, mysql_slow_queries=89
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.77, 0.48, 0.34`; memory available `489MiB`; swap used `35.28%`; root `63%`; inode `13%` | blocking: memory headroom too low |
+| runtime-worker | `767.7MiB / 768MiB` (`99.96%`) | blocking |
+| runtime-scheduler | `340.1MiB / 640MiB` (`53.15%`) | warning |
+| MySQL | `882.5MiB / 1.5GiB` (`57.46%`); `Threads_connected=10`; `Threads_running=2`; `Slow_queries=89` | warning |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | `market_quote_cache_refresh` succeeded `234`; `low_buy_materialization_refresh` failed `14`; `a_key_level_materialization_refresh` running `1`; low-buy queued `2`; `data_quality_sla_refresh` queued `1` | blocking for D5 |
+
+Kernel OOM evidence:
+
+```text
+Jun 12 15:02:35 VM-0-17-ubuntu kernel: python invoked oom-killer
+Jun 12 15:02:35 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 672496 (python)
+```
+
+Worker signal evidence:
+
+```text
+RuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']
+```
+
+Updated summary after fixing local summary container matching:
+
+```text
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete, kernel_oom_logs_present, runtime_nonterminal_task_count=1, runtime_nonterminal_task_count=4, runtime_worker_memory_pct=99.96, runtime_worker_signal_logs_present
+max_runtime_worker_memory_pct=99.96
+max_runtime_scheduler_memory_pct=53.15
+max_mysql_memory_pct=58.76
+min_memory_available_mb=489
+```
+
+Decision:
+
+1. D5 embedded scheduler is rejected for this trading-day attempt.
+2. Do not stop standalone `runtime-scheduler`; moving scheduler into a worker
+   already at `99.96%` memory would increase failure risk.
+3. Continue collecting `15:10` and `15:30` only as D6/root-cause evidence, not
+   as a candidate for same-day D5 approval.
+4. Next engineering work should focus on worker RSS and low-buy materialization
+   failure/root cause, plus why `data_quality_sla_refresh` was queued despite
+   the non-core stop profile.
+
+Operations not executed in this checkpoint:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
+
 ## 2026-06-12 09:35 CST Formal Checkpoint
 
 The second required D5 trading-day checkpoint was collected at `09:40 CST`.
