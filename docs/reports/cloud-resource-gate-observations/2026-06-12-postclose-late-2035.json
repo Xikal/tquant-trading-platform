@@ -1,0 +1,449 @@
+{
+  "generated_at": "2026-06-12T12:34:39.424002+00:00",
+  "host": {
+    "date": "Fri Jun 12 20:34:30 CST 2026",
+    "uptime": "20:34:30 up 4 days,  9:18, 727 users,  load average: 0.57, 0.32, 0.28",
+    "memory": {
+      "mem": {
+        "total_mb": 3723,
+        "used_mb": 2988,
+        "free_mb": 218,
+        "used_pct": 80.26,
+        "available_mb": 734
+      },
+      "swap": {
+        "total_mb": 1987,
+        "used_mb": 728,
+        "free_mb": 1259,
+        "used_pct": 36.64
+      }
+    },
+    "root": {
+      "filesystem": "/dev/vda2",
+      "size": "59G",
+      "used": "36G",
+      "available": "22G",
+      "used_pct": 63,
+      "mount": "/"
+    },
+    "root_inode": {
+      "filesystem": "/dev/vda2",
+      "size": "3.8M",
+      "used": "475K",
+      "available": "3.3M",
+      "used_pct": 13,
+      "mount": "/"
+    }
+  },
+  "docker": {
+    "compose_ps": {
+      "rows": [
+        {
+          "name": "tquant-app-mysql",
+          "status": "Up 21 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "status": "Up 23 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "status": "Up 23 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "status": "Up 23 hours (healthy)"
+        },
+        {
+          "name": "tquant-mysql",
+          "status": "Up 21 hours (healthy)"
+        },
+        {
+          "name": "tquant-redis",
+          "status": "Up 3 days (healthy)"
+        },
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "status": "Up 17 hours (healthy)"
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "status": "Up 6 hours (healthy)"
+        }
+      ],
+      "running": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "healthy": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "missing_expected": []
+    },
+    "stats": {
+      "count": 9,
+      "rows": [
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "329.9MiB / 640MiB",
+          "memory_used_bytes": 345925222,
+          "memory_percent": "51.54%",
+          "memory_pct": 51.54
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "cpu_percent": "0.01%",
+          "cpu_pct": 0.01,
+          "memory_usage": "585.8MiB / 768MiB",
+          "memory_used_bytes": 614255820,
+          "memory_percent": "76.28%",
+          "memory_pct": 76.28
+        },
+        {
+          "name": "tquant-mysql",
+          "cpu_percent": "0.51%",
+          "cpu_pct": 0.51,
+          "memory_usage": "874.3MiB / 1.5GiB",
+          "memory_used_bytes": 916769996,
+          "memory_percent": "56.92%",
+          "memory_pct": 56.92
+        },
+        {
+          "name": "tquant-app-mysql",
+          "cpu_percent": "0.14%",
+          "cpu_pct": 0.14,
+          "memory_usage": "337.9MiB / 768MiB",
+          "memory_used_bytes": 354313830,
+          "memory_percent": "44.00%",
+          "memory_pct": 44.0
+        },
+        {
+          "name": "tquant-frontend-web",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "2.566MiB / 128MiB",
+          "memory_used_bytes": 2690646,
+          "memory_percent": "2.01%",
+          "memory_pct": 2.01
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "8.137MiB / 128MiB",
+          "memory_used_bytes": 8532262,
+          "memory_percent": "6.36%",
+          "memory_pct": 6.36
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "6.316MiB / 128MiB",
+          "memory_used_bytes": 6622806,
+          "memory_percent": "4.93%",
+          "memory_pct": 4.93
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "6.098MiB / 128MiB",
+          "memory_used_bytes": 6394216,
+          "memory_percent": "4.76%",
+          "memory_pct": 4.76
+        },
+        {
+          "name": "tquant-redis",
+          "cpu_percent": "0.50%",
+          "cpu_pct": 0.5,
+          "memory_usage": "4.73MiB / 128MiB",
+          "memory_used_bytes": 4959764,
+          "memory_percent": "3.70%",
+          "memory_pct": 3.7
+        }
+      ]
+    },
+    "system_df": "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE\nImages          14        10        14.2GB    10.79GB (75%)\nContainers      13        9         180.2kB   32.77kB (18%)\nLocal Volumes   5         5         10.75GB   0B (0%)\nBuild Cache     135       0         7.414GB   2.678GB"
+  },
+  "http": [
+    {
+      "path": "/readyz",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.00387,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.003482,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor/snapshot",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.003617,
+      "error": ""
+    },
+    {
+      "path": "/api/priority-board",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.002991,
+      "error": ""
+    },
+    {
+      "path": "/api/screeners/low-buy/priority-board",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.003319,
+      "error": ""
+    },
+    {
+      "path": "/api/runtime-tasks/summary",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.002823,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.004133,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor/market",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003511,
+      "error": ""
+    },
+    {
+      "path": "/next/strategy-tracking",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003497,
+      "error": ""
+    },
+    {
+      "path": "/next/analysis",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003483,
+      "error": ""
+    },
+    {
+      "path": "/next/backtest",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003515,
+      "error": ""
+    },
+    {
+      "path": "/next/data",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.004138,
+      "error": ""
+    },
+    {
+      "path": "/next/settings",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003344,
+      "error": ""
+    }
+  ],
+  "mysql": {
+    "status": {
+      "Threads_cached": "5",
+      "Threads_connected": "10",
+      "Threads_created": "15",
+      "Threads_running": "2",
+      "Slow_queries": "117"
+    },
+    "variables": {
+      "max_connections": "120",
+      "innodb_buffer_pool_size": "536870912"
+    },
+    "table_space": [
+      {
+        "table_schema": "t_quant",
+        "mb": "1524.33"
+      },
+      {
+        "table_schema": "t_quant_migstep_verify_20260516153611",
+        "mb": "0.09"
+      }
+    ]
+  },
+  "runtime_tasks": {
+    "recent_summary": [
+      {
+        "task_type": "market_pulse_refresh",
+        "status": "succeeded",
+        "count": "388",
+        "oldest": "2026-06-12 10:34:47",
+        "latest": "2026-06-12 11:45:08"
+      },
+      {
+        "task_type": "monitor_snapshot_refresh",
+        "status": "succeeded",
+        "count": "383",
+        "oldest": "2026-06-12 10:34:47",
+        "latest": "2026-06-12 11:45:10"
+      },
+      {
+        "task_type": "low_buy_materialization_refresh",
+        "status": "failed",
+        "count": "355",
+        "oldest": "2026-06-12 10:34:54",
+        "latest": "2026-06-12 12:34:28"
+      },
+      {
+        "task_type": "latest_data_watchdog",
+        "status": "succeeded",
+        "count": "24",
+        "oldest": "2026-06-12 10:39:25",
+        "latest": "2026-06-12 12:34:28"
+      },
+      {
+        "task_type": "low_buy_materialization_refresh",
+        "status": "queued",
+        "count": "1",
+        "oldest": "2026-06-12 12:34:28",
+        "latest": "2026-06-12 12:34:28"
+      }
+    ],
+    "nonterminal": [
+      {
+        "status": "queued",
+        "task_type": "low_buy_materialization_refresh",
+        "priority": "30",
+        "count": "1",
+        "oldest": "2026-06-12 12:34:28",
+        "latest": "2026-06-12 12:34:28"
+      },
+      {
+        "status": "queued",
+        "task_type": "data_quality_sla_refresh",
+        "priority": "22",
+        "count": "1",
+        "oldest": "2026-06-12 07:01:28",
+        "latest": "2026-06-12 07:01:28"
+      }
+    ],
+    "heartbeats": [
+      {
+        "key": "platform_component.heartbeat.runtime-scheduler",
+        "updated_at": "2026-06-12 12:34:26",
+        "value_prefix": "{\"component\": \"runtime-scheduler\", \"worker_id\": \"runtime-scheduler\", \"updated_at\": \"2026-06-12T12:34:26\", \"status\": \"running\"}"
+      },
+      {
+        "key": "platform_component.heartbeat.runtime-worker",
+        "updated_at": "2026-06-12 12:34:38",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-12T12:34:38\", \"status\": \"running\"}"
+      },
+      {
+        "key": "runtime_worker.heartbeat",
+        "updated_at": "2026-06-12 12:34:38",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-8a2ddf90d9f2\", \"updated_at\": \"2026-06-12T12:34:38\", \"status\": \"running\"}"
+      }
+    ]
+  },
+  "logs": {
+    "oom": "Jun 12 15:02:35 VM-0-17-ubuntu kernel: python invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0\nJun 12 15:02:35 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 12 15:02:35 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 12 15:02:35 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,mems_allowed=0,oom_memcg=/system.slice/docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,task_memcg=/system.slice/docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,task=python,pid=672496,uid=1000\nJun 12 15:02:35 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 672496 (python) total-vm:3222468kB, anon-rss:750568kB, file-rss:33664kB, shmem-rss:0kB, UID:1000 pgtables:2884kB oom_score_adj:0",
+    "worker_signals": "ERROR:__main__:runtime task failed: id=51346 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51353 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51352 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51354 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51355 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51353 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51355 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51354 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51357 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51358 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51357 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51353 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51359 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51358 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51360 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51359 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51361 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51362 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51360 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51362 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51361 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51363 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51364 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51363 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51360 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51365 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51364 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51366 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51367 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51365 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51366 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51368 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51367 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51368 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51369 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51370 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51366 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51370 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51369 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]\nERROR:__main__:runtime task failed: id=51372 type=low_buy_materialization_refresh\n    raise RuntimeError(\nRuntimeError: low_buy_materialization_refresh incomplete: missing_required_strategies=['first_board', 'late_session_strong_support', 'volume_shrink']; skipped_strategies=[]; skipped=[]",
+    "scheduler_provider_signals": "{\"timestamp\": \"2026-06-12T11:36:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T11:36:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T11:36:31\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T11:36:35\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T11:36:35\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T12:07:17\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T12:07:17\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T12:07:17\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T12:07:21\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T12:07:21\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}"
+  },
+  "raw_sections_present": [
+    "compose_ps",
+    "date",
+    "df_inode_root",
+    "df_root",
+    "docker_stats",
+    "docker_system_df",
+    "free",
+    "heartbeats",
+    "http",
+    "mysql_status",
+    "mysql_table_space",
+    "mysql_variables",
+    "oom_logs",
+    "scheduler_logs",
+    "task_nonterminal",
+    "task_summary",
+    "uptime",
+    "worker_logs"
+  ],
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "project_dir": "/home/ubuntu/gupiao-upload",
+    "app_base_url": "http://127.0.0.1:18090",
+    "journal_since": "2026-06-12 15:00:00",
+    "docker_logs_since": "60m"
+  },
+  "commands": {
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "thresholds": {
+    "worker_memory_warning_pct": 85.0,
+    "worker_memory_blocking_pct": 95.0,
+    "swap_warning_pct": 35.0,
+    "root_warning_pct": 75.0,
+    "duplicate_success_warning_count": 12,
+    "queue_warning_count": 1,
+    "scheduler_provider_warning_blocking_lines": 20
+  },
+  "checkpoint": {
+    "label": "postclose-late-2035"
+  },
+  "evaluation": {
+    "status": "blocking",
+    "blocking": [
+      "kernel_oom_logs_present"
+    ],
+    "warnings": [
+      "swap_used_pct=36.64",
+      "runtime_worker_signal_logs_present",
+      "scheduler_provider_warning_lines_observed=10",
+      "runtime_nonterminal_task_count=2",
+      "mysql_slow_queries=117"
+    ],
+    "d5_gate": {
+      "ready": false,
+      "blockers": [
+        "kernel_oom_logs_present",
+        "full_trading_day_observation_incomplete",
+        "runtime_worker_signal_logs_present",
+        "runtime_nonterminal_task_count=2"
+      ],
+      "full_trading_day_complete": false
+    }
+  }
+}

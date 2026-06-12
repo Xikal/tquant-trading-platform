@@ -931,3 +931,82 @@ Operations not executed in this checkpoint:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 20:34 CST Late Post-Close Evidence
+
+This snapshot was collected after the formal `15:10` and `15:30` windows had
+already passed. It is retained as D6/root-cause evidence only; it does not fill
+the missing formal D5 checkpoints and does not make the trading-day gate
+complete.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 15:00:00" \
+  --docker-logs-since 60m \
+  --checkpoint-label postclose-late-2035 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-postclose-late-2035.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-postclose-late-2035.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-12T12:34:39Z
+host_time=2026-06-12 20:34:30 CST
+status=blocking
+d5_gate.ready=false
+d5_gate.blockers=kernel_oom_logs_present, full_trading_day_observation_incomplete, runtime_worker_signal_logs_present, runtime_nonterminal_task_count=2
+blocking=kernel_oom_logs_present
+warnings=swap_used_pct=36.64, runtime_worker_signal_logs_present, scheduler_provider_warning_lines_observed=10, runtime_nonterminal_task_count=2, mysql_slow_queries=117
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.57, 0.32, 0.28`; memory available `734MiB`; swap used `36.64%`; root `63%`; inode `13%` | warning: swap pressure persists |
+| runtime-worker | `585.8MiB / 768MiB` (`76.28%`) | recovered below blocking threshold after the close-pressure OOM |
+| runtime-scheduler | `329.9MiB / 640MiB` (`51.54%`) | warning |
+| MySQL | `874.3MiB / 1.5GiB` (`56.92%`); `Threads_connected=10`; `Threads_running=2`; `Slow_queries=117` | warning: slow query count continued to rise |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | `market_pulse_refresh` succeeded `388`; `monitor_snapshot_refresh` succeeded `383`; `low_buy_materialization_refresh` failed `355`; `latest_data_watchdog` succeeded `24`; low-buy queued `1` | blocking for D5; root-cause evidence for D6 |
+
+Updated summary:
+
+```text
+d5_ready=false
+full_trading_day_complete=false
+observed_checkpoints=premarket-0448,09:15,09:35,14:55,postclose-late-2035
+missing_checkpoints=10:30,11:30,13:05,15:10,15:30
+d5_blockers=full_trading_day_observation_incomplete, kernel_oom_logs_present, runtime_nonterminal_task_count=1, runtime_nonterminal_task_count=2, runtime_nonterminal_task_count=4, runtime_worker_memory_pct=99.96, runtime_worker_signal_logs_present
+max_runtime_worker_memory_pct=99.96
+max_runtime_scheduler_memory_pct=53.15
+max_mysql_memory_pct=58.76
+max_swap_used_pct=36.64
+min_memory_available_mb=489
+```
+
+Decision:
+
+1. D5 embedded scheduler remains rejected for this trading-day attempt.
+2. Do not stop standalone `runtime-scheduler`.
+3. The current surface service remains reachable, but the background task layer
+   is not stable enough to merge scheduler load into the worker.
+4. Next work should move to D6: reduce worker RSS / low-buy materialization
+   failure rate, inspect slow query growth, and keep the formal gate for the
+   next complete trading day.
+
+Operations not executed in this late evidence collection:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
