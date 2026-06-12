@@ -704,3 +704,70 @@ Operations not executed in this guard recheck:
 - No nginx/systemd change.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## 2026-06-12 09:15 CST Formal Checkpoint
+
+The first required D5 trading-day checkpoint was collected at `09:17 CST`.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label 09:15 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-0915.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-0915.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-12T01:17:20Z
+host_time=2026-06-12 09:17:15 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete
+blocking=none
+warnings=scheduler_provider_warning_lines_observed=5, mysql_slow_queries=71
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.41, 0.23, 0.20`; memory available `1345MiB`; swap used `31.15%`; root `63%`; inode `13%` | warning: swap still present |
+| runtime-scheduler | `263.8MiB / 640MiB`; warning lines observed `5` | pass |
+| runtime-worker | `284.1MiB / 768MiB` | pass |
+| MySQL | `893.5MiB / 1.5GiB`; `Threads_connected=9`; `Threads_running=2`; `Slow_queries=71` | warning: slow query count increased |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | recent summary only `low_buy_materialization_refresh` succeeded, count `2` | pass |
+
+Updated summary:
+
+```text
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete
+observed_checkpoints=premarket-0448,09:15
+missing_checkpoints=09:35,10:30,11:30,13:05,14:55,15:10,15:30
+```
+
+Decision:
+
+1. D5 embedded scheduler remains closed.
+2. `09:15` checkpoint passed resource/API/queue checks with warnings.
+3. Continue to the `09:35 CST` checkpoint.
+4. MySQL slow query count is now `71`; keep it as a D6 root-cause watch item.
+
+Operations not executed in this checkpoint:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.

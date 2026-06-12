@@ -3,13 +3,13 @@
 - D5 ready: `false`
 - Full trading day complete: `false`
 - D5 blockers: full_trading_day_observation_incomplete
-- Warnings: mysql_slow_queries=55, scheduler_provider_warning_lines_observed=5
+- Warnings: mysql_slow_queries=55, mysql_slow_queries=71, scheduler_provider_warning_lines_observed=5
 
 ## Coverage
 
 | Checkpoint | Required | Observed |
 | --- | --- | --- |
-| `09:15` | pre-open baseline | no |
+| `09:15` | pre-open baseline | yes |
 | `09:35` | after open pressure | no |
 | `10:30` | sustained morning load | no |
 | `11:30` | midday close | no |
@@ -22,18 +22,19 @@
 
 | Metric | Value |
 | --- | ---: |
-| Min memory available MB | 1346.0 |
+| Min memory available MB | 1345.0 |
 | Max swap used percent | 32.46 |
 | Max root used percent | 63.0 |
 | Max runtime-worker memory percent | 38.56 |
-| Max runtime-scheduler memory percent | 39.85 |
-| Max MySQL memory percent | 56.57 |
+| Max runtime-scheduler memory percent | 41.22 |
+| Max MySQL memory percent | 58.17 |
 
 ## Snapshots
 
 | Checkpoint | Generated at | Status | D5 blockers | Warnings |
 | --- | --- | --- | --- | --- |
 | `premarket-0448` | `2026-06-11T20:48:36.513153+00:00` | `warning` | full_trading_day_observation_incomplete | scheduler_provider_warning_lines_observed=5, mysql_slow_queries=55 |
+| `09:15` | `2026-06-12T01:17:20.734698+00:00` | `warning` | full_trading_day_observation_incomplete | scheduler_provider_warning_lines_observed=5, mysql_slow_queries=71 |
 
 ## Operations Not Executed
 
