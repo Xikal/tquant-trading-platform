@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.models.base import Base
 from app.models.entities import RuntimeTask
+from app.services import low_buy_materialization
 from app.services import latest_data_close_refresh as close_refresh
 from app.runtime import background_jobs
 
@@ -364,6 +365,78 @@ def test_after_close_followups_skip_reports_that_already_exist(monkeypatch) -> N
     assert "paper_review" not in result
     assert result["data_quality_sla"]["action"] == "exists"
     assert result["low_buy_close_review"]["action"] == "succeeded_task_exists"
+    assert _FakeQueue.payloads == []
+
+
+def test_after_close_followups_do_not_requeue_blocked_low_buy_snapshots() -> None:
+    db = _sqlite_db()
+    db.add(
+        RuntimeTask(
+            id=201,
+            task_type=close_refresh.LOW_BUY_MATERIALIZATION_TASK,
+            status="skipped",
+            idempotency_key="low_buy_materialization_refresh:2026-05-18:close_review:first_board",
+            payload_json='{"expected_trade_date":"2026-05-18","strategies":["first_board"]}',
+            result_json=(
+                '{"ok":true,"skipped":true,'
+                '"status":"blocked_missing_required_snapshots",'
+                '"reason":"missing_required_strategy_snapshots",'
+                '"missing_required_strategies":["first_board"]}'
+            ),
+            priority=24,
+            progress_pct=100,
+            finished_at=datetime(2026, 5, 18, 15, 20),
+        )
+    )
+    db.commit()
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+
+    result = close_refresh.enqueue_after_close_followups(
+        db,
+        trade_date="2026-05-18",
+        now=datetime(2026, 5, 18, 15, 30),
+        strategies=["first_board"],
+    )
+
+    assert result["low_buy_close_review"] == {
+        "action": "blocked_missing_required_snapshots",
+        "trade_date": "2026-05-18",
+        "strategies": ["first_board"],
+        "task_id": 201,
+    }
+    assert "low_buy_materialization_refresh" not in [item.task_type for item in _FakeQueue.payloads]
+
+
+def test_low_buy_materialization_enqueue_reuses_blocked_trade_date_task(monkeypatch) -> None:
+    db = _sqlite_db()
+    db.add(
+        RuntimeTask(
+            id=202,
+            task_type=close_refresh.LOW_BUY_MATERIALIZATION_TASK,
+            status="skipped",
+            idempotency_key="low_buy_materialization_refresh:2026-05-18",
+            payload_json='{"expected_trade_date":"2026-05-18"}',
+            result_json=(
+                '{"ok":true,"skipped":true,'
+                '"status":"blocked_missing_required_snapshots",'
+                '"reason":"missing_required_strategy_snapshots",'
+                '"missing_required_strategies":["first_board"]}'
+            ),
+            priority=35,
+            progress_pct=100,
+            finished_at=datetime(2026, 5, 18, 15, 20),
+        )
+    )
+    db.commit()
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+    monkeypatch.setattr(low_buy_materialization, "expected_low_buy_trade_date", lambda _db: "2026-05-18")
+    monkeypatch.setattr(low_buy_materialization, "RuntimeTaskQueue", _FakeQueue)
+
+    low_buy_materialization.enqueue_low_buy_materialization(db, reason="after_close_latest_data", commit=True)
+
+    assert db.query(RuntimeTask).count() == 1
     assert _FakeQueue.payloads == []
 
 

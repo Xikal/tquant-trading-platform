@@ -19,6 +19,7 @@ from app.services.latest_data_status import (
 from app.services.low_buy.strategy_policy import PRODUCTION_PRIORITY_STRATEGIES
 from app.services.low_buy_materialization import TASK_TYPE as LOW_BUY_MATERIALIZATION_TASK
 from app.services.low_buy_materialization import enqueue_low_buy_materialization
+from app.services.low_buy_materialization import find_blocked_low_buy_materialization_task
 from app.services.market.trading_calendar import is_a_share_trading_day
 from app.services.tasks import RuntimeTaskQueue
 
@@ -315,6 +316,14 @@ def _enqueue_low_buy_close_review_materialization(
     idempotency_key = f"{LOW_BUY_MATERIALIZATION_TASK}:{trade_date}:close_review:{','.join(required)}"
     if _succeeded_task_exists(db, idempotency_key):
         return {"action": "succeeded_task_exists", "trade_date": trade_date, "strategies": required}
+    blocked = find_blocked_low_buy_materialization_task(db, idempotency_key)
+    if blocked is not None:
+        return {
+            "action": "blocked_missing_required_snapshots",
+            "trade_date": trade_date,
+            "strategies": required,
+            "task_id": int(blocked.id),
+        }
     task = queue.enqueue(
         RuntimeTaskCreate(
             task_type=LOW_BUY_MATERIALIZATION_TASK,

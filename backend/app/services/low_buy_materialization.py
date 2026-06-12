@@ -4,9 +4,11 @@ import hashlib
 import json
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.models.entities import RuntimeTask
 from app.models.schema_defs.phase4 import RuntimeTaskCreate
 from app.services.latest_data_status import (
     expected_low_buy_trade_date,
@@ -26,6 +28,8 @@ DEFAULT_LIMIT = 40
 DEFAULT_SCAN_LIMIT = 480
 PRIORITY_BOARD_WARM_LIMITS = (12, 20, 30)
 TASK_TYPE = "low_buy_materialization_refresh"
+BLOCKED_MISSING_REQUIRED_SNAPSHOTS = "blocked_missing_required_snapshots"
+MISSING_REQUIRED_SNAPSHOT_REASON = "missing_required_strategy_snapshots"
 
 
 def _materialization_run_key(*, expected: str, strategies: list[str], limit: int, scan_limit: int) -> str:
@@ -43,17 +47,49 @@ def _materialization_run_key(*, expected: str, strategies: list[str], limit: int
 
 def enqueue_low_buy_materialization(db: Session, *, reason: str = "latest_data_required", commit: bool = False) -> None:
     expected = expected_low_buy_trade_date(db)
+    idempotency_key = f"{TASK_TYPE}:{expected}"
+    if find_blocked_low_buy_materialization_task(db, idempotency_key) is not None:
+        if commit:
+            db.commit()
+        return
     RuntimeTaskQueue(db).enqueue(
         RuntimeTaskCreate(
             task_type=TASK_TYPE,
             payload={"expected_trade_date": expected, "reason": reason},
             priority=35,
-            idempotency_key=f"{TASK_TYPE}:{expected}",
+            idempotency_key=idempotency_key,
             max_attempts=2,
         )
     )
     if commit:
         db.commit()
+
+
+def find_blocked_low_buy_materialization_task(db: Session, idempotency_key: str) -> RuntimeTask | None:
+    if not idempotency_key or not hasattr(db, "execute"):
+        return None
+    rows = (
+        db.execute(
+            select(RuntimeTask)
+            .where(RuntimeTask.idempotency_key == idempotency_key, RuntimeTask.status == "skipped")
+            .order_by(
+                RuntimeTask.finished_at.is_(None).asc(),
+                RuntimeTask.finished_at.desc(),
+                RuntimeTask.updated_at.desc(),
+                RuntimeTask.id.desc(),
+            )
+            .limit(5)
+        )
+        .scalars()
+        .all()
+    )
+    for row in rows:
+        result = _safe_json_object(row.result_json)
+        if result.get("status") == BLOCKED_MISSING_REQUIRED_SNAPSHOTS:
+            return row
+        if result.get("reason") == MISSING_REQUIRED_SNAPSHOT_REASON:
+            return row
+    return None
 
 
 def enqueue_low_buy_materialization_run(

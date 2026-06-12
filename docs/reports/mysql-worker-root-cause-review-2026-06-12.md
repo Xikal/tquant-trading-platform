@@ -287,6 +287,12 @@ without changing strategy semantics:
    `stale_reason=missing_required_strategies` into a terminal skipped task with
    `status=blocked_missing_required_snapshots`, instead of retrying it as a
    generic failure.
+3. Low-buy materialization enqueue paths now reuse a same-trade-date blocked
+   task instead of requeueing when the only known blocker is missing required
+   strategy snapshots.
+4. After-close close-review followups now return
+   `blocked_missing_required_snapshots` for the same idempotency key instead of
+   creating another low-buy close-review materialization task.
 
 Production behavior remains blocked when required strategy snapshots are absent:
 the fix does not fake-publish, does not remove required strategies, and does not
@@ -303,16 +309,83 @@ backend/tests/test_low_buy_production_scoring.py
 backend/tests/test_cloud_resource_gate_observation.py
 backend/tests/test_runtime_task_queue.py
 backend/tests/test_independent_runtime_components.py
-93 passed, 1 warning
+backend/tests/test_platform_budget_verifier.py
+backend/tests/test_cloud_deploy_scripts.py
+backend/tests/test_latest_data_close_refresh.py
+152 passed, 1 warning
 ```
 
-## Operations Not Executed
+## Online Hotfix Deployment And Acceptance
+
+Time: `2026-06-12 21:05-21:22 CST`
+
+Authorized online writes executed:
+
+| Item | Value |
+|---|---|
+| Uploaded files | `backend/app/services/low_buy_materialization.py`, `backend/app/workers/runtime_worker.py`, `backend/app/services/latest_data_close_refresh.py` |
+| First remote backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/low-buy-retry-storm-20260612210533` |
+| Second remote backup | `/home/ubuntu/gupiao-upload/.runtime/manual-hotfix-backups/low-buy-blocked-requeue-20260612211447` |
+| Recreated containers | `tquant-runtime-worker-mysql`, `tquant-runtime-scheduler-mysql` |
+| Not recreated | `tquant-app-mysql`, `tquant-mysql`, `tquant-redis`, `tquant-frontend-web`, `tquant-go-bff-gateway`, `tquant-go-market-read-service`, `tquant-go-scan-worker` |
+| Embedded scheduler | not enabled |
+
+Container health after hotfix:
+
+| Container | StartedAt | Health |
+|---|---|---|
+| `tquant-app-mysql` | `2026-06-11T15:40:10Z` | healthy |
+| `tquant-runtime-worker-mysql` | `2026-06-12T13:15:20Z` | healthy |
+| `tquant-runtime-scheduler-mysql` | `2026-06-12T13:15:27Z` | healthy |
+| `tquant-mysql` | `2026-06-11T15:42:42Z` | healthy |
+| `tquant-redis` | `2026-06-09T08:04:11Z` | healthy |
+| `tquant-go-bff-gateway` | `2026-06-11T13:44:19Z` | healthy |
+| `tquant-go-market-read-service` | `2026-06-11T13:44:13Z` | healthy |
+| `tquant-go-scan-worker` | `2026-06-11T13:44:16Z` | healthy |
+
+HTTP checks after hotfix:
+
+| Path | Status | Time |
+|---|---:|---:|
+| `/readyz` | 200 | 0.008184s |
+| `/next/monitor` | 200 | 0.004127s |
+| `/next/strategy-tracking` | 200 | 0.005777s |
+| `/api/bff/v1/manifest` | 401 | 0.005433s |
+| `/api/screeners/low-buy/priority-board` | 401 | 0.003687s |
+| `/api/settings/runtime` | 401 | 0.002764s |
+
+Runtime queue acceptance at `21:21:52 CST`:
+
+| Window | Result |
+|---|---|
+| Last 10 minutes | `low_buy_materialization_refresh`: `1 succeeded`, `0 failed`, `0 queued`, `0 running` |
+| Latest task | `51514 succeeded`, finished `2026-06-12 13:19:39 UTC` |
+| Latest result missing list | `[]` |
+| Required snapshots created | `first_board` 40 rows for `2026-06-12`; `volume_shrink` 9 rows for `2026-06-12` |
+| Runtime logs | no new `low_buy_materialization_refresh` RuntimeError/Traceback in the sampled window |
+
+Resource snapshot after hotfix:
+
+| Container | CPU | Memory |
+|---|---:|---:|
+| `tquant-runtime-worker-mysql` | 21.82% | 330.4MiB / 768MiB |
+| `tquant-runtime-scheduler-mysql` | 0.00% | 351.9MiB / 640MiB |
+| `tquant-mysql` | 0.79% | 814.8MiB / 1.5GiB |
+| `tquant-app-mysql` | 0.12% | 331.8MiB / 768MiB |
+
+Assessment: the retry storm is stopped in the observed window. D5 remains
+closed because the prior trading-day gate still contains OOM evidence and the
+full formal checkpoint set is incomplete.
+
+## Operations Not Executed After Hotfix
 
 - No `.env` change.
-- No Docker restart/recreate/remove.
+- No MySQL/Redis/Web/Go/frontend restart or recreate.
 - No scheduler stop.
-- No DB write.
+- No direct DB write.
 - No nginx/systemd change.
 - No Docker cleanup.
-- No deployment or cutover.
+- No image/cache/volume/binlog cleanup.
+- No frontend deploy or cutover.
+- No embedded scheduler cutover.
 - No `strategy_policy.py` change.
