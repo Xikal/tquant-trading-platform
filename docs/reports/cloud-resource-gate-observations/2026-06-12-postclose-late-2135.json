@@ -1,0 +1,447 @@
+{
+  "generated_at": "2026-06-12T13:31:26.213607+00:00",
+  "host": {
+    "date": "Fri Jun 12 21:31:21 CST 2026",
+    "uptime": "21:31:21 up 4 days, 10:15, 752 users,  load average: 0.12, 0.19, 0.28",
+    "memory": {
+      "mem": {
+        "total_mb": 3723,
+        "used_mb": 2715,
+        "free_mb": 283,
+        "used_pct": 72.93,
+        "available_mb": 1007
+      },
+      "swap": {
+        "total_mb": 1987,
+        "used_mb": 696,
+        "free_mb": 1291,
+        "used_pct": 35.03
+      }
+    },
+    "root": {
+      "filesystem": "/dev/vda2",
+      "size": "59G",
+      "used": "36G",
+      "available": "22G",
+      "used_pct": 63,
+      "mount": "/"
+    },
+    "root_inode": {
+      "filesystem": "/dev/vda2",
+      "size": "3.8M",
+      "used": "481K",
+      "available": "3.3M",
+      "used_pct": 13,
+      "mount": "/"
+    }
+  },
+  "docker": {
+    "compose_ps": {
+      "rows": [
+        {
+          "name": "tquant-app-mysql",
+          "status": "Up 22 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "status": "Up 24 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "status": "Up 24 hours (healthy)"
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "status": "Up 24 hours (healthy)"
+        },
+        {
+          "name": "tquant-mysql",
+          "status": "Up 22 hours (healthy)"
+        },
+        {
+          "name": "tquant-redis",
+          "status": "Up 3 days (healthy)"
+        },
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "status": "Up 15 minutes (healthy)"
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "status": "Up 16 minutes (healthy)"
+        }
+      ],
+      "running": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "healthy": [
+        "tquant-app-mysql",
+        "tquant-go-bff-gateway",
+        "tquant-go-market-read-service",
+        "tquant-go-scan-worker",
+        "tquant-mysql",
+        "tquant-redis",
+        "tquant-runtime-scheduler-mysql",
+        "tquant-runtime-worker-mysql"
+      ],
+      "missing_expected": []
+    },
+    "stats": {
+      "count": 9,
+      "rows": [
+        {
+          "name": "tquant-runtime-scheduler-mysql",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "351.4MiB / 640MiB",
+          "memory_used_bytes": 368469606,
+          "memory_percent": "54.90%",
+          "memory_pct": 54.9
+        },
+        {
+          "name": "tquant-runtime-worker-mysql",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "330.4MiB / 768MiB",
+          "memory_used_bytes": 346449510,
+          "memory_percent": "43.02%",
+          "memory_pct": 43.02
+        },
+        {
+          "name": "tquant-mysql",
+          "cpu_percent": "0.45%",
+          "cpu_pct": 0.45,
+          "memory_usage": "815MiB / 1.5GiB",
+          "memory_used_bytes": 854589440,
+          "memory_percent": "53.06%",
+          "memory_pct": 53.06
+        },
+        {
+          "name": "tquant-app-mysql",
+          "cpu_percent": "0.12%",
+          "cpu_pct": 0.12,
+          "memory_usage": "331.8MiB / 768MiB",
+          "memory_used_bytes": 347917516,
+          "memory_percent": "43.20%",
+          "memory_pct": 43.2
+        },
+        {
+          "name": "tquant-frontend-web",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "2.664MiB / 128MiB",
+          "memory_used_bytes": 2793406,
+          "memory_percent": "2.08%",
+          "memory_pct": 2.08
+        },
+        {
+          "name": "tquant-go-bff-gateway",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "7.934MiB / 128MiB",
+          "memory_used_bytes": 8319401,
+          "memory_percent": "6.20%",
+          "memory_pct": 6.2
+        },
+        {
+          "name": "tquant-go-market-read-service",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "6.664MiB / 128MiB",
+          "memory_used_bytes": 6987710,
+          "memory_percent": "5.21%",
+          "memory_pct": 5.21
+        },
+        {
+          "name": "tquant-go-scan-worker",
+          "cpu_percent": "0.00%",
+          "cpu_pct": 0.0,
+          "memory_usage": "4.953MiB / 128MiB",
+          "memory_used_bytes": 5193596,
+          "memory_percent": "3.87%",
+          "memory_pct": 3.87
+        },
+        {
+          "name": "tquant-redis",
+          "cpu_percent": "0.52%",
+          "cpu_pct": 0.52,
+          "memory_usage": "4.152MiB / 128MiB",
+          "memory_used_bytes": 4353687,
+          "memory_percent": "3.24%",
+          "memory_pct": 3.24
+        }
+      ]
+    },
+    "system_df": "TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE\nImages          14        10        14.05GB   10.63GB (75%)\nContainers      13        9         180.2kB   32.77kB (18%)\nLocal Volumes   5         5         10.74GB   0B (0%)\nBuild Cache     159       0         7.527GB   2.791GB"
+  },
+  "http": [
+    {
+      "path": "/readyz",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.004039,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.003808,
+      "error": ""
+    },
+    {
+      "path": "/api/monitor/snapshot",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.003193,
+      "error": ""
+    },
+    {
+      "path": "/api/priority-board",
+      "returncode": 0,
+      "status": 404,
+      "time_total": 0.002968,
+      "error": ""
+    },
+    {
+      "path": "/api/screeners/low-buy/priority-board",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.002756,
+      "error": ""
+    },
+    {
+      "path": "/api/runtime-tasks/summary",
+      "returncode": 0,
+      "status": 401,
+      "time_total": 0.002628,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003415,
+      "error": ""
+    },
+    {
+      "path": "/next/monitor/market",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003421,
+      "error": ""
+    },
+    {
+      "path": "/next/strategy-tracking",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003474,
+      "error": ""
+    },
+    {
+      "path": "/next/analysis",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003664,
+      "error": ""
+    },
+    {
+      "path": "/next/backtest",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003274,
+      "error": ""
+    },
+    {
+      "path": "/next/data",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003308,
+      "error": ""
+    },
+    {
+      "path": "/next/settings",
+      "returncode": 0,
+      "status": 200,
+      "time_total": 0.003512,
+      "error": ""
+    }
+  ],
+  "mysql": {
+    "status": {
+      "Threads_cached": "6",
+      "Threads_connected": "10",
+      "Threads_created": "19",
+      "Threads_running": "2",
+      "Slow_queries": "133"
+    },
+    "variables": {
+      "max_connections": "120",
+      "innodb_buffer_pool_size": "536870912"
+    },
+    "table_space": [
+      {
+        "table_schema": "t_quant",
+        "mb": "1524.33"
+      },
+      {
+        "table_schema": "t_quant_migstep_verify_20260516153611",
+        "mb": "0.09"
+      }
+    ]
+  },
+  "runtime_tasks": {
+    "recent_summary": [
+      {
+        "task_type": "low_buy_materialization_refresh",
+        "status": "failed",
+        "count": "280",
+        "oldest": "2026-06-12 11:31:42",
+        "latest": "2026-06-12 13:05:11"
+      },
+      {
+        "task_type": "market_pulse_refresh",
+        "status": "succeeded",
+        "count": "93",
+        "oldest": "2026-06-12 11:31:33",
+        "latest": "2026-06-12 12:49:28"
+      },
+      {
+        "task_type": "monitor_snapshot_refresh",
+        "status": "succeeded",
+        "count": "93",
+        "oldest": "2026-06-12 11:31:33",
+        "latest": "2026-06-12 12:49:29"
+      },
+      {
+        "task_type": "latest_data_watchdog",
+        "status": "succeeded",
+        "count": "24",
+        "oldest": "2026-06-12 11:34:25",
+        "latest": "2026-06-12 13:27:50"
+      },
+      {
+        "task_type": "low_buy_materialization_refresh",
+        "status": "succeeded",
+        "count": "6",
+        "oldest": "2026-06-12 13:05:03",
+        "latest": "2026-06-12 13:19:38"
+      },
+      {
+        "task_type": "strategy_tracking_snapshot_refresh",
+        "status": "succeeded",
+        "count": "1",
+        "oldest": "2026-06-12 13:09:38",
+        "latest": "2026-06-12 13:11:00"
+      }
+    ],
+    "nonterminal": [
+      {
+        "status": "queued",
+        "task_type": "data_quality_sla_refresh",
+        "priority": "22",
+        "count": "1",
+        "oldest": "2026-06-12 07:01:28",
+        "latest": "2026-06-12 07:01:28"
+      }
+    ],
+    "heartbeats": [
+      {
+        "key": "platform_component.heartbeat.runtime-scheduler",
+        "updated_at": "2026-06-12 13:31:01",
+        "value_prefix": "{\"component\": \"runtime-scheduler\", \"worker_id\": \"runtime-scheduler\", \"updated_at\": \"2026-06-12T13:31:01\", \"status\": \"running\"}"
+      },
+      {
+        "key": "platform_component.heartbeat.runtime-worker",
+        "updated_at": "2026-06-12 13:31:25",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-9494e40ac1b7\", \"updated_at\": \"2026-06-12T13:31:25\", \"status\": \"running\"}"
+      },
+      {
+        "key": "runtime_worker.heartbeat",
+        "updated_at": "2026-06-12 13:31:25",
+        "value_prefix": "{\"component\": \"runtime-worker\", \"worker_id\": \"runtime-9494e40ac1b7\", \"updated_at\": \"2026-06-12T13:31:25\", \"status\": \"running\"}"
+      }
+    ]
+  },
+  "logs": {
+    "oom": "Jun 11 22:10:08 VM-0-17-ubuntu kernel: connection invoked oom-killer: gfp_mask=0x100cca(GFP_HIGHUSER_MOVABLE), order=0, oom_score_adj=0\nJun 11 22:10:08 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 11 22:10:08 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 11 22:10:08 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,mems_allowed=0,oom_memcg=/system.slice/docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,task_memcg=/system.slice/docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,task=mysqld,pid=444734,uid=999\nJun 11 22:10:08 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 444734 (mysqld) total-vm:3342448kB, anon-rss:949808kB, file-rss:3200kB, shmem-rss:0kB, UID:999 pgtables:2892kB oom_score_adj:0\nJun 11 22:17:09 VM-0-17-ubuntu kernel: python invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0\nJun 11 22:17:09 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 11 22:17:09 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 11 22:17:09 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,mems_allowed=0,oom_memcg=/system.slice/docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,task_memcg=/system.slice/docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,task=python,pid=537274,uid=1000\nJun 11 22:17:09 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 537274 (python) total-vm:3264464kB, anon-rss:713640kB, file-rss:55680kB, shmem-rss:0kB, UID:1000 pgtables:2356kB oom_score_adj:0\nJun 11 22:55:44 VM-0-17-ubuntu kernel: python invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0\nJun 11 22:55:44 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 11 22:55:44 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 11 22:55:44 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,mems_allowed=0,oom_memcg=/system.slice/docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,task_memcg=/system.slice/docker-dd5d07e647ee146f9dd064da38ef094f78bdff63c44a21d3528e1b76518cfe01.scope,task=python,pid=543934,uid=1000\nJun 11 22:55:44 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 543934 (python) total-vm:2719524kB, anon-rss:774000kB, file-rss:37376kB, shmem-rss:0kB, UID:1000 pgtables:2328kB oom_score_adj:0\nJun 11 23:40:56 VM-0-17-ubuntu kernel: runc:[2:INIT] invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0\nJun 11 23:40:56 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 11 23:40:56 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 11 23:40:56 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,mems_allowed=0,oom_memcg=/system.slice/docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,task_memcg=/system.slice/docker-8712dd4a0cbb22265b84834dc2af602d5bf3740941edbd77d83433f1399c3e9d.scope,task=mysqld,pid=536963,uid=999\nJun 11 23:40:56 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 536963 (mysqld) total-vm:3329380kB, anon-rss:977468kB, file-rss:3328kB, shmem-rss:0kB, UID:999 pgtables:2896kB oom_score_adj:0\nJun 12 15:02:35 VM-0-17-ubuntu kernel: python invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0\nJun 12 15:02:35 VM-0-17-ubuntu kernel:  oom_kill_process+0x118/0x280\nJun 12 15:02:35 VM-0-17-ubuntu kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nJun 12 15:02:35 VM-0-17-ubuntu kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,mems_allowed=0,oom_memcg=/system.slice/docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,task_memcg=/system.slice/docker-8a2ddf90d9f2266f5ae4ec787a6c051e4fa109478d2425949bda8806f2aeda78.scope,task=python,pid=672496,uid=1000\nJun 12 15:02:35 VM-0-17-ubuntu kernel: Memory cgroup out of memory: Killed process 672496 (python) total-vm:3222468kB, anon-rss:750568kB, file-rss:33664kB, shmem-rss:0kB, UID:1000 pgtables:2884kB oom_score_adj:0",
+    "worker_signals": "",
+    "scheduler_provider_signals": "{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:48\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_intraday_bars latency_ms=4001\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_intraday_bars latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:49\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:50\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_intraday_bars latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:50\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:50\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:50\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:50\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_intraday_bars latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:51\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:53\", \"level\": \"WARNING\", \"module\": \"app.services.bff.remote_client\", \"message\": \"remote bff request failed base=http://go-market-read-service:8092 path=/api/market-read/v1/intraday-latest-batch\"}\n{\"timestamp\": \"2026-06-12T13:17:53\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_quote quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:53\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_quote quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:53\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_quote quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:53\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_quote quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:17:57\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:17:57\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:17:57\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:17:57\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:01\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:01\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:01\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:01\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:04\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:04\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:04\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:04\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:06\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:08\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:08\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:08\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:08\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:11\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:11\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:11\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:11\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:15\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:15\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:15\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:15\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:19\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:19\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:19\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:19\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:22\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:22\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:22\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:22\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:26\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:18:51\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:18:58\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_daily_history quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:18:58\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_daily_history quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:18:58\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_daily_history quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:19:02\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_daily_history latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:19:02\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_daily_history quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:19:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_stock_notice_report quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:19:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_stock_notice_report quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:19:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_stock_notice_report quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:19:09\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_stock_notice_report quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:19:13\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:19:13\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:19:13\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:19:13\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:19:36\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:19:36\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:19:36\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:19:36\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider circuit open\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:19:36\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:20:21\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_intraday_bars quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:21:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"local\"}\n{\"timestamp\": \"2026-06-12T13:21:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"eastmoney\"}\n{\"timestamp\": \"2026-06-12T13:21:07\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"openbb\"}\n{\"timestamp\": \"2026-06-12T13:21:11\", \"level\": \"WARNING\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider call timed out: operation=fetch_board_breadth_frame latency_ms=4000\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}\n{\"timestamp\": \"2026-06-12T13:21:11\", \"level\": \"INFO\", \"module\": \"app.services.market.providers.router\", \"message\": \"market provider result not usable: operation=fetch_board_breadth_frame quality=unavailable\", \"component\": \"market-provider-router\", \"provider\": \"akshare\"}"
+  },
+  "raw_sections_present": [
+    "compose_ps",
+    "date",
+    "df_inode_root",
+    "df_root",
+    "docker_stats",
+    "docker_system_df",
+    "free",
+    "heartbeats",
+    "http",
+    "mysql_status",
+    "mysql_table_space",
+    "mysql_variables",
+    "oom_logs",
+    "scheduler_logs",
+    "task_nonterminal",
+    "task_summary",
+    "uptime",
+    "worker_logs"
+  ],
+  "source": {
+    "remote_host": "43.143.243.97",
+    "remote_user": "ubuntu",
+    "project_dir": "/home/ubuntu/gupiao-upload",
+    "app_base_url": "http://127.0.0.1:18090",
+    "journal_since": "24 hours ago",
+    "docker_logs_since": "24h"
+  },
+  "commands": {
+    "ssh": {
+      "command": "ssh <redacted>",
+      "returncode": 0,
+      "stderr": ""
+    }
+  },
+  "thresholds": {
+    "worker_memory_warning_pct": 85.0,
+    "worker_memory_blocking_pct": 95.0,
+    "swap_warning_pct": 35.0,
+    "root_warning_pct": 75.0,
+    "duplicate_success_warning_count": 12,
+    "queue_warning_count": 1,
+    "scheduler_provider_warning_blocking_lines": 20
+  },
+  "checkpoint": {
+    "label": "postclose-late-2135"
+  },
+  "evaluation": {
+    "status": "blocking",
+    "blocking": [
+      "kernel_oom_logs_present"
+    ],
+    "warnings": [
+      "swap_used_pct=35.03",
+      "scheduler_provider_warning_lines=160",
+      "runtime_nonterminal_task_count=1",
+      "mysql_slow_queries=133"
+    ],
+    "d5_gate": {
+      "ready": false,
+      "blockers": [
+        "kernel_oom_logs_present",
+        "full_trading_day_observation_incomplete",
+        "scheduler_provider_warning_lines=160",
+        "runtime_nonterminal_task_count=1"
+      ],
+      "full_trading_day_complete": false
+    }
+  }
+}

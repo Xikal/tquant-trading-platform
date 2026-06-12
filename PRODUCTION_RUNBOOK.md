@@ -110,6 +110,8 @@ Independent Web, runtime-worker, scheduler and analytics-worker operation is doc
 
 Small-host cloud resource contention mitigation, non-core task stop commands, embedded scheduler cutover, observation, and rollback are documented in [cloud-core-worker-resource-runbook.md](docs/operations/cloud-core-worker-resource-runbook.md).
 
+Domain, TLS/SNI, nginx, CDN/WAF, and public entry diagnosis is documented in [domain-entry-runbook.md](docs/operations/domain-entry-runbook.md).
+
 ## 5.1 单端口生产化运行
 
 后端现在会直接托管 `frontend-next/dist`，所以构建前端后，可以只启动后端：

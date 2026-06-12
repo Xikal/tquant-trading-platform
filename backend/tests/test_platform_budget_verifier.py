@@ -219,6 +219,22 @@ def test_embedded_scheduler_mode_allows_standalone_scheduler_to_be_absent(tmp_pa
     )
 
 
+def test_embedded_scheduler_mode_warns_when_standalone_scheduler_still_exists(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["runtime_worker"]["env"]["RUNTIME_WORKER_EMBED_SCHEDULER"] = "true"  # type: ignore[index]
+
+    result = run_budget_report(fixture, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "warning"
+    assert (
+        "embedded_scheduler_enabled_but_standalone_scheduler_present"
+        in payload["evaluation"]["warnings"]
+    )
+
+
 def test_platform_budget_report_warns_when_worker_recycle_guard_disabled(tmp_path: Path) -> None:
     fixture = sample_budget_report()
     roles = fixture["roles"]  # type: ignore[index]

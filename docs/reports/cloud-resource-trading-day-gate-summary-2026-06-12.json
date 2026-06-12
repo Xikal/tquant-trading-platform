@@ -1,5 +1,5 @@
 {
-  "checkpoint_count": 5,
+  "checkpoint_count": 6,
   "required_checkpoints": [
     "09:15",
     "09:35",
@@ -15,7 +15,8 @@
     "09:15",
     "09:35",
     "14:55",
-    "postclose-late-2035"
+    "postclose-late-2035",
+    "postclose-late-2135"
   ],
   "missing_checkpoints": [
     "10:30",
@@ -33,10 +34,12 @@
     "runtime_nonterminal_task_count=2",
     "runtime_nonterminal_task_count=4",
     "runtime_worker_memory_pct=99.96",
-    "runtime_worker_signal_logs_present"
+    "runtime_worker_signal_logs_present",
+    "scheduler_provider_warning_lines=160"
   ],
   "warnings": [
     "mysql_slow_queries=117",
+    "mysql_slow_queries=133",
     "mysql_slow_queries=55",
     "mysql_slow_queries=71",
     "mysql_slow_queries=72",
@@ -45,9 +48,11 @@
     "runtime_nonterminal_task_count=2",
     "runtime_nonterminal_task_count=4",
     "runtime_worker_signal_logs_present",
+    "scheduler_provider_warning_lines=160",
     "scheduler_provider_warning_lines_observed=10",
     "scheduler_provider_warning_lines_observed=5",
     "scheduler_provider_warning_lines_observed=8",
+    "swap_used_pct=35.03",
     "swap_used_pct=35.28",
     "swap_used_pct=36.64"
   ],
@@ -55,6 +60,6 @@
   "max_swap_used_pct": 36.64,
   "max_root_used_pct": 63.0,
   "max_runtime_worker_memory_pct": 99.96,
-  "max_runtime_scheduler_memory_pct": 53.15,
+  "max_runtime_scheduler_memory_pct": 54.9,
   "max_mysql_memory_pct": 58.76
 }

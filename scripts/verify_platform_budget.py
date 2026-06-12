@@ -200,6 +200,16 @@ def evaluate_worker_recycle_guard(report: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def evaluate_embedded_scheduler_topology(report: dict[str, Any]) -> list[str]:
+    warnings: list[str] = []
+    if not embedded_scheduler_enabled(report):
+        return warnings
+    scheduler = report.get("roles", {}).get("runtime_scheduler", {})
+    if scheduler.get("container_present") is not False:
+        warnings.append("embedded_scheduler_enabled_but_standalone_scheduler_present")
+    return warnings
+
+
 def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, Any]:
     warnings: list[str] = []
     blocking: list[str] = []
@@ -222,6 +232,7 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
 
     warnings.extend(evaluate_core_resource_profile(report))
     warnings.extend(evaluate_worker_recycle_guard(report))
+    warnings.extend(evaluate_embedded_scheduler_topology(report))
 
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})
