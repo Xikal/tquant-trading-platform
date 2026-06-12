@@ -64,6 +64,13 @@ RUNTIME_WORKER_CLAIM_TASK_TYPES = tuple(sorted({*RUNTIME_WORKER_TASK_TYPES, *PAP
 LONG_TASK_HEARTBEAT_SECONDS = 30.0
 
 
+class MissingRequiredLowBuySnapshots(RuntimeError):
+    def __init__(self, result: dict[str, Any]) -> None:
+        self.result = result
+        missing = result.get("missing_required_strategies") or result.get("missing_strategies") or []
+        super().__init__(f"low_buy_materialization_refresh missing required strategy snapshots: {missing}")
+
+
 class RuntimeWorker:
     """Standalone runtime worker for non-request tasks."""
 
@@ -87,6 +94,7 @@ class RuntimeWorker:
             task_type = str(task.task_type)
             heartbeat_stop = threading.Event()
             heartbeat_thread = _start_task_heartbeat(worker_id=self.worker_id, stop_event=heartbeat_stop)
+            skipped_terminal = False
             try:
                 queue.update_progress(
                     task_id,
@@ -101,14 +109,23 @@ class RuntimeWorker:
                         result=removed_paper_task_result(task_type),
                     )
                 else:
-                    result = _execute_task(task_type, _json_payload(task.payload_json), db)
-                    queue.update_progress(
-                        task_id,
-                        progress_pct=95.0,
-                        message="任务计算完成，准备写入结果",
-                        payload={"worker_id": self.worker_id, "task_type": task_type},
-                    )
-                    queue.mark_succeeded(task_id, result)
+                    try:
+                        result = _execute_task(task_type, _json_payload(task.payload_json), db)
+                    except MissingRequiredLowBuySnapshots as exc:
+                        queue.mark_skipped(
+                            task_id,
+                            "low_buy_materialization_refresh skipped: missing required strategy snapshots",
+                            result=_missing_low_buy_snapshots_result(exc.result),
+                        )
+                        skipped_terminal = True
+                    if not skipped_terminal:
+                        queue.update_progress(
+                            task_id,
+                            progress_pct=95.0,
+                            message="任务计算完成，准备写入结果",
+                            payload={"worker_id": self.worker_id, "task_type": task_type},
+                        )
+                        queue.mark_succeeded(task_id, result)
             except Exception as exc:
                 logger.exception("runtime task failed: id=%s type=%s", task_id, task_type)
                 db.rollback()
@@ -607,6 +624,8 @@ def _start_task_heartbeat(*, worker_id: str, stop_event: threading.Event) -> thr
 def _ensure_low_buy_materialization_complete(result: dict[str, Any]) -> None:
     if result.get("ok") is not True:
         missing_required = result.get("missing_required_strategies") or result.get("missing_strategies") or []
+        if missing_required and str(result.get("stale_reason") or "") == "missing_required_strategies":
+            raise MissingRequiredLowBuySnapshots(result)
         skipped_strategies = result.get("skipped_strategies") or []
         skipped = result.get("skipped") or []
         raise RuntimeError(
@@ -620,6 +639,19 @@ def _ensure_low_buy_materialization_complete(result: dict[str, Any]) -> None:
             "low_buy_materialization_refresh priority board warmup incomplete: "
             f"skipped={priority_board.get('skipped') or []}"
         )
+
+
+def _missing_low_buy_snapshots_result(result: dict[str, Any]) -> dict[str, Any]:
+    missing = [str(item) for item in (result.get("missing_required_strategies") or result.get("missing_strategies") or [])]
+    return {
+        "ok": True,
+        "skipped": True,
+        "reason": "missing_required_strategy_snapshots",
+        "status": "blocked_missing_required_snapshots",
+        "task_type": "low_buy_materialization_refresh",
+        "missing_required_strategies": missing,
+        "stale_reason": str(result.get("stale_reason") or "missing_required_strategies"),
+    }
 
 
 def _execute_trading_experience_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]:  # noqa: ANN001

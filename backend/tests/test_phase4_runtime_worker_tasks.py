@@ -259,6 +259,60 @@ def test_runtime_worker_allows_low_buy_non_production_strategy_skips(monkeypatch
     assert result["skipped_strategies"][0]["strategy"] == "classic_retrace"
 
 
+def test_runtime_worker_marks_missing_required_low_buy_snapshots_as_skipped(monkeypatch):
+    db = _db()
+    queue = RuntimeTaskQueue(db)
+    monkeypatch.setattr("app.services.tasks.queue.publish_runtime_task_event", lambda _event: None)
+
+    created = queue.enqueue(
+        RuntimeTaskCreate(
+            task_type="low_buy_materialization_refresh",
+            payload={"expected_trade_date": "2026-06-12"},
+            idempotency_key="low_buy_materialization_refresh:2026-06-12",
+            max_attempts=3,
+        )
+    )
+
+    monkeypatch.setattr(
+        "app.services.low_buy_materialization.refresh_latest_low_buy_materialization",
+        lambda **_kwargs: {
+            "ok": False,
+            "status": "pending",
+            "stale_reason": "missing_required_strategies",
+            "missing_required_strategies": ["first_board", "late_session_strong_support", "volume_shrink"],
+            "missing_strategies": ["first_board", "late_session_strong_support", "volume_shrink"],
+            "priority_board_read_models": {"ok": True},
+        },
+    )
+
+    class _SessionFactory:
+        def __call__(self):
+            return db
+
+    monkeypatch.setattr(runtime_worker, "SessionLocal", _SessionFactory())
+    monkeypatch.setattr(runtime_worker, "_record_worker_heartbeat", lambda _db_arg, *, worker_id: None)
+
+    did_work = runtime_worker.RuntimeWorker(worker_id="runtime-test").run_once()
+    row = db.get(RuntimeTask, created.id)
+
+    assert did_work is True
+    assert row is not None
+    assert row.status == "skipped"
+    assert row.attempt_count == 1
+    assert row.error_message == ""
+    assert row.run_after is None
+    assert row.active_idempotency_key is None
+    assert queue.get(created.id).result == {
+        "ok": True,
+        "skipped": True,
+        "reason": "missing_required_strategy_snapshots",
+        "status": "blocked_missing_required_snapshots",
+        "task_type": "low_buy_materialization_refresh",
+        "missing_required_strategies": ["first_board", "late_session_strong_support", "volume_shrink"],
+        "stale_reason": "missing_required_strategies",
+    }
+
+
 def test_runtime_worker_routes_market_review_report_to_market_service(monkeypatch):
     db = _db()
     calls = []

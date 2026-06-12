@@ -91,6 +91,58 @@ def test_refresh_latest_materialization_warms_priority_board_after_publish(monke
     assert result["priority_board_read_models"]["ok"] is True
 
 
+def test_refresh_latest_materialization_falls_back_when_go_reference_is_async(monkeypatch):
+    scanned: list[dict] = []
+    published: list[list[str]] = []
+
+    class _FakeScreener:
+        def refresh_full_scan_cache(self, **kwargs):  # noqa: ANN001
+            scanned.append(kwargs)
+            return SimpleNamespace(latest_trade_date="2026-06-12")
+
+    monkeypatch.setattr(
+        "app.services.low_buy.go_scan_worker.run_go_scan_worker",
+        lambda **_kwargs: {"ok": True, "accepted": True, "status": "accepted", "job_id": "42"},
+    )
+    monkeypatch.setattr("app.services.low_buy_screener.LowBuyScreenerService", lambda: _FakeScreener())
+    monkeypatch.setattr(materialization, "SessionLocal", lambda: _FakeSession())
+    monkeypatch.setattr(
+        materialization,
+        "publish_latest_trade_date_if_ready",
+        lambda _db, strategies: published.append(list(strategies))
+        or {
+            "status": "success",
+            "published_trade_date": "2026-06-12",
+            "missing_strategies": [],
+        },
+    )
+    monkeypatch.setattr(
+        materialization,
+        "warm_priority_board_read_models",
+        lambda **_kwargs: {"ok": True, "warmed": [], "skipped": []},
+    )
+
+    result = materialization.refresh_latest_low_buy_materialization(
+        strategies=["first_board"],
+        prefer_go=True,
+    )
+
+    assert result["ok"] is True
+    assert result["source"] == "python_fallback"
+    assert result["fallback_reason"] == "go_scan_worker_accepted_async"
+    assert scanned == [
+        {
+            "strategy": "first_board",
+            "limit": materialization.DEFAULT_LIMIT,
+            "scan_limit": materialization.DEFAULT_SCAN_LIMIT,
+            "include_history": False,
+            "compute_performance": True,
+            "build_close_review": False,
+        }
+    ]
+    assert published == [["first_board"]]
+
+
 def test_refresh_latest_materialization_skips_non_production_strategies_without_full_failure(monkeypatch):
     scanned: list[list[str]] = []
 

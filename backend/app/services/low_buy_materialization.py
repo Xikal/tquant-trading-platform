@@ -118,7 +118,7 @@ def refresh_latest_low_buy_materialization(
             limit=limit,
             reason="latest_low_buy_materialization",
         )
-        if go_result.get("ok"):
+        if _go_scan_worker_completed_sync(go_result):
             publish_status = _publish_latest_materialization_state(required)
             publish_status = _annotate_materialization_requirements(publish_status, requested)
             missing = list(publish_status.get("missing_required_strategies") or [])
@@ -147,6 +147,8 @@ def refresh_latest_low_buy_materialization(
                     reason="go_scan_worker_shadow_warmup",
                 ),
             }
+        if _go_scan_worker_accepted_async(go_result):
+            go_result = {**go_result, "fallback_reason": "go_scan_worker_accepted_async"}
 
     return _refresh_latest_low_buy_materialization_python(
         limit=limit,
@@ -155,6 +157,14 @@ def refresh_latest_low_buy_materialization(
         requested_strategies=requested,
         fallback_reason=None if not prefer_go else go_result.get("fallback_reason", "go_scan_worker_unavailable"),
     )
+
+
+def _go_scan_worker_completed_sync(result: dict[str, Any]) -> bool:
+    return bool(result.get("ok")) and not _go_scan_worker_accepted_async(result)
+
+
+def _go_scan_worker_accepted_async(result: dict[str, Any]) -> bool:
+    return bool(result.get("accepted")) or str(result.get("status") or "").strip().lower() == "accepted"
 
 
 def refresh_low_buy_close_review_snapshots(

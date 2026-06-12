@@ -259,15 +259,11 @@ Recommended fix:
 
 ## Proposed Next Development Tasks
 
-1. Add tests around `low_buy_materialization_refresh` missing required snapshots:
-   retryable failure should not create an unbounded minute-level loop.
-2. Add a low-buy materialization backoff/state marker that preserves production
-   blocking semantics while reducing retry churn.
-3. Add queue guard tests for duplicate `latest_low_buy_materialization`,
+1. Add queue guard tests for duplicate `latest_low_buy_materialization`,
    `after_close_latest_data`, and `after_close_latest_data_close_review` paths.
-4. Add an admin/runtime observation field for `missing_required_strategies` and
+2. Add an admin/runtime observation field for `missing_required_strategies` and
    next retry time.
-5. Re-run required strategy tests:
+3. Re-run required strategy tests:
 
 ```bash
 PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
@@ -276,6 +272,38 @@ PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
   backend/tests/test_low_buy_production_scoring.py \
   backend/tests/test_low_buy_materialization_priority_board.py \
   backend/tests/test_phase4_runtime_worker_tasks.py
+```
+
+## Local Fix Implemented
+
+After the root-cause evidence was recorded, a local code fix was implemented
+without changing strategy semantics:
+
+1. `refresh_latest_low_buy_materialization()` now treats Go scan-worker
+   `accepted=true` / `status=accepted` as asynchronous acceptance, not as a
+   completed scan. It falls back to the Python reference path in the same worker
+   before attempting to publish.
+2. Runtime worker now converts a materialization result with
+   `stale_reason=missing_required_strategies` into a terminal skipped task with
+   `status=blocked_missing_required_snapshots`, instead of retrying it as a
+   generic failure.
+
+Production behavior remains blocked when required strategy snapshots are absent:
+the fix does not fake-publish, does not remove required strategies, and does not
+change priority-board scoring or ordering.
+
+Validation:
+
+```text
+backend/tests/test_low_buy_materialization_priority_board.py
+backend/tests/test_phase4_runtime_worker_tasks.py
+backend/tests/test_low_buy_read_paths.py
+backend/tests/test_low_buy_priority_board_strategy_variants.py
+backend/tests/test_low_buy_production_scoring.py
+backend/tests/test_cloud_resource_gate_observation.py
+backend/tests/test_runtime_task_queue.py
+backend/tests/test_independent_runtime_components.py
+93 passed, 1 warning
 ```
 
 ## Operations Not Executed
