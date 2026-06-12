@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.timezone import beijing_now
 from app.models.entities import DataQualitySnapshot, MarketReviewReport, RuntimeTask
 from app.models.schema_defs.phase4 import RuntimeTaskCreate, RuntimeTaskOut
@@ -24,6 +25,7 @@ from app.services.market.trading_calendar import is_a_share_trading_day
 from app.services.tasks import RuntimeTaskQueue
 
 
+settings = get_settings()
 CLOSE_REFRESH_AFTER = dt_time(hour=15, minute=1)
 MIDDAY_REVIEW_AFTER = dt_time(hour=11, minute=35)
 MIDDAY_REVIEW_BEFORE = dt_time(hour=15, minute=0)
@@ -277,6 +279,8 @@ def _enqueue_daily_bar_sla_if_missing(
     reason: str,
     queue: RuntimeTaskQueue,
 ) -> dict[str, Any]:
+    if not bool(getattr(settings, "data_quality_sla_enabled", True)):
+        return {"action": "skipped_disabled", "trade_date": trade_date, "dataset_key": "daily_bars"}
     review_date = _parse_trade_date(trade_date)
     if _daily_bar_sla_exists(db, review_date):
         return {"action": "exists", "trade_date": trade_date, "dataset_key": "daily_bars"}

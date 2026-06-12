@@ -214,6 +214,50 @@ def test_after_close_skips_when_already_published(monkeypatch) -> None:
     assert "low_buy_materialization_refresh" in followup_types
 
 
+def test_after_close_skips_data_quality_sla_when_disabled(monkeypatch) -> None:
+    _patch_base(monkeypatch)
+    _FakeRepo.count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeRepo.post_close_count = close_refresh.MIN_STOCK_DAILY_BARS
+    _FakeQueue.last_payload = None
+    _FakeQueue.payloads = []
+    monkeypatch.setattr(
+        close_refresh,
+        "settings",
+        SimpleNamespace(data_quality_sla_enabled=False),
+    )
+    monkeypatch.setattr(
+        close_refresh,
+        "latest_data_status",
+        lambda _db, strategies: {
+            "status": "success",
+            "published_trade_date": "2026-05-18",
+            "missing_strategies": [],
+        },
+    )
+    monkeypatch.setattr(
+        close_refresh,
+        "publish_latest_trade_date_if_ready",
+        lambda _db, strategies: (_ for _ in ()).throw(AssertionError("should not republish")),
+    )
+
+    result = close_refresh.enqueue_latest_data_close_refresh(
+        object(),
+        now=datetime(2026, 5, 18, 15, 2),
+        strategies=["volume_shrink"],
+    )
+
+    followup_types = [item.task_type for item in _FakeQueue.payloads]
+    assert result["ok"] is True
+    assert result["followups"]["data_quality_sla"] == {
+        "action": "skipped_disabled",
+        "trade_date": "2026-05-18",
+        "dataset_key": "daily_bars",
+    }
+    assert "data_quality_sla_refresh" not in followup_types
+    assert "low_buy_materialization_refresh" in followup_types
+    assert "strategy_tracking_snapshot_refresh" in followup_types
+
+
 def test_after_close_reuses_succeeded_core_tasks_without_requeue(monkeypatch) -> None:
     db = _sqlite_db()
     db.add(

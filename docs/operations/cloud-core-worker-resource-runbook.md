@@ -36,6 +36,7 @@ Use this profile to reduce background pressure while keeping the core trading-re
 | `PLATFORM_AUTOPILOT_ENABLED` | `false` | Stops autopilot task pressure |
 | `RUNTIME_LOW_PRIORITY_TASKS_PAUSED` | `true` | Prevents low-priority analytics/backtest/ML/factor/data repair/research tasks from being claimed |
 | `MARKET_REVIEW_ENABLED` | `false` | Stops midday/close review report generation |
+| `DATA_QUALITY_SLA_ENABLED` | `false` | Stops analytics-owned daily-bar SLA followup enqueue while analytics-worker is not resident |
 | `RUNTIME_STARTUP_CACHE_PREWARM_ENABLED` | `false` | Avoids startup prewarm competing with interactive reads |
 | `RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED` | `false` | Avoids history prewarm competing with worker tasks |
 | `RUNTIME_WORKER_RECYCLE_RSS_MB` | optional, e.g. `700` | Lets runtime-worker exit only after a task finishes when RSS is above the threshold; Docker restart policy brings it back |
@@ -88,6 +89,7 @@ pairs = {
     "PLATFORM_AUTOPILOT_ENABLED": "false",
     "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
     "MARKET_REVIEW_ENABLED": "false",
+    "DATA_QUALITY_SLA_ENABLED": "false",
     "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED": "false",
     "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED": "false",
     # Optional D6 worker-memory guard; keep disabled until sustained RSS
