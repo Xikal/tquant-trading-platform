@@ -157,6 +157,31 @@ def parse_mysql_status(stdout: str) -> dict[str, Any]:
     return values
 
 
+def parse_container_state(stdout: str) -> dict[str, Any]:
+    values = parse_env_lines(stdout)
+    if not values:
+        return {
+            "known": False,
+            "exists": False,
+            "running": False,
+            "status": "missing",
+            "health": "",
+            "restart_count": None,
+        }
+    exists = is_enabled(values.get("exists"))
+    running = is_enabled(values.get("running"))
+    restart_raw = values.get("restart_count", "")
+    restart_count = int(restart_raw) if restart_raw.isdigit() else None
+    return {
+        "known": True,
+        "exists": exists,
+        "running": running,
+        "status": values.get("status", "missing" if not exists else "unknown"),
+        "health": values.get("health", ""),
+        "restart_count": restart_count,
+    }
+
+
 def pool_int(env: dict[str, str], key: str) -> int:
     value = env.get(key, "0")
     return int(value) if str(value).isdigit() else 0
@@ -205,8 +230,8 @@ def evaluate_embedded_scheduler_topology(report: dict[str, Any]) -> list[str]:
     if not embedded_scheduler_enabled(report):
         return warnings
     scheduler = report.get("roles", {}).get("runtime_scheduler", {})
-    if scheduler.get("container_present") is not False:
-        warnings.append("embedded_scheduler_enabled_but_standalone_scheduler_present")
+    if scheduler.get("container_running", scheduler.get("container_present")) is not False:
+        warnings.append("embedded_scheduler_enabled_but_standalone_scheduler_running")
     return warnings
 
 
@@ -236,14 +261,20 @@ def evaluate(report: dict[str, Any], thresholds: dict[str, int]) -> dict[str, An
 
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})
-        if role.get("container_present") is False and role_name in OPTIONAL_CONTAINER_ROLES:
+        container_present = role.get("container_present")
+        container_running = role.get("container_running", container_present)
+        if role_name in OPTIONAL_CONTAINER_ROLES and container_running is False:
             continue
-        if role_name == "runtime_scheduler" and embedded_scheduler and role.get("container_present") is False:
+        if role_name in OPTIONAL_CONTAINER_ROLES and container_running is True:
+            warnings.append(f"optional_container_running={role_name}")
+        if role_name == "runtime_scheduler" and embedded_scheduler and container_running is False:
             continue
         if role_name != "web" and "RUNTIME_LOW_PRIORITY_TASKS_PAUSED" not in env:
             warnings.append(f"low_priority_pause_env_missing={role_name}")
-        if role.get("container_present") is False:
+        if container_present is False:
             warnings.append(f"container_missing={role_name}")
+        elif container_running is False:
+            warnings.append(f"container_not_running={role_name}")
 
     commands = report.get("commands", {})
     for name in ("compose_config", "mysql_status"):
@@ -266,15 +297,31 @@ def build_report(commands: dict[str, CommandResult]) -> dict[str, Any]:
     pool_total = 0
     for role_name, container in ROLE_CONTAINERS.items():
         env = parse_env_lines(commands.get(f"container_env_{role_name}", CommandResult("", 1, "", "")).stdout)
+        state = parse_container_state(
+            commands.get(f"container_state_{role_name}", CommandResult("", 1, "", "")).stdout
+        )
+        if state["known"]:
+            container_present = bool(state["exists"])
+            container_running = bool(state["running"])
+        else:
+            container_present = bool(env)
+            container_running = bool(env)
         pool_size = pool_int(env, "DB_POOL_SIZE")
         overflow = pool_int(env, "DB_MAX_OVERFLOW")
+        configured_pool_budget = pool_size + overflow
+        pool_budget = configured_pool_budget if container_running else 0
         roles[role_name] = {
             "container": container,
-            "container_present": bool(env),
+            "container_present": container_present,
+            "container_running": container_running,
+            "container_status": state["status"],
+            "container_health": state["health"],
+            "restart_count": state["restart_count"],
             "env": {key: env[key] for key in POOL_ENV_KEYS if key in env},
-            "pool_budget": pool_size + overflow,
+            "pool_budget": pool_budget,
+            "configured_pool_budget": configured_pool_budget,
         }
-        pool_total += pool_size + overflow
+        pool_total += pool_budget
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mysql": {
@@ -314,6 +361,16 @@ fi
 for pair in {' '.join(f'{role}:{container}' for role, container in ROLE_CONTAINERS.items())}; do
   role="${{pair%%:*}}"
   container="${{pair#*:}}"
+  printf '__SECTION__:container_state_%s\\n' "$role"
+  if sudo docker inspect "$container" >/dev/null 2>&1; then
+    sudo docker inspect "$container" --format 'exists=true
+status={{{{.State.Status}}}}
+running={{{{.State.Running}}}}
+health={{{{if .State.Health}}}}{{{{.State.Health.Status}}}}{{{{else}}}}{{{{end}}}}
+restart_count={{{{.RestartCount}}}}' 2>/dev/null || true
+  else
+    printf 'exists=false\\nstatus=missing\\nrunning=false\\nhealth=\\nrestart_count=\\n'
+  fi
   printf '__SECTION__:container_env_%s\\n' "$role"
   sudo docker inspect "$container" --format '{{{{range .Config.Env}}}}{{{{println .}}}}{{{{end}}}}' 2>/dev/null || true
 done
@@ -369,12 +426,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"| max_connections | {report.get('mysql', {}).get('max_connections', 'unknown')} |",
         f"| Threads_connected | {report.get('mysql', {}).get('threads_connected', 'unknown')} |",
         f"| Threads_running | {report.get('mysql', {}).get('threads_running', 'unknown')} |",
-        f"| 应用连接池预算总和 | {report.get('pool_budget', {}).get('total', 'unknown')} |",
+        f"| 运行中应用连接池预算总和 | {report.get('pool_budget', {}).get('total', 'unknown')} |",
         "",
         "## 角色预算",
         "",
-        "| 角色 | 容器 | pool budget | low priority paused | background jobs | analytics |",
-        "| --- | --- | ---: | --- | --- | --- |",
+        "| 角色 | 容器 | 状态 | 运行中 | runtime pool budget | configured pool budget | low priority paused | background jobs | analytics |",
+        "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- |",
     ]
     for role_name, role in report.get("roles", {}).items():
         env = role.get("env", {})
@@ -384,7 +441,10 @@ def render_markdown(report: dict[str, Any]) -> str:
                 [
                     role_name,
                     role.get("container", ""),
+                    str(role.get("container_status", "unknown")),
+                    str(role.get("container_running", "unknown")),
                     str(role.get("pool_budget", "unknown")),
+                    str(role.get("configured_pool_budget", "unknown")),
                     str(env.get("RUNTIME_LOW_PRIORITY_TASKS_PAUSED", "n/a")),
                     str(env.get("RUNTIME_BACKGROUND_JOBS_ENABLED", "n/a")),
                     str(env.get("TQUANT_ANALYTICS_ENABLED", "n/a")),

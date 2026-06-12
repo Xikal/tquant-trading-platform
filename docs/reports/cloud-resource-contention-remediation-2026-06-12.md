@@ -262,3 +262,39 @@ Additional operations not executed in this D1/D2 recheck:
 - No DB write.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## D2/D4 Container Residency Budget Recheck - 2026-06-12 21:51 CST
+
+The budget verifier was tightened to distinguish a container object that exists from a container that is actually running. This matters for optional/on-demand workers: an exited `analytics-worker` should remain visible in Docker state, but must not be counted as a resident resource consumer or active DB pool budget.
+
+Read-only verifier report:
+
+- `docs/reports/platform-budget-current-2026-06-12-container-state.md`
+- `docs/reports/platform-budget-current-2026-06-12-container-state.json`
+
+Summary:
+
+| Area | Evidence |
+|---|---|
+| evaluation | `ok`, no warnings, no blocking |
+| MySQL | `max_connections=120`, `Threads_connected=10`, `Threads_running=2` |
+| running pool budget | total `16`, target `40` |
+| web | `running`, pool budget `4`, background jobs `false`, analytics `false` |
+| runtime-worker | `running`, pool budget `6`, low-priority pause `true`, embedded scheduler `false`, recycle RSS `700` |
+| runtime-scheduler | `running`, pool budget `6`, low-priority pause `true`, market review `false` |
+| analytics-worker | container exists but status `exited`; running `false`; runtime pool budget `0`; configured pool budget `4` |
+
+Interpretation:
+
+- The optional `analytics-worker` is not currently a resident resource consumer.
+- The earlier `container_present=true` budget view was too coarse because it counted configured env for an exited container.
+- Current always-on DB pool pressure is Web + runtime-worker + runtime-scheduler only: `4 + 6 + 6 = 16`.
+- D5 still remains blocked by the full trading-day gate; this observation does not authorize stopping standalone `runtime-scheduler`.
+
+Additional operations not executed in this D2/D4 recheck:
+
+- No remote `.env` write.
+- No container restart/recreate/remove/stop.
+- No DB write.
+- No Docker cleanup.
+- No deployment or cutover.

@@ -40,6 +40,8 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
         "web": {
             "container": "tquant-app-mysql",
             "container_present": True,
+            "container_running": True,
+            "container_status": "running",
             "env": {
                 "DB_POOL_SIZE": "4",
                 "DB_MAX_OVERFLOW": "4",
@@ -49,10 +51,13 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "APP_WORKERS": "1",
             },
             "pool_budget": 8,
+            "configured_pool_budget": 8,
         },
         "runtime_worker": {
             "container": "tquant-runtime-worker-mysql",
             "container_present": True,
+            "container_running": True,
+            "container_status": "running",
             "env": {
                 "DB_POOL_SIZE": "2",
                 "DB_MAX_OVERFLOW": "2",
@@ -62,10 +67,13 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "RUNTIME_WORKER_RECYCLE_RSS_MB": "700",
             },
             "pool_budget": 4,
+            "configured_pool_budget": 4,
         },
         "runtime_scheduler": {
             "container": "tquant-runtime-scheduler-mysql",
             "container_present": True,
+            "container_running": True,
+            "container_status": "running",
             "env": {
                 "DB_POOL_SIZE": "2",
                 "DB_MAX_OVERFLOW": "2",
@@ -78,10 +86,13 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "RUNTIME_LOW_PRIORITY_TASKS_PAUSED": "true",
             },
             "pool_budget": 4,
+            "configured_pool_budget": 4,
         },
         "analytics_worker": {
             "container": "tquant-analytics-worker-mysql",
             "container_present": True,
+            "container_running": False,
+            "container_status": "exited",
             "env": {
                 "DB_POOL_SIZE": "4",
                 "DB_MAX_OVERFLOW": "4",
@@ -89,13 +100,14 @@ def sample_budget_report(**overrides: object) -> dict[str, object]:
                 "TQUANT_ANALYTICS_ENABLED": "true",
                 "TQUANT_DUCKDB_THREADS": "2",
             },
-            "pool_budget": 8,
+            "pool_budget": 0,
+            "configured_pool_budget": 8,
         },
     }
     report: dict[str, object] = {
         "generated_at": "2026-06-08T00:00:00+00:00",
         "mysql": {"max_connections": 120, "threads_connected": 8, "threads_running": 1},
-        "pool_budget": {"total": 24, "target": 40},
+        "pool_budget": {"total": 16, "target": 40},
         "roles": roles,
         "commands": {
             "compose_config": {"returncode": 0},
@@ -115,8 +127,8 @@ def test_platform_budget_report_passes_bounded_fixture(tmp_path: Path) -> None:
     assert payload["evaluation"]["blocking"] == []
     assert payload["roles"]["runtime_scheduler"]["env"]["RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED"] == "true"
     markdown = (tmp_path / "budget.md").read_text(encoding="utf-8")
-    assert "| 应用连接池预算总和 | 24 |" in markdown
-    assert "| web | tquant-app-mysql | 8 | n/a | false | false |" in markdown
+    assert "| 运行中应用连接池预算总和 | 16 |" in markdown
+    assert "| web | tquant-app-mysql | running | True | 8 | 8 | n/a | false | false |" in markdown
 
 
 def test_platform_budget_report_blocks_web_heavy_tasks(tmp_path: Path) -> None:
@@ -137,6 +149,8 @@ def test_platform_budget_report_allows_optional_workers_to_be_stopped(tmp_path: 
     fixture = sample_budget_report()
     roles = fixture["roles"]  # type: ignore[index]
     roles["analytics_worker"]["container_present"] = False  # type: ignore[index]
+    roles["analytics_worker"]["container_running"] = False  # type: ignore[index]
+    roles["analytics_worker"]["container_status"] = "missing"  # type: ignore[index]
     roles["analytics_worker"]["env"] = {}  # type: ignore[index]
     roles["analytics_worker"]["pool_budget"] = 0  # type: ignore[index]
     fixture["pool_budget"] = {"total": 16, "target": 40}
@@ -148,6 +162,38 @@ def test_platform_budget_report_allows_optional_workers_to_be_stopped(tmp_path: 
     assert payload["evaluation"]["status"] == "ok"
     assert "container_missing=analytics_worker" not in payload["evaluation"]["warnings"]
     assert "low_priority_pause_env_missing=analytics_worker" not in payload["evaluation"]["warnings"]
+
+
+def test_platform_budget_report_allows_optional_worker_to_exist_stopped(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["analytics_worker"]["env"] = {}  # type: ignore[index]
+    roles["analytics_worker"]["pool_budget"] = 0  # type: ignore[index]
+    fixture["pool_budget"] = {"total": 16, "target": 40}
+
+    result = run_budget_report(fixture, tmp_path, "--fail-on-blocking")
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "ok"
+    assert payload["roles"]["analytics_worker"]["container_present"] is True
+    assert payload["roles"]["analytics_worker"]["container_running"] is False
+    assert "optional_container_running=analytics_worker" not in payload["evaluation"]["warnings"]
+    assert "low_priority_pause_env_missing=analytics_worker" not in payload["evaluation"]["warnings"]
+
+
+def test_platform_budget_report_warns_when_optional_worker_is_running(tmp_path: Path) -> None:
+    fixture = sample_budget_report()
+    roles = fixture["roles"]  # type: ignore[index]
+    roles["analytics_worker"]["container_running"] = True  # type: ignore[index]
+    roles["analytics_worker"]["container_status"] = "running"  # type: ignore[index]
+
+    result = run_budget_report(fixture, tmp_path)
+
+    assert result.returncode == 0
+    payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
+    assert payload["evaluation"]["status"] == "warning"
+    assert "optional_container_running=analytics_worker" in payload["evaluation"]["warnings"]
 
 
 def test_platform_budget_report_warns_on_large_pool_and_mysql_budget(tmp_path: Path) -> None:
@@ -167,6 +213,7 @@ def test_platform_budget_report_warns_on_large_pool_and_mysql_budget(tmp_path: P
 def test_platform_budget_report_warns_when_worker_pause_env_is_missing(tmp_path: Path) -> None:
     fixture = sample_budget_report()
     roles = fixture["roles"]  # type: ignore[index]
+    roles["analytics_worker"]["container_running"] = True  # type: ignore[index]
     del roles["analytics_worker"]["env"]["RUNTIME_LOW_PRIORITY_TASKS_PAUSED"]  # type: ignore[index]
 
     result = run_budget_report(fixture, tmp_path)
@@ -202,6 +249,8 @@ def test_embedded_scheduler_mode_allows_standalone_scheduler_to_be_absent(tmp_pa
     roles = fixture["roles"]  # type: ignore[index]
     roles["runtime_worker"]["env"]["RUNTIME_WORKER_EMBED_SCHEDULER"] = "true"  # type: ignore[index]
     roles["runtime_scheduler"]["container_present"] = False  # type: ignore[index]
+    roles["runtime_scheduler"]["container_running"] = False  # type: ignore[index]
+    roles["runtime_scheduler"]["container_status"] = "missing"  # type: ignore[index]
     roles["runtime_scheduler"]["env"] = {}  # type: ignore[index]
     roles["runtime_scheduler"]["pool_budget"] = 0  # type: ignore[index]
     fixture["pool_budget"] = {"total": 20, "target": 40}
@@ -230,7 +279,7 @@ def test_embedded_scheduler_mode_warns_when_standalone_scheduler_still_exists(tm
     payload = json.loads((tmp_path / "budget.json").read_text(encoding="utf-8"))
     assert payload["evaluation"]["status"] == "warning"
     assert (
-        "embedded_scheduler_enabled_but_standalone_scheduler_present"
+        "embedded_scheduler_enabled_but_standalone_scheduler_running"
         in payload["evaluation"]["warnings"]
     )
 
@@ -285,3 +334,56 @@ def test_platform_budget_compose_parser_redacts_sensitive_environment() -> None:
     dumped = json.dumps(payload)
     assert "should-not-leak" not in dumped
     assert "ADMIN_API_TOKEN" not in dumped
+
+
+def test_platform_budget_build_report_counts_only_running_container_pools() -> None:
+    namespace = runpy.run_path(str(SCRIPT))
+    command_result = namespace["CommandResult"]
+    build_report = namespace["build_report"]
+
+    commands = {
+        "compose_config": command_result("compose", 0, "services:\n", ""),
+        "mysql_status": command_result(
+            "mysql",
+            0,
+            "max_connections 120\nThreads_connected 10\nThreads_running 2\n",
+            "",
+        ),
+        "container_state_web": command_result(
+            "state",
+            0,
+            "exists=true\nstatus=running\nrunning=true\nhealth=healthy\nrestart_count=0\n",
+            "",
+        ),
+        "container_env_web": command_result("env", 0, "DB_POOL_SIZE=2\nDB_MAX_OVERFLOW=2\n", ""),
+        "container_state_runtime_worker": command_result(
+            "state",
+            0,
+            "exists=true\nstatus=running\nrunning=true\nhealth=healthy\nrestart_count=0\n",
+            "",
+        ),
+        "container_env_runtime_worker": command_result("env", 0, "DB_POOL_SIZE=3\nDB_MAX_OVERFLOW=3\n", ""),
+        "container_state_runtime_scheduler": command_result(
+            "state",
+            0,
+            "exists=true\nstatus=running\nrunning=true\nhealth=healthy\nrestart_count=0\n",
+            "",
+        ),
+        "container_env_runtime_scheduler": command_result("env", 0, "DB_POOL_SIZE=3\nDB_MAX_OVERFLOW=3\n", ""),
+        "container_state_analytics_worker": command_result(
+            "state",
+            0,
+            "exists=true\nstatus=exited\nrunning=false\nhealth=unhealthy\nrestart_count=1\n",
+            "",
+        ),
+        "container_env_analytics_worker": command_result("env", 0, "DB_POOL_SIZE=2\nDB_MAX_OVERFLOW=2\n", ""),
+    }
+
+    payload = build_report(commands)
+
+    assert payload["pool_budget"]["total"] == 16
+    assert payload["roles"]["analytics_worker"]["container_present"] is True
+    assert payload["roles"]["analytics_worker"]["container_running"] is False
+    assert payload["roles"]["analytics_worker"]["container_status"] == "exited"
+    assert payload["roles"]["analytics_worker"]["pool_budget"] == 0
+    assert payload["roles"]["analytics_worker"]["configured_pool_budget"] == 4
