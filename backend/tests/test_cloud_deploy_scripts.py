@@ -58,6 +58,24 @@ def test_cloud_deploy_does_not_write_removed_paper_auto_trading_flag() -> None:
     assert "PAPER_PERF_ARCHIVE_ENABLED" not in deploy_script
 
 
+def test_production_env_example_documents_resource_stop_profile_only() -> None:
+    production_example = read_repo_file(".env.production.example")
+
+    assert "Production resource-contention example" in production_example
+    assert "PLATFORM_AUTOPILOT_ENABLED=false" in production_example
+    assert "RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true" in production_example
+    assert "MARKET_REVIEW_ENABLED=false" in production_example
+    assert "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED=false" in production_example
+    assert "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED=false" in production_example
+    assert "RUNTIME_WORKER_EMBED_SCHEDULER=false" in production_example
+    assert "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED=true" in production_example
+    assert "RUNTIME_WORKER_RECYCLE_RSS_MB=0" in production_example
+    assert "PAPER_AUTO_TRADING_ENABLED" not in production_example
+    assert "PAPER_PERF_ARCHIVE_ENABLED" not in production_example
+    assert "MYSQL_ROOT_PASSWORD" not in production_example
+    assert "AUTH_SECRET_KEY" not in production_example
+
+
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
     ssh_lib = read_repo_file("scripts/cloud_ssh_lib.sh")
 

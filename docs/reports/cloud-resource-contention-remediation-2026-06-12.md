@@ -198,3 +198,67 @@ python3 scripts/collect_cloud_resource_gate_observation.py \
 - No deployment or cutover.
 - No `strategy_policy.py` change.
 - No production strategy, `production_score`, or `priority_board` sorting change.
+
+## D1 Example File Gap Closed - 2026-06-12 21:39 CST
+
+The original D1 plan referenced `.env.production.example`, but the repository only had `.env.deploy.local.example`, `.env.docker.example`, and `backend/.env.example`. A new `.env.production.example` was added as documentation only. It is not loaded automatically by the app and does not change compose defaults or production runtime behavior.
+
+The file now records the authorized resource-contention stop profile:
+
+| Setting | Example value | Purpose |
+|---|---|---|
+| `PLATFORM_AUTOPILOT_ENABLED` | `false` | stop autopilot task pressure |
+| `RUNTIME_LOW_PRIORITY_TASKS_PAUSED` | `true` | pause analytics/backtest/ML/factor/data repair/research task claims |
+| `MARKET_REVIEW_ENABLED` | `false` | stop optional market review generation |
+| `RUNTIME_STARTUP_CACHE_PREWARM_ENABLED` | `false` | avoid startup cache pressure |
+| `RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED` | `false` | avoid startup history pressure |
+| `RUNTIME_WORKER_EMBED_SCHEDULER` | `false` | keep D5 scheduler cutover gated |
+| `RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED` | `true` | keep standalone scheduler path unchanged before D5 |
+| `RUNTIME_WORKER_RECYCLE_RSS_MB` | `0` | keep worker recycle guard disabled unless evidence justifies it |
+
+Guard test added:
+
+```bash
+PYTHONPATH=backend:. backend/.venv/bin/python -m pytest -q \
+  backend/tests/test_cloud_deploy_scripts.py::test_production_env_example_documents_resource_stop_profile_only \
+  backend/tests/test_cloud_deploy_scripts.py::test_cloud_deploy_does_not_write_removed_paper_auto_trading_flag \
+  backend/tests/test_platform_budget_verifier.py \
+  backend/tests/test_runtime_task_queue.py::test_runtime_task_queue_pauses_configured_low_priority_tasks \
+  backend/tests/test_runtime_task_queue.py::test_runtime_task_summary_reports_paused_low_priority_backlog
+```
+
+Result: `15 passed`, with only the existing LibreSSL urllib3 warning.
+
+The new example explicitly avoids `PAPER_AUTO_TRADING_ENABLED`, `PAPER_PERF_ARCHIVE_ENABLED`, `MYSQL_ROOT_PASSWORD`, and `AUTH_SECRET_KEY`.
+
+## D2/D3 Budget Recheck - 2026-06-12 21:39 CST
+
+Read-only verifier report:
+
+- `docs/reports/platform-budget-current-2026-06-12-post-d1-gap-fix.md`
+- `docs/reports/platform-budget-current-2026-06-12-post-d1-gap-fix.json`
+
+Summary:
+
+| Area | Evidence |
+|---|---|
+| evaluation | `ok`, no warnings, no blocking |
+| MySQL | `max_connections=120`, `Threads_connected=10`, `Threads_running=2` |
+| pool budget | total `20`, target `40` |
+| web | background jobs `false`, analytics `false`, pool budget `4` |
+| runtime-worker | `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`, `RUNTIME_WORKER_EMBED_SCHEDULER=false`, `RUNTIME_WORKER_RECYCLE_RSS_MB=700` |
+| runtime-scheduler | `RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true`, `RUNTIME_WORKER_EMBED_SCHEDULER=false`, `MARKET_REVIEW_ENABLED=false` |
+
+Interpretation:
+
+- Current online budget state has no embedded-scheduler residue.
+- Worker and scheduler both have low-priority pause active.
+- D5 remains blocked by the trading-day gate and prior blocker evidence; this budget recheck alone does not authorize scheduler cutover.
+
+Additional operations not executed in this D1/D2 recheck:
+
+- No remote `.env` write.
+- No container restart/recreate/remove.
+- No DB write.
+- No Docker cleanup.
+- No deployment or cutover.
