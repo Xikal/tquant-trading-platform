@@ -328,6 +328,41 @@ def test_trading_day_summary_passes_when_all_checkpoints_are_clean(tmp_path: Pat
     assert summary["d5_blockers"] == []
 
 
+def test_trading_day_summary_mysql_memory_uses_exact_container(tmp_path: Path) -> None:
+    payload = sample_gate_report(
+        checkpoint={"label": "09:15"},
+        evaluation={
+            "status": "warning",
+            "blocking": [],
+            "warnings": [],
+            "d5_gate": {
+                "ready": False,
+                "blockers": ["full_trading_day_observation_incomplete"],
+                "full_trading_day_complete": False,
+            },
+        },
+    )
+    payload["docker"]["stats"]["rows"] = [  # type: ignore[index]
+        {
+            "name": "tquant-runtime-worker-mysql",
+            "memory_pct": 99.96,
+        },
+        {
+            "name": "tquant-mysql",
+            "memory_pct": 57.46,
+        },
+    ]
+    path = tmp_path / "0915.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = run_summary(tmp_path, path)
+
+    assert result.returncode == 0, result.stderr
+    summary = json.loads((tmp_path / "summary.json").read_text(encoding="utf-8"))
+    assert summary["max_runtime_worker_memory_pct"] == 99.96
+    assert summary["max_mysql_memory_pct"] == 57.46
+
+
 def test_observation_parsers_cover_remote_sections() -> None:
     module = runpy.run_path(str(SCRIPT))
     parse_http = module["parse_http"]

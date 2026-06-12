@@ -28,11 +28,11 @@ def _max_numeric(values: list[Any]) -> float | None:
     return max(numbers) if numbers else None
 
 
-def _max_container_memory_pct(reports: list[dict[str, Any]], name_part: str) -> float | None:
+def _max_container_memory_pct(reports: list[dict[str, Any]], name: str) -> float | None:
     values: list[Any] = []
     for report in reports:
         for row in report.get("docker", {}).get("stats", {}).get("rows", []):
-            if name_part in str(row.get("name", "")):
+            if str(row.get("name", "")) == name:
                 values.append(row.get("memory_pct"))
     return _max_numeric(values)
 
@@ -84,9 +84,9 @@ def summarize_reports(reports: list[dict[str, Any]]) -> dict[str, Any]:
         else None,
         "max_swap_used_pct": _max_numeric(swap_values),
         "max_root_used_pct": _max_numeric(root_values),
-        "max_runtime_worker_memory_pct": _max_container_memory_pct(reports, "runtime-worker"),
-        "max_runtime_scheduler_memory_pct": _max_container_memory_pct(reports, "runtime-scheduler"),
-        "max_mysql_memory_pct": _max_container_memory_pct(reports, "mysql"),
+        "max_runtime_worker_memory_pct": _max_container_memory_pct(reports, "tquant-runtime-worker-mysql"),
+        "max_runtime_scheduler_memory_pct": _max_container_memory_pct(reports, "tquant-runtime-scheduler-mysql"),
+        "max_mysql_memory_pct": _max_container_memory_pct(reports, "tquant-mysql"),
     }
 
 
