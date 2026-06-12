@@ -380,3 +380,86 @@ Additional operations not executed in this queue diagnosis:
 - No analytics-worker start.
 - No container restart/recreate/remove/stop.
 - No deployment or cutover.
+
+## DATA_QUALITY_SLA Disable Rollout - 2026-06-12 22:36 CST
+
+This section records the authorized follow-up after the D5 nonterminal queue diagnosis. The purpose was to stop the non-core `data_quality_sla_refresh` task from re-entering the RuntimeTask queue while `analytics-worker` remains non-resident.
+
+### Local commits deployed
+
+| Commit | Purpose |
+|---|---|
+| `18063571` | Gate after-close `data_quality_sla_refresh` enqueue when `DATA_QUALITY_SLA_ENABLED=false`. |
+| `ea3e76f7` | Pass `DATA_QUALITY_SLA_ENABLED` into app/runtime-worker/runtime-scheduler/analytics-worker compose env. |
+| `a5fc7fba` | Let deploy scripts upsert and forward `DATA_QUALITY_SLA_ENABLED` to the remote `.env`. |
+
+### Deployment actions executed
+
+| Action | Scope | Result |
+|---|---|---|
+| `quick_cloud_deploy.sh --scope backend-api` with `DATA_QUALITY_SLA_ENABLED=false` | app only | completed; `tquant-app-mysql` recreated and healthy; remote `.env` now contains `DATA_QUALITY_SLA_ENABLED=false`. |
+| `quick_cloud_deploy.sh --scope worker` with `DATA_QUALITY_SLA_ENABLED=false` | runtime-worker/runtime-scheduler only | containers recreated and healthy after a short follow-up check; script exited non-zero because scheduler health was still `starting` inside its verification window. |
+| RuntimeTask cancellation through `RuntimeTaskQueue.cancel()` | task `51525` only | `data_quality_sla_refresh` changed from `queued` to `cancelled`; reason: `cancelled after DATA_QUALITY_SLA_ENABLED=false rollout: stale non-core analytics queue item`. |
+
+No MySQL, Redis, Go services, `frontend-web`, nginx, systemd, Docker cleanup, deploy cutover, or scheduler merge was executed.
+
+### Post-rollout verification
+
+| Check | Evidence |
+|---|---|
+| container env | `DATA_QUALITY_SLA_ENABLED=false` in `tquant-app-mysql`, `tquant-runtime-worker-mysql`, and `tquant-runtime-scheduler-mysql`. |
+| stale SLA queue | task `51525` cancelled at `2026-06-12 14:32:48 UTC`; prior task `47413` also cancelled during the earlier authorized diagnosis. |
+| requeue check | after a 90 second observation window, no new `data_quality_sla_refresh` queued task appeared. |
+| remaining nonterminal tasks | `low_buy_materialization_refresh` running and `latest_data_watchdog` queued; both are core/guardrail paths and were not touched. |
+| health | `tquant-app-mysql`, `tquant-runtime-worker-mysql`, `tquant-runtime-scheduler-mysql`, MySQL, Redis, Go services, and `frontend-web` healthy/running. |
+| HTTP | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/paper`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200; protected API paths returned 401 as expected. |
+| budget verifier | `docs/reports/platform-budget-current-2026-06-12-post-sla-disable.md`: `status=ok`, no warnings, no blocking, running DB pool budget `16 / 40`. |
+| resource gate | `docs/reports/cloud-resource-gate-observations/2026-06-12-post-sla-disable-2236.md`: `status=warning`, no blocking, D5 still not ready. |
+
+### Resource snapshot after rollout
+
+From `docs/reports/cloud-resource-gate-observations/2026-06-12-post-sla-disable-2236.md`:
+
+| Metric | Value |
+|---|---:|
+| memory available | `1197MB` |
+| swap used | `33.42%` |
+| root disk / inode | `62%` / `13%` |
+| app memory | `229.8MiB / 768MiB` |
+| runtime-worker memory | `326.4MiB / 768MiB` |
+| runtime-scheduler memory | `354.5MiB / 640MiB` |
+| MySQL memory | `698.8MiB / 1.5GiB` |
+| MySQL threads | `Threads_connected=11`, `Threads_running=2` |
+| MySQL slow queries | `145` |
+
+### Current D5 status
+
+The trading-day summary was regenerated after adding the new snapshot:
+
+- `docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.md`
+- `docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json`
+
+Current state:
+
+| Field | Value |
+|---|---|
+| D5 ready | `false` |
+| still missing formal checkpoints | `10:30`, `11:30`, `13:05`, `15:10`, `15:30` |
+| retained historical blockers | kernel OOM logs, runtime-worker `99.96%` memory at an earlier checkpoint, runtime worker signal logs, scheduler provider warnings, nonterminal task counts |
+
+Interpretation:
+
+- The specific `data_quality_sla_refresh` requeue blocker is closed.
+- The cloud resource budget is back within the configured envelope.
+- D5 standalone scheduler removal/merge remains blocked until a full valid trading-day checkpoint set passes.
+- The scheduler provider warning burst and MySQL slow-query count remain P2/P3 observation items; they are not fixed by this SLA disable rollout.
+
+### Operations explicitly not executed
+
+- No MySQL restart, Redis restart, Go service restart, or frontend-web restart.
+- No `docker system prune`, image prune, volume prune, log cleanup, or disk cleanup.
+- No nginx/systemd change.
+- No strategy semantics change.
+- No `backend/app/services/low_buy/strategy_policy.py` change.
+- No `production_score`, priority-board sorting, or priority-board口径 change.
+- No D5 scheduler merge or standalone `runtime-scheduler` stop.

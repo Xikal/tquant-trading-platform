@@ -1,5 +1,5 @@
 {
-  "checkpoint_count": 7,
+  "checkpoint_count": 8,
   "required_checkpoints": [
     "09:15",
     "09:35",
@@ -15,6 +15,7 @@
     "09:15",
     "09:35",
     "14:55",
+    "post-sla-disable-2236",
     "postclose-current-2155",
     "postclose-late-2035",
     "postclose-late-2135"
@@ -41,6 +42,7 @@
   "warnings": [
     "mysql_slow_queries=117",
     "mysql_slow_queries=133",
+    "mysql_slow_queries=145",
     "mysql_slow_queries=55",
     "mysql_slow_queries=71",
     "mysql_slow_queries=72",
