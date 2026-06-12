@@ -298,3 +298,46 @@ Additional operations not executed in this D2/D4 recheck:
 - No DB write.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## D5 Post-Close Checkpoint - 2026-06-12 21:55 CST
+
+Read-only gate observation:
+
+- `docs/reports/cloud-resource-gate-observations/2026-06-12-postclose-current-2155.md`
+- `docs/reports/cloud-resource-gate-observations/2026-06-12-postclose-current-2155.json`
+
+Summary:
+
+| Area | Evidence |
+|---|---|
+| evaluation | `warning`; no blocking |
+| D5 ready | `false` |
+| D5 blockers | `full_trading_day_observation_incomplete`, `runtime_nonterminal_task_count=1` |
+| host memory | available `1043MB`, swap used `34.98%` |
+| root disk / inode | `63%` / `13%` |
+| runtime-worker | `330.4MiB / 768MiB`, memory `43.02%` |
+| runtime-scheduler | `355.5MiB / 640MiB`, memory `55.54%` |
+| MySQL | `816.1MiB / 1.5GiB`, `Threads_connected=10`, `Threads_running=2`, `Slow_queries=133` |
+| HTTP | `/readyz` 200; main `/next/*` pages 200; protected APIs 401 as expected |
+| runtime tasks | one queued `data_quality_sla_refresh`; recent `latest_data_watchdog` succeeded through `13:52:49 UTC` |
+
+Trading-day gate summary was regenerated with this seventh snapshot:
+
+- `docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.md`
+- `docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json`
+
+Current D5 gate state:
+
+- `checkpoint_count=7`
+- missing checkpoints: `10:30`, `11:30`, `13:05`, `15:10`, `15:30`
+- `d5_ready=false`
+- D5 remains blocked; standalone `runtime-scheduler` must not be stopped or merged yet.
+
+Additional operations not executed in this D5 checkpoint:
+
+- No remote `.env` write.
+- No container restart/recreate/remove/stop.
+- No scheduler stop.
+- No DB write.
+- No Docker cleanup.
+- No deployment or cutover.

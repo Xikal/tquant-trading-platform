@@ -1,5 +1,5 @@
 {
-  "checkpoint_count": 6,
+  "checkpoint_count": 7,
   "required_checkpoints": [
     "09:15",
     "09:35",
@@ -15,6 +15,7 @@
     "09:15",
     "09:35",
     "14:55",
+    "postclose-current-2155",
     "postclose-late-2035",
     "postclose-late-2135"
   ],
@@ -60,6 +61,6 @@
   "max_swap_used_pct": 36.64,
   "max_root_used_pct": 63.0,
   "max_runtime_worker_memory_pct": 99.96,
-  "max_runtime_scheduler_memory_pct": 54.9,
+  "max_runtime_scheduler_memory_pct": 55.54,
   "max_mysql_memory_pct": 58.76
 }

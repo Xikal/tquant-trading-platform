@@ -26,7 +26,7 @@
 | Max swap used percent | 36.64 |
 | Max root used percent | 63.0 |
 | Max runtime-worker memory percent | 99.96 |
-| Max runtime-scheduler memory percent | 54.9 |
+| Max runtime-scheduler memory percent | 55.54 |
 | Max MySQL memory percent | 58.76 |
 
 ## Snapshots
@@ -37,6 +37,7 @@
 | `09:15` | `2026-06-12T01:17:20.734698+00:00` | `warning` | full_trading_day_observation_incomplete | scheduler_provider_warning_lines_observed=5, mysql_slow_queries=71 |
 | `09:35` | `2026-06-12T01:40:58.015233+00:00` | `warning` | full_trading_day_observation_incomplete, runtime_nonterminal_task_count=1 | runtime_nonterminal_task_count=1, mysql_slow_queries=72 |
 | `14:55` | `2026-06-12T07:08:09.940654+00:00` | `blocking` | runtime_worker_memory_pct=99.96, kernel_oom_logs_present, full_trading_day_observation_incomplete, runtime_worker_signal_logs_present, runtime_nonterminal_task_count=4 | swap_used_pct=35.28, runtime_worker_signal_logs_present, scheduler_provider_warning_lines_observed=8, runtime_nonterminal_task_count=4, mysql_slow_queries=89 |
+| `postclose-current-2155` | `2026-06-12T13:53:57.912794+00:00` | `warning` | full_trading_day_observation_incomplete, runtime_nonterminal_task_count=1 | scheduler_provider_warning_lines_observed=10, runtime_nonterminal_task_count=1, mysql_slow_queries=133 |
 | `postclose-late-2035` | `2026-06-12T12:34:39.424002+00:00` | `blocking` | kernel_oom_logs_present, full_trading_day_observation_incomplete, runtime_worker_signal_logs_present, runtime_nonterminal_task_count=2 | swap_used_pct=36.64, runtime_worker_signal_logs_present, scheduler_provider_warning_lines_observed=10, runtime_nonterminal_task_count=2, mysql_slow_queries=117 |
 | `postclose-late-2135` | `2026-06-12T13:31:26.213607+00:00` | `blocking` | kernel_oom_logs_present, full_trading_day_observation_incomplete, scheduler_provider_warning_lines=160, runtime_nonterminal_task_count=1 | swap_used_pct=35.03, scheduler_provider_warning_lines=160, runtime_nonterminal_task_count=1, mysql_slow_queries=133 |
 
