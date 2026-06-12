@@ -155,39 +155,16 @@ sudo docker stats --no-stream tquant-runtime-worker-mysql
 
 ## Embedded Scheduler Cutover
 
-Use this only after the stop profile has passed observation and the operator has explicit approval to stop the standalone scheduler.
+Use this only after the stop profile has passed observation, the D5 gate is ready,
+and the operator has explicit approval to stop the standalone scheduler.
 
 ```bash
-ssh -i "$CLOUD_SSH_KEY" "$CLOUD_USER@$CLOUD_HOST" '
-set -e
-cd /home/ubuntu/gupiao-upload
-cp .env ".env.scheduler-backup.$(date +%Y%m%d%H%M%S)"
-python3 - <<'"'"'PY'"'"'
-from pathlib import Path
+python3 scripts/verify_d5_scheduler_embed_gate.py \
+  --summary docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+  --fail-on-blocked
 
-path = Path(".env")
-pairs = {
-    "RUNTIME_WORKER_EMBED_SCHEDULER": "true",
-    "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED": "false",
-}
-lines = path.read_text(encoding="utf-8").splitlines()
-seen = set()
-out = []
-for line in lines:
-    key = line.split("=", 1)[0] if "=" in line else ""
-    if key in pairs:
-        out.append(f"{key}={pairs[key]}")
-        seen.add(key)
-    else:
-        out.append(line)
-for key, value in pairs.items():
-    if key not in seen:
-        out.append(f"{key}={value}")
-path.write_text("\n".join(out) + "\n", encoding="utf-8")
-PY
-sudo docker compose -f docker-compose.mysql.yml up -d --no-deps --force-recreate runtime-worker
-sudo docker rm -f tquant-runtime-scheduler-mysql
-'
+DEPLOY_D5_GATE_SUMMARY=docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+scripts/quick_cloud_deploy.sh --scope worker --embed-runtime-scheduler
 ```
 
 Verify heartbeat after cutover:

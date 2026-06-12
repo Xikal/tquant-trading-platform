@@ -1045,9 +1045,17 @@ def test_deploy_supports_explicit_embedded_runtime_scheduler_mode() -> None:
     maintenance_script = read_repo_file("scripts/plan_platform_maintenance_window.py")
 
     assert 'DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"' in deploy_script
+    assert 'DEPLOY_D5_GATE_SUMMARY="${DEPLOY_D5_GATE_SUMMARY:-docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json}"' in deploy_script
+    assert "verify_d5_scheduler_embed_gate.py" in deploy_script
+    assert "verify_d5_scheduler_embed_gate" in deploy_script
+    assert "verify_d5_scheduler_embed_gate\n  run_local_checks" in deploy_script
     assert "embedded_scheduler_enabled()" in deploy_script
     assert "DEPLOY_EMBED_RUNTIME_SCHEDULER=1" in quick_script
     assert "--embed-runtime-scheduler" in quick_script
+    assert "--d5-gate-summary" in quick_script
+    assert "DEPLOY_D5_GATE_SUMMARY" in quick_script
+    assert "verify_d5_scheduler_embed_gate\n  run_verify_only_preflight" in quick_script
+    assert "verify_d5_scheduler_embed_gate\nremote_preflight" in quick_script
     assert "RUNTIME_WORKER_EMBED_SCHEDULER" in deploy_script
     assert "RUNTIME_SCHEDULER_BACKGROUND_JOBS_ENABLED" in deploy_script
     assert "runtime_scheduler:embedded" in deploy_script

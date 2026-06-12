@@ -59,6 +59,7 @@ DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
 DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"
+DEPLOY_D5_GATE_SUMMARY="${DEPLOY_D5_GATE_SUMMARY:-docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json}"
 RUN_COMPILE="${RUN_COMPILE:-1}"
 RUN_FRONTEND_BUILD="${RUN_FRONTEND_BUILD:-1}"
 RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
@@ -141,6 +142,33 @@ deploy_scope_has_unit() {
     return 0
   fi
   [[ "$DEPLOY_RESOLVED_SCOPE" == "$unit" ]]
+}
+
+embed_runtime_scheduler_requested() {
+  case "$(printf '%s' "$DEPLOY_EMBED_RUNTIME_SCHEDULER" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+resolve_d5_gate_summary_path() {
+  if [[ "$DEPLOY_D5_GATE_SUMMARY" = /* ]]; then
+    printf '%s' "$DEPLOY_D5_GATE_SUMMARY"
+  else
+    printf '%s/%s' "$ROOT_DIR" "$DEPLOY_D5_GATE_SUMMARY"
+  fi
+}
+
+verify_d5_scheduler_embed_gate() {
+  if ! embed_runtime_scheduler_requested; then
+    return 0
+  fi
+  local summary_path
+  summary_path="$(resolve_d5_gate_summary_path)"
+  log "verify D5 scheduler embed gate: ${summary_path}"
+  python3 "$ROOT_DIR/scripts/verify_d5_scheduler_embed_gate.py" \
+    --summary "$summary_path" \
+    --fail-on-blocked
 }
 
 ensure_frontend_next_artifact() {
@@ -2063,6 +2091,7 @@ main() {
   resolve_deploy_scope
   log "resolved deploy scope: ${DEPLOY_RESOLVED_SCOPE}"
   log "requested deploy sync mode: ${DEPLOY_SYNC_MODE}"
+  verify_d5_scheduler_embed_gate
   run_local_checks
   ensure_frontend_next_artifact
   local package_path=""

@@ -69,14 +69,19 @@ enqueue.
 `runtime-worker` may embed scheduler loops only during an explicit grey run:
 
 ```bash
-RUNTIME_WORKER_EMBED_SCHEDULER=true docker compose -f docker-compose.mysql.yml up -d --no-build --force-recreate runtime-worker
+python3 scripts/verify_d5_scheduler_embed_gate.py \
+  --summary docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+  --fail-on-blocked
+
+DEPLOY_D5_GATE_SUMMARY=docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+scripts/quick_cloud_deploy.sh --scope worker --embed-runtime-scheduler
 ```
 
 The embedded path keeps using the runtime background leader lock and records a
 `runtime-scheduler` heartbeat with worker id `runtime-worker-embedded-scheduler`.
-Do not stop the independent scheduler until one full trading day confirms
-periodic enqueue, latest-data watchdog, quote refresh, materialization refresh,
-and close-publish behavior. Roll back by setting
+Do not stop the independent scheduler or run the embed deploy until the D5 gate
+confirms one full trading day of periodic enqueue, latest-data watchdog, quote
+refresh, materialization refresh, and close-publish behavior. Roll back by setting
 `RUNTIME_WORKER_EMBED_SCHEDULER=false` and recreating `runtime-scheduler`.
 
 ## Analytics Worker

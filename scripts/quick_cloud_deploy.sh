@@ -62,6 +62,7 @@ DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF="${DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE
 DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF="${DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF:-}"
 DEPLOY_WITH_ANALYTICS_WORKER="${DEPLOY_WITH_ANALYTICS_WORKER:-0}"
 DEPLOY_EMBED_RUNTIME_SCHEDULER="${DEPLOY_EMBED_RUNTIME_SCHEDULER:-0}"
+DEPLOY_D5_GATE_SUMMARY="${DEPLOY_D5_GATE_SUMMARY:-docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json}"
 VERIFY_WEB_IMAGE_SYNC=1
 RUN_REMOTE_PREFLIGHT="${RUN_REMOTE_PREFLIGHT:-1}"
 RUN_REMOTE_SAFE_CLEANUP="${RUN_REMOTE_SAFE_CLEANUP:-1}"
@@ -156,6 +157,8 @@ Options:
   --embed-runtime-scheduler
                  Verify/deploy with runtime-worker embedded scheduler. The standalone
                  runtime-scheduler container is allowed to be absent only with this flag.
+  --d5-gate-summary <file>
+                 Local D5 gate summary JSON required by --embed-runtime-scheduler.
   --prebuilt-go-bff-image <ref>
                  Image ref to tag as tquant-go-bff:mysql when --prebuilt-images is enabled.
   --prebuilt-go-market-read-image <ref>
@@ -283,6 +286,10 @@ while [[ $# -gt 0 ]]; do
       DEPLOY_EMBED_RUNTIME_SCHEDULER=1
       shift
       ;;
+    --d5-gate-summary)
+      DEPLOY_D5_GATE_SUMMARY="${2:?missing D5 gate summary path}"
+      shift 2
+      ;;
     --prebuilt-go-bff-image)
       DEPLOY_PREBUILT_GO_BFF_IMAGE_REF="${2:?missing prebuilt go bff image ref}"
       shift 2
@@ -397,6 +404,7 @@ export DEPLOY_PREBUILT_GO_MARKET_READ_IMAGE_REF
 export DEPLOY_PREBUILT_GO_SCAN_IMAGE_REF
 export DEPLOY_WITH_ANALYTICS_WORKER
 export DEPLOY_EMBED_RUNTIME_SCHEDULER
+export DEPLOY_D5_GATE_SUMMARY
 export REMOTE_NODE_BASE_IMAGE REMOTE_RUST_BASE_IMAGE REMOTE_PYTHON_BASE_IMAGE
 export CLOUD_SSH_TIMEOUT CLOUD_SSH_CONNECT_TIMEOUT CLOUD_SSH_SERVER_ALIVE_COUNT_MAX
 export RUN_PERFORMANCE_VERIFY_ROUNDS RUN_PERFORMANCE_VERIFY_SAMPLES
@@ -424,6 +432,33 @@ fi
 if [[ -n "$CLOUD_SSH_KEY" ]]; then
   chmod 600 "$CLOUD_SSH_KEY" 2>/dev/null || true
 fi
+
+embed_runtime_scheduler_requested() {
+  case "$(printf '%s' "$DEPLOY_EMBED_RUNTIME_SCHEDULER" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+resolve_d5_gate_summary_path() {
+  if [[ "$DEPLOY_D5_GATE_SUMMARY" = /* ]]; then
+    printf '%s' "$DEPLOY_D5_GATE_SUMMARY"
+  else
+    printf '%s/%s' "$ROOT_DIR" "$DEPLOY_D5_GATE_SUMMARY"
+  fi
+}
+
+verify_d5_scheduler_embed_gate() {
+  if ! embed_runtime_scheduler_requested; then
+    return 0
+  fi
+  local summary_path
+  summary_path="$(resolve_d5_gate_summary_path)"
+  log "verify D5 scheduler embed gate: ${summary_path}"
+  python3 "$ROOT_DIR/scripts/verify_d5_scheduler_embed_gate.py" \
+    --summary "$summary_path" \
+    --fail-on-blocked
+}
 
 remote_preflight() {
   if [[ "$RUN_REMOTE_PREFLIGHT" != "1" ]]; then
@@ -883,6 +918,7 @@ PY
 }
 
 if [[ "$VERIFY_ONLY" == "1" ]]; then
+  verify_d5_scheduler_embed_gate
   run_verify_only_preflight
   verify_remote
   verify_public_entry
@@ -901,6 +937,7 @@ if [[ "$FAST_MODE" == "1" ]]; then
 else
   log "safe mode: local compile/build checks enabled; HTTPS automation/cron disabled, production-safe cookies kept enabled"
 fi
+verify_d5_scheduler_embed_gate
 remote_preflight
 RUN_COMPILE="$RUN_LOCAL_CHECKS" \
 RUN_FRONTEND_BUILD="$RUN_LOCAL_CHECKS" \
@@ -940,6 +977,7 @@ FRONTEND_NEXT_CUTOVER_PATHS="$FRONTEND_NEXT_CUTOVER_PATHS" \
 DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED" \
 DEPLOY_WITH_ANALYTICS_WORKER="$DEPLOY_WITH_ANALYTICS_WORKER" \
 DEPLOY_EMBED_RUNTIME_SCHEDULER="$DEPLOY_EMBED_RUNTIME_SCHEDULER" \
+DEPLOY_D5_GATE_SUMMARY="$DEPLOY_D5_GATE_SUMMARY" \
 VERIFY_PUBLIC_DOMAIN="$VERIFY_PUBLIC_DOMAIN" \
 CLOUD_SSH_TIMEOUT="$CLOUD_SSH_TIMEOUT" \
 CLOUD_SSH_CONNECT_TIMEOUT="$CLOUD_SSH_CONNECT_TIMEOUT" \

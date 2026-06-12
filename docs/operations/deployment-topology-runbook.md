@@ -148,10 +148,29 @@ the optional worker is intentionally absent.
 
 The default topology still runs the independent `runtime-scheduler` container.
 For small-host memory grey validation, `runtime-worker` can embed the scheduler
-only when `RUNTIME_WORKER_EMBED_SCHEDULER=true`. Keep the independent scheduler
+only when the D5 trading-day gate is ready. Keep the independent scheduler
 running until one full trading day confirms scheduled enqueue, latest-data
-watchdog, and close-publish behavior. If validation fails, set
-`RUNTIME_WORKER_EMBED_SCHEDULER=false` and recreate `runtime-scheduler`.
+watchdog, and close-publish behavior.
+
+Preflight gate:
+
+```bash
+python3 scripts/verify_d5_scheduler_embed_gate.py \
+  --summary docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+  --fail-on-blocked
+```
+
+Authorized deployment path after the gate passes:
+
+```bash
+DEPLOY_D5_GATE_SUMMARY=docs/reports/cloud-resource-trading-day-gate-summary-2026-06-12.json \
+scripts/quick_cloud_deploy.sh --scope worker --embed-runtime-scheduler
+```
+
+Both `scripts/quick_cloud_deploy.sh --embed-runtime-scheduler` and direct
+`scripts/deploy_cloud_server.sh` calls block locally when the D5 summary is not
+ready. If validation fails after cutover, set `RUNTIME_WORKER_EMBED_SCHEDULER=false`
+and recreate `runtime-scheduler`.
 
 ## Rollback
 
