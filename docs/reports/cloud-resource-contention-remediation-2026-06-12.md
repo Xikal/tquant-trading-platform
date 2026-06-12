@@ -341,3 +341,42 @@ Additional operations not executed in this D5 checkpoint:
 - No DB write.
 - No Docker cleanup.
 - No deployment or cutover.
+
+## D5 Nonterminal Queue Diagnosis - 2026-06-12 21:58 CST
+
+Read-only MySQL query checked the remaining non-terminal RuntimeTask that blocks the latest D5 checkpoint.
+
+Evidence:
+
+| Field | Value |
+|---|---|
+| task id | `47413` |
+| task type | `data_quality_sla_refresh` |
+| status | `queued` |
+| priority | `22` |
+| idempotency key | `data_quality_sla_refresh:daily_bars:production_universe:2026-06-12` |
+| created_at / updated_at | `2026-06-12 07:01:28 UTC` |
+| payload | daily-bars SLA, `production_universe`, `2026-06-12`, reason `after_close_latest_data` |
+| registered worker | analytics-worker |
+| current analytics-worker residency | exited / not running, per container-state budget check |
+
+Interpretation:
+
+- This queue item is not a core runtime-worker task.
+- It is owned by analytics-worker and is expected to remain queued while analytics-worker is intentionally not resident.
+- It does not directly affect monitor, market quote cache, low-buy board, priority board, or strategy tracking.
+- It still appears as a D5 gate blocker because the current gate treats any queued/running RuntimeTask as non-terminal pressure.
+
+Recommended authorized fix:
+
+- If the goal is to keep analytics-worker non-resident, cancel this stale non-core task through `RuntimeTaskQueue.cancel()` with an audit reason.
+- Do not use raw SQL for cancellation unless the app queue API is unavailable.
+- Do not start analytics-worker just to process this single non-core task unless the user explicitly chooses to run analytics on demand.
+
+Additional operations not executed in this queue diagnosis:
+
+- No task cancellation.
+- No DB write.
+- No analytics-worker start.
+- No container restart/recreate/remove/stop.
+- No deployment or cutover.
