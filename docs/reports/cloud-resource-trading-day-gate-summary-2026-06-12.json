@@ -1,5 +1,5 @@
 {
-  "checkpoint_count": 2,
+  "checkpoint_count": 3,
   "required_checkpoints": [
     "09:15",
     "09:35",
@@ -12,10 +12,10 @@
   ],
   "observed_checkpoints": [
     "premarket-0448",
-    "09:15"
+    "09:15",
+    "09:35"
   ],
   "missing_checkpoints": [
-    "09:35",
     "10:30",
     "11:30",
     "13:05",
@@ -26,17 +26,20 @@
   "full_trading_day_complete": false,
   "d5_ready": false,
   "d5_blockers": [
-    "full_trading_day_observation_incomplete"
+    "full_trading_day_observation_incomplete",
+    "runtime_nonterminal_task_count=1"
   ],
   "warnings": [
     "mysql_slow_queries=55",
     "mysql_slow_queries=71",
+    "mysql_slow_queries=72",
+    "runtime_nonterminal_task_count=1",
     "scheduler_provider_warning_lines_observed=5"
   ],
-  "min_memory_available_mb": 1345.0,
+  "min_memory_available_mb": 1306.0,
   "max_swap_used_pct": 32.46,
   "max_root_used_pct": 63.0,
-  "max_runtime_worker_memory_pct": 38.56,
-  "max_runtime_scheduler_memory_pct": 41.22,
-  "max_mysql_memory_pct": 58.17
+  "max_runtime_worker_memory_pct": 41.82,
+  "max_runtime_scheduler_memory_pct": 41.56,
+  "max_mysql_memory_pct": 58.76
 }

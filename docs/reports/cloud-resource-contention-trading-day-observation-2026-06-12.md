@@ -610,6 +610,78 @@ Operations not executed in this checkpoint:
 - No Docker cleanup.
 - No deployment or cutover.
 
+## 2026-06-12 09:35 CST Formal Checkpoint
+
+The second required D5 trading-day checkpoint was collected at `09:40 CST`.
+
+Read-only collector:
+
+```bash
+python3 scripts/collect_cloud_resource_gate_observation.py \
+  --ssh-host 43.143.243.97 \
+  --ssh-user ubuntu \
+  --ssh-key /Users/j/Downloads/gupiao.pem \
+  --journal-since "2026-06-12 00:00:00" \
+  --docker-logs-since 30m \
+  --checkpoint-label 09:35 \
+  --json-output docs/reports/cloud-resource-gate-observations/2026-06-12-0935.json \
+  --markdown-output docs/reports/cloud-resource-gate-observations/2026-06-12-0935.md
+```
+
+Result:
+
+```text
+generated_at=2026-06-12T01:40:58Z
+host_time=2026-06-12 09:40:53 CST
+status=warning
+d5_gate.ready=false
+d5_gate.blockers=full_trading_day_observation_incomplete, runtime_nonterminal_task_count=1
+blocking=none
+warnings=runtime_nonterminal_task_count=1, mysql_slow_queries=72
+```
+
+Snapshot:
+
+| Area | Evidence | Status |
+|---|---|---|
+| Host | load `0.13, 0.21, 0.19`; memory available `1306MiB`; swap used `31.30%`; root `63%`; inode `13%` | warning: swap still present |
+| runtime-scheduler | `266MiB / 640MiB` | pass |
+| runtime-worker | `321.2MiB / 768MiB`; CPU sample `5.43%` | pass |
+| MySQL | `902.6MiB / 1.5GiB`; `Threads_connected=8`; `Threads_running=2`; `Slow_queries=72` | warning |
+| HTTP/pages | `/readyz` 200; `/next/monitor`, `/next/monitor/market`, `/next/strategy-tracking`, `/next/analysis`, `/next/backtest`, `/next/data`, `/next/settings` all 200 | pass |
+| Runtime tasks | `market_quote_cache_refresh` succeeded `25`; `market_hourly_all_a_snapshot` succeeded `5`; one `market_quote_cache_refresh` running | warning: expected core refresh still running |
+
+The non-terminal task is `market_quote_cache_refresh`, priority `40`, created at
+`2026-06-12 01:40:21 UTC`. This is a core market-hours cache refresh task, so it
+must not be cancelled or marked skipped. It blocks D5 only because D5 scheduler
+embed should not be executed while a core task is running.
+
+Updated summary:
+
+```text
+d5_ready=false
+d5_blockers=full_trading_day_observation_incomplete, runtime_nonterminal_task_count=1
+observed_checkpoints=premarket-0448,09:15,09:35
+missing_checkpoints=10:30,11:30,13:05,14:55,15:10,15:30
+```
+
+Decision:
+
+1. D5 embedded scheduler remains closed.
+2. Do not cancel the running `market_quote_cache_refresh` task.
+3. Re-check at `10:30 CST`; if the same task remains running/stale, escalate to
+   D6 worker/root-cause investigation instead of forcing D5.
+
+Operations not executed in this checkpoint:
+
+- No `.env` change.
+- No Docker restart/recreate/remove.
+- No scheduler stop.
+- No DB write.
+- No nginx/systemd change.
+- No Docker cleanup.
+- No deployment or cutover.
+
 ## 2026-06-12 04:51 CST Supervisor Waiting State
 
 Local supervisor check:
