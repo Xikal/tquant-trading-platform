@@ -13,6 +13,7 @@ import {
   type MonitorLane,
   type MonitorPriorityItem,
 } from "./monitorActionModel";
+import { LateSessionBoardPanel } from "./LateSessionBoardPanel";
 import "./monitor-action.css";
 
 type ToastState = { message: string; tone?: "ok" | "warn" };
@@ -179,6 +180,8 @@ export function MonitorActionPage() {
                     />
                   </div>
 
+                  <LateSessionBoardPanel />
+
                   <div class="monitor-rank-list" data-testid="monitor-priority-order-table">
                     <div class="monitor-rank-list__head">
                       <div class="monitor-tab-group" aria-label="策略分层">
@@ -215,7 +218,7 @@ export function MonitorActionPage() {
                             <div class="monitor-rank-row__facts">
                               <Fact label="推荐日" value={item.recommendDate} strong />
                               <Fact label="现价" value={item.price} />
-                              <Fact label="建议买入区间" value={item.entryRange} />
+                              <Fact label="观察区间" value={item.entryRange} />
                               <Fact label="买入信号" value={item.signal} strong />
                               <Fact label="止损" value={item.stopLoss} />
                               <Fact label="仓位" value={item.position || "--"} />

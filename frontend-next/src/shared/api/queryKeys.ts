@@ -42,6 +42,7 @@ export const queryKeys = {
   lowBuyScreener: (query: OperationPathOptions["query"] = {}) => operationQueryKey("lowBuyScreener", { query }),
   lowBuyPriorityBoard: (limit = 12, strategyVariant: StrategyVariant = "baseline", refresh: "cache" | "async" | "sync" = "cache") =>
     operationQueryKey("lowBuyPriorityBoard", { query: { limit, strategy_variant: strategyVariant, refresh } }),
+  lateSessionBoard: (slot = "latest") => [ROOT, "screeners", "low-buy", "late-session-board", slot] as const,
   lowBuyQuotes: (symbols: string[] = [], strategy?: string) => operationQueryKey("lowBuyQuotes", { query: { symbols, strategy } }),
   lowBuyStrategies: operationQueryKey("lowBuyStrategies"),
   strategiesMeta: operationQueryKey("strategiesMeta"),
@@ -66,4 +67,5 @@ export const queryKeys = {
   runtimeTaskSummary: operationQueryKey("runtimeTaskSummary"),
   adminMetrics: operationQueryKey("adminMetrics"),
   adminTasks: operationQueryKey("adminTasks"),
+  localDesktopStatus: (apiBaseUrl = "") => [ROOT, "local", "status", apiBaseUrl] as const,
 };

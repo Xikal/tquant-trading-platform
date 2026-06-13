@@ -542,6 +542,140 @@
   background: #fff;
 }
 
+.monitor-card--late-session {
+  margin-top: 10px;
+  padding: 12px;
+  border-color: #dbeafe;
+}
+
+.monitor-late-session__meta,
+.monitor-late-session__summary,
+.monitor-late-session-row,
+.monitor-late-session-row__facts {
+  display: flex;
+  align-items: center;
+}
+
+.monitor-late-session__meta {
+  gap: 6px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.monitor-late-session__meta strong {
+  color: #2563eb;
+}
+
+.monitor-late-session__summary {
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.monitor-late-session__summary span,
+.monitor-late-session__summary em {
+  border-radius: 5px;
+  background: #f8fafc;
+  padding: 3px 6px;
+  font-style: normal;
+}
+
+.monitor-late-session__summary em {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.monitor-late-session__list {
+  display: grid;
+  gap: 6px;
+}
+
+.monitor-late-session-row {
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fcfdfe;
+  padding: 8px;
+}
+
+.monitor-late-session-row--late_confirmed {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.monitor-late-session-row--late_watch {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.monitor-late-session-row--late_rejected,
+.monitor-late-session-row--late_unavailable {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+}
+
+.monitor-late-session-row__order {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.monitor-late-session-row__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.monitor-late-session-row__main strong,
+.monitor-late-session-row__main small,
+.monitor-late-session-row__main p {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.monitor-late-session-row__main strong {
+  color: #0f172a;
+  font-size: 12px;
+}
+
+.monitor-late-session-row__main small,
+.monitor-late-session-row__main p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.monitor-late-session-row__facts {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 220px;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.monitor-late-session-row__facts span,
+.monitor-late-session-row__facts small {
+  border-radius: 5px;
+  background: #fff;
+  padding: 3px 5px;
+}
+
+.monitor-late-session__empty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 10px;
+}
+
 .monitor-rank-list__head {
   display: flex;
   align-items: center;

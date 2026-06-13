@@ -7,6 +7,7 @@ import {
 } from "./auth";
 import { ApiError, ApiTransportError } from "./errors";
 import { operationPath, type ApiOperationName, type OperationPathOptions, type QueryValue } from "./operations";
+import { resolveApiUrl } from "./runtimeBaseUrl";
 import { recordTelemetry } from "../telemetry/clientTelemetry";
 import type {
   AnalyzeBatchResponse,
@@ -81,7 +82,7 @@ export async function requestJson<T>(path: string, init: RequestJsonOptions = {}
   while (attempt < attempts) {
     const attemptNumber = attempt + 1;
     try {
-      const response = await fetchWithTimeout(`${API_BASE}${path}`, {
+      const response = await fetchWithTimeout(resolveApiUrl(path), {
         ...requestInit,
         headers,
         credentials: "include",
@@ -178,6 +179,16 @@ export const apiClient = {
     requestOperation<LowBuyPriorityBoardResponse>("lowBuyPriorityBoard", {
       query: { limit: priorityBoardLimit(limit), refresh, strategy_variant: strategyVariant },
     }, init),
+  lateSessionBoard: (params: { limit?: number; slot?: string; refresh?: "cache" | "async" | "sync"; signal?: AbortSignal } = {}) =>
+    requestJson<unknown>(
+      `/api/screeners/low-buy/late-session-board?${new URLSearchParams({
+        limit: String(priorityBoardLimit(params.limit ?? 12)),
+        slot: params.slot ?? "latest",
+        refresh: params.refresh ?? "cache",
+        strategy_variant: "baseline",
+      }).toString()}`,
+      { signal: params.signal },
+    ),
   lowBuyQuotes: (symbols: string[] = [], strategy?: string, init: RequestJsonOptions = {}) => requestOperation<LowBuyQuotesResponse>("lowBuyQuotes", { query: { symbols, strategy } }, init),
   lowBuyStrategies: (init: RequestJsonOptions = {}) => requestOperation<LowBuyStrategiesResponse>("lowBuyStrategies", {}, init),
   strategiesMeta: (init: RequestJsonOptions = {}) => requestOperation<StrategyMetaResponse>("strategiesMeta", {}, init),
@@ -201,6 +212,7 @@ export const apiClient = {
   runtimeTaskSummary: (init: RequestJsonOptions = {}) => requestOperation<RuntimeTaskSummaryResponse>("runtimeTaskSummary", {}, init),
   adminMetrics: (init: RequestJsonOptions = {}) => requestOperation<AdminMetricsResponse>("adminMetrics", {}, init),
   adminTasks: (init: RequestJsonOptions = {}) => requestOperation<AdminTasksResponse>("adminTasks", {}, init),
+  localDesktopStatus: (init: RequestJsonOptions = {}) => requestJson<unknown>("/api/local/status", { ...init, retry: false, timeoutMs: init.timeoutMs ?? 5_000 }),
   settings: (init: RequestJsonOptions = {}) => requestOperation<SettingsResponse>("settings", {}, init),
   settingsRuntime: (init: RequestJsonOptions = {}) => requestOperation<SettingsRuntimeResponse>("settingsRuntime", {}, init),
   sectorExclusions: (init: RequestJsonOptions = {}) => requestOperation<SectorExclusionsResponse>("sectorExclusions", {}, init),

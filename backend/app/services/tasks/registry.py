@@ -31,6 +31,7 @@ RUNTIME_TASK_TYPES: tuple[str, ...] = (
     "a_key_level_materialization_refresh",
     "market_review_report",
     "low_buy_materialization_refresh",
+    "late_session_recommendation_refresh",
     "market_state_gate_refresh",
     "sector_leader_snapshot_refresh",
     "hard_risk_context_refresh",

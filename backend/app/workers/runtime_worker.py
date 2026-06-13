@@ -321,6 +321,10 @@ def _execute_task(task_type: str, payload: dict[str, Any], db) -> dict[str, Any]
                 skipped = result["close_review_snapshots"].get("skipped") or []
                 raise RuntimeError(f"low-buy close review refresh incomplete: {skipped}")
         return result
+    if task_type == "late_session_recommendation_refresh":
+        from app.services.low_buy.late_session_tasks import refresh_late_session_recommendation
+
+        return refresh_late_session_recommendation(db, payload)
     if task_type == "market_state_gate_refresh":
         from app.services.decision_context.market_gate import market_gate_from_context
         from app.services.low_buy.priority_market import empty_priority_market_context

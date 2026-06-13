@@ -15,9 +15,18 @@ from app.core.role_permissions import is_admin_user
 from app.core.timing import log_slow_call, monotonic_start
 from app.models.entities import LowBuyTradeLifecycleSnapshot, User
 from app.models.schemas import LowBuyTradeLifecycleUpdate
+from app.models.schema_defs.late_session_board import LateSessionBoardResponse
 from app.models.schema_defs.screener import LowBuyStrategyGovernanceUpdate
 from app.api.routes.heavy_task_helpers import enqueue_runtime_task, queued_task_response
 from app.services.low_buy.strategy_governance import build_low_buy_strategy_governance, set_strategy_governance_override
+from app.services.low_buy.late_session_board import build_late_session_board_from_priority_response
+from app.services.low_buy.late_session_cache import (
+    late_session_cache_key,
+    load_distributed_late_session_board_snapshot,
+    user_filter_hash,
+)
+from app.services.low_buy.late_session_tasks import late_session_idempotency_key
+from app.services.low_buy.late_session_policy import LATE_SESSION_SOURCE_CANDIDATE_LIMIT
 from app.services.low_buy.shared import DEFAULT_PRODUCTION_LOW_BUY_STRATEGY
 from app.services.low_buy_screener import LowBuyScreenerService
 from app.services.market_data import DataSourceError
@@ -230,6 +239,92 @@ def low_buy_priority_board_view(
             refresh=refresh,
             effective_refresh=effective_refresh,
             front_row_only=front_row_only,
+            strategy_variant=strategy_variant,
+        )
+    return result.model_dump()
+
+
+@router.get("/low-buy/late-session-board", response_model=LateSessionBoardResponse)
+def low_buy_late_session_board_view(
+    request: Request,
+    limit: int = Query(12, ge=3, le=30),
+    slot: str = Query("latest", pattern="^(preview_1450|snapshot_1455|final_1457|latest)$"),
+    refresh: str = Query("cache", pattern="^(cache|async|sync)$"),
+    strategy_variant: str = Query("baseline", pattern="^(baseline|front_row_weighted|front_row_only)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    started_at = monotonic_start()
+    effective_refresh = _late_session_refresh_mode_for_web(
+        request=request,
+        current_user=current_user,
+        refresh=refresh,
+    )
+    try:
+        source_board = low_buy_screener.priority_board(
+            db=db,
+            limit=LATE_SESSION_SOURCE_CANDIDATE_LIMIT,
+            refresh_mode="cache",
+            strategy_variant=strategy_variant,
+        )
+        excluded = UserSectorPreferenceService(db).get_excluded_sector_set(current_user.id)
+        source_board = filter_priority_board_response_for_user(source_board, user_id=current_user.id, excluded_sectors=excluded)
+        cached_result = (
+            _load_late_session_board_cache(
+                source_board,
+                slot=slot,
+                strategy_variant=strategy_variant,
+                excluded_sectors=excluded,
+            )
+            if effective_refresh == "cache"
+            else None
+        )
+        if cached_result is not None:
+            result = cached_result
+        elif effective_refresh == "async":
+            enqueue_runtime_task(
+                db,
+                task_type="late_session_recommendation_refresh",
+                payload={
+                    "slot": slot,
+                    "strategy_variant": strategy_variant,
+                    "limit": limit,
+                    "source_limit": LATE_SESSION_SOURCE_CANDIDATE_LIMIT,
+                    "reason": "api_async",
+                },
+                priority=110,
+                idempotency_key=late_session_idempotency_key(source_board.latest_trade_date, slot),
+                max_attempts=2,
+            )
+            result = build_late_session_board_from_priority_response(
+                source_board,
+                slot=slot,
+                limit=limit,
+                refresh_mode=effective_refresh,
+            )
+            if not result.degradation_reason:
+                result = result.model_copy(update={"degradation_reason": "refresh_queued"})
+        else:
+            result = build_late_session_board_from_priority_response(
+                source_board,
+                slot=slot,
+                limit=limit,
+                refresh_mode=effective_refresh,
+            )
+        record_response_payload("late_session_board", result, item_count=len(result.items))
+    except DataSourceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"尾盘推荐榜加载失败: {exc}") from exc
+    finally:
+        log_slow_call(
+            logger,
+            "screeners.low_buy_late_session_board",
+            started_at,
+            limit=limit,
+            slot=slot,
+            refresh=refresh,
+            effective_refresh=effective_refresh,
             strategy_variant=strategy_variant,
         )
     return result.model_dump()
@@ -534,6 +629,52 @@ def _priority_board_refresh_mode_for_web(
     ):
         return "sync"
     return "async"
+
+
+def _late_session_refresh_mode_for_web(
+    *,
+    request: Request,
+    current_user: User,
+    refresh: str,
+) -> str:
+    requested = str(refresh or "cache").strip().lower()
+    if requested != "sync":
+        return requested if requested in {"cache", "async"} else "cache"
+    if getattr(get_settings(), "late_session_board_web_sync_refresh_enabled", False) and _priority_board_admin_allowed(
+        request=request,
+        current_user=current_user,
+    ):
+        return "sync"
+    return "async"
+
+
+def _load_late_session_board_cache(
+    priority_board,
+    *,
+    slot: str,
+    strategy_variant: str,
+    excluded_sectors: set[str],
+) -> Optional[LateSessionBoardResponse]:
+    epoch = ":".join(
+        item
+        for item in (
+            str(getattr(priority_board, "latest_trade_date", "") or ""),
+            str(getattr(priority_board, "updated_at", "") or ""),
+            str(getattr(priority_board, "total_candidates", "") or ""),
+        )
+        if item
+    )
+    key = late_session_cache_key(
+        trade_date=str(getattr(priority_board, "latest_trade_date", "") or ""),
+        slot=slot,
+        strategy_variant=strategy_variant,
+        source_epoch=epoch,
+        user_filter_hash=user_filter_hash(excluded_sectors),
+    )
+    cached = load_distributed_late_session_board_snapshot(key)
+    if cached is None:
+        return None
+    return cached.model_copy(update={"refresh_mode": "cache"})
 
 
 def _priority_board_admin_allowed(*, request: Request, current_user: User) -> bool:
