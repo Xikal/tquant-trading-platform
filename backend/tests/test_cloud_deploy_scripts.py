@@ -99,8 +99,9 @@ def test_cloud_deploy_can_upsert_data_quality_sla_flag() -> None:
     assert 'if test -n "${DATA_QUALITY_SLA_ENABLED:-}"; then' in deploy_script
 
     assert 'DATA_QUALITY_SLA_ENABLED="${DATA_QUALITY_SLA_ENABLED:-}"' in quick_script
+    assert 'if [[ -n "$DATA_QUALITY_SLA_ENABLED" ]]; then' in quick_script
     assert "export DATA_QUALITY_SLA_ENABLED" in quick_script
-    assert 'DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED"' in quick_script
+    assert 'deploy_env_args+=(DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED")' in quick_script
 
 
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:
