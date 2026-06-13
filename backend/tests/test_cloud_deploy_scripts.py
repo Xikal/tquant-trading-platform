@@ -35,6 +35,7 @@ def test_cloud_deploy_validates_release_package_and_has_builder_fallback() -> No
     assert "DEPLOY_PACKAGE_REQUIRED_PATHS" in deploy_script
     assert "verify_package_contents" in deploy_script
     assert "frontend-next/src/index.tsx" in deploy_script
+    assert "deploy/frontend/nginx.conf" in deploy_script
     assert "frontend/src/ui/data/index.ts" not in deploy_script
     assert "REMOTE_DEBIAN_APT_MIRROR" in deploy_script
     assert "REMOTE_DEBIAN_APT_SECURITY_MIRROR" in deploy_script
@@ -581,12 +582,14 @@ def test_combined_frontend_next_scope_publishes_dist_without_backend_build() -> 
         'if test "$DEPLOY_SCOPE" = all; then\n  publish_frontend_next', 1
     )[0]
     assert "deploy_scope_has_unit frontend-legacy" not in make_package
-    assert "--exclude='frontend'" in make_package
+    assert "--exclude='frontend'" not in make_package
     assert "--exclude='frontend/node_modules'" not in make_package
     assert "--exclude='frontend/dist'" not in make_package
     assert package_branch.index("publish_frontend_next() {") < package_branch.index("if has_unit frontend-next")
     assert package_branch.index("refresh_gateway_if_present() {") < package_branch.index("if has_unit ops")
     assert "test -f frontend-next/dist/index.html" in publish_function
+    assert "ensure_frontend_web_mounts" in publish_function
+    assert "invalid_nginx_conf_mount_source" in package_branch
     assert "frontend_next:separated_frontend_web" in publish_function
     assert "frontend_next:monolith_compat" in publish_function
     assert "frontend_next:updated" in publish_function

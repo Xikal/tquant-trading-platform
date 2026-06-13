@@ -66,7 +66,7 @@ RUN_STRATEGY_TEST="${RUN_STRATEGY_TEST:-1}"
 RUN_FULL_TESTS="${RUN_FULL_TESTS:-0}"
 RUN_LATEST_DATA_ACCEPTANCE="${RUN_LATEST_DATA_ACCEPTANCE:-1}"
 LATEST_DATA_ACCEPTANCE_REQUIRED="${LATEST_DATA_ACCEPTANCE_REQUIRED:-0}"
-DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
+DEPLOY_PACKAGE_REQUIRED_PATHS="${DEPLOY_PACKAGE_REQUIRED_PATHS:-Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx deploy/frontend/nginx.conf scripts/install_https_nginx.sh scripts/deploy_delta_package.py}"
 DEPLOY_EFFECTIVE_SYNC_MODE="package-only"
 DEPLOY_DELTA_CHANGED_COUNT=0
 DEPLOY_DELTA_DELETED_COUNT=0
@@ -290,7 +290,6 @@ make_package() {
     --exclude='backend/data/runtime.env'
     --exclude='backend/data/*.db'
     --exclude='backend/data/*.sqlite'
-    --exclude='frontend'
     --exclude='frontend-next/node_modules'
     --exclude='frontend-next/test-results'
     --exclude='frontend-next/playwright-report'
@@ -457,7 +456,7 @@ remote_deploy_from_git() {
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx deploy/frontend/nginx.conf scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 
 require_release_paths() {
@@ -717,6 +716,13 @@ frontend_web_compose_file() {
   fi
   return 1
 }
+ensure_frontend_web_mounts() {
+  if test -e deploy/frontend/nginx.conf && ! test -f deploy/frontend/nginx.conf; then
+    echo "frontend_next:invalid_nginx_conf_mount_source" >&2
+    exit 1
+  fi
+  test -f deploy/frontend/nginx.conf
+}
 run_database_backup() {
   if test -f ./scripts/backup_database.sh; then
     BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
@@ -738,6 +744,7 @@ publish_frontend_next() {
   fi
   updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
+    ensure_frontend_web_mounts
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
     echo "frontend_next:separated_frontend_web:$frontend_web_compose"
     updated=1
@@ -1055,9 +1062,17 @@ frontend_web_compose_file() {
   fi
   return 1
 }
+ensure_frontend_web_mounts() {
+  if test -e deploy/frontend/nginx.conf && ! test -f deploy/frontend/nginx.conf; then
+    echo "frontend_next_hot:invalid_nginx_conf_mount_source" >&2
+    exit 1
+  fi
+  test -f deploy/frontend/nginx.conf
+}
 
 updated=0
 if frontend_web_compose="$(frontend_web_compose_file)"; then
+  ensure_frontend_web_mounts
   sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
   echo "frontend_next_hot:separated_frontend_web:$frontend_web_compose"
   updated=1
@@ -1143,7 +1158,7 @@ REMOTE
     bash -s <<'REMOTE'
 set -euo pipefail
 TS=$(date +%Y%m%d%H%M%S)
-REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
+REQUIRED_PATHS="Dockerfile docker-compose.mysql.yml backend/app/main.py frontend-next/package.json frontend-next/src/index.tsx deploy/frontend/nginx.conf scripts/install_https_nginx.sh scripts/deploy_delta_package.py"
 DEPLOY_SCOPE="${DEPLOY_RESOLVED_SCOPE:-all}"
 SYNC_MODE="${DEPLOY_EFFECTIVE_SYNC_MODE:-package-only}"
 
@@ -1334,6 +1349,13 @@ frontend_web_compose_file() {
   fi
   return 1
 }
+ensure_frontend_web_mounts() {
+  if test -e deploy/frontend/nginx.conf && ! test -f deploy/frontend/nginx.conf; then
+    echo "frontend_next:invalid_nginx_conf_mount_source" >&2
+    exit 1
+  fi
+  test -f deploy/frontend/nginx.conf
+}
 run_database_backup() {
   if test -f ./scripts/backup_database.sh; then
     BACKUP_TIME="${BACKUP_TIME:-02:20}" bash ./scripts/backup_database.sh || { echo "db_migration:backup_failed" >&2; exit 1; }
@@ -1355,6 +1377,7 @@ publish_frontend_next() {
   fi
   updated=0
   if frontend_web_compose="$(frontend_web_compose_file)"; then
+    ensure_frontend_web_mounts
     sudo docker compose -f "$frontend_web_compose" up -d --no-deps --force-recreate frontend-web
     echo "frontend_next:separated_frontend_web:$frontend_web_compose"
     updated=1
