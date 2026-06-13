@@ -17,6 +17,8 @@ import { LateSessionBoardPanel } from "./LateSessionBoardPanel";
 import "./monitor-action.css";
 
 type ToastState = { message: string; tone?: "ok" | "warn" };
+export type MonitorBoardTab = MonitorLane | "late_session";
+type MonitorBoardTabOption = { value: MonitorBoardTab; label: string };
 type HoldingDraft = {
   name: string;
   symbol: string;
@@ -33,7 +35,7 @@ export function MonitorActionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const routeSymbol = createMemo(() => symbolFromSearch(location().search));
-  const [lane, setLane] = createSignal<MonitorLane>("all");
+  const [boardTab, setBoardTab] = createSignal<MonitorBoardTab>("all");
   const [selectedSymbol, setSelectedSymbol] = createSignal<string | undefined>(routeSymbol() || undefined);
   const [isAccordionOpen, setAccordionOpen] = createSignal(false);
   const [toast, setToast] = createSignal<ToastState | undefined>();
@@ -57,8 +59,9 @@ export function MonitorActionPage() {
     <QueryState query={query}>
       {(data) => {
         const model = createMonitorActionModel(data, selectedSymbol);
-        const visibleItems = createMemo(() => model.laneItems(lane()));
-        const emptyText = createMemo(() => priorityEmptyText(lane(), model.priorityItems.length));
+        const priorityLane = createMemo<MonitorLane>(() => priorityLaneFromBoardTab(boardTab()));
+        const visibleItems = createMemo(() => model.laneItems(priorityLane()));
+        const emptyText = createMemo(() => priorityEmptyText(priorityLane(), model.priorityItems.length));
         const selected = createMemo(() => model.selected());
         const watchCards = createMemo(() => holdingCards(model, localHoldings()));
         const snapshotDate = createMemo(() => text(model.board.latest_trade_date ?? model.snapshot.latest_trade_date ?? model.root.generated_at));
@@ -180,14 +183,16 @@ export function MonitorActionPage() {
                     />
                   </div>
 
-                  <LateSessionBoardPanel />
-
                   <div class="monitor-rank-list" data-testid="monitor-priority-order-table">
                     <div class="monitor-rank-list__head">
                       <div class="monitor-tab-group" aria-label="策略分层">
-                        <button type="button" class={tabClass(lane(), "all")} onClick={() => setLane("all")}>全部候选</button>
-                        <button type="button" class={tabClass(lane(), "observe")} onClick={() => setLane("observe")}>观察池</button>
-                        <button type="button" class={tabClass(lane(), "buy_now")} onClick={() => setLane("buy_now")}>可买入</button>
+                        <For each={monitorBoardTabOptions({ total: model.priorityItems.length, observe: observeCount(), buyNow: buyCount(), risk: riskCount() })}>
+                          {(tab) => (
+                            <button type="button" class={tabClass(boardTab(), tab.value)} onClick={() => setBoardTab(tab.value)}>
+                              {tab.label}
+                            </button>
+                          )}
+                        </For>
                       </div>
                       <div class="monitor-card__actions">
                         <button type="button" class="monitor-btn monitor-btn--amber" onClick={() => showToast("榜单研判解析载入中...")}>
@@ -200,39 +205,43 @@ export function MonitorActionPage() {
                         </button>
                       </div>
                     </div>
-                    <Show when={visibleItems().length > 0} fallback={<EmptyLine text={emptyText()} />}>
-                      <For each={visibleItems()}>
-                        {(item) => (
-                          <article class="monitor-rank-row" data-symbol={item.symbol}>
-                            <button type="button" class="monitor-rank-row__main" onClick={() => selectSymbol(item.symbol)}>
-                              <span class="monitor-rank-row__order">{String(item.order + 1).padStart(2, "0")}</span>
-                              <span class="monitor-rank-row__name">
-                                <strong>{item.name || item.symbol}</strong>
-                                <small>#{item.symbol}</small>
-                              </span>
-                              <span class="monitor-rank-row__date">推荐日 {item.recommendDate}</span>
-                              <span class="monitor-rank-row__strategy">{item.strategy}</span>
-                              <span class="monitor-rank-row__score">分:{item.score}</span>
-                              <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>
-                            </button>
-                            <div class="monitor-rank-row__facts">
-                              <Fact label="推荐日" value={item.recommendDate} strong />
-                              <Fact label="现价" value={item.price} />
-                              <Fact label="观察区间" value={item.entryRange} />
-                              <Fact label="买入信号" value={item.signal} strong />
-                              <Fact label="止损" value={item.stopLoss} />
-                              <Fact label="仓位" value={item.position || "--"} />
-                            </div>
-                            <div class="monitor-rank-row__detail">
-                              <span>{item.detailLines[0] || item.summary || item.keyLevel || "后端未返回更多说明"}</span>
-                              <button type="button" class="monitor-detail-btn" onClick={() => openAnalysis(item.symbol)}>
-                                详情
-                                <MonitorIcon name="chevron" />
+                    <Show when={boardTab() === "late_session"} fallback={
+                      <Show when={visibleItems().length > 0} fallback={<EmptyLine text={emptyText()} />}>
+                        <For each={visibleItems()}>
+                          {(item) => (
+                            <article class="monitor-rank-row" data-symbol={item.symbol}>
+                              <button type="button" class="monitor-rank-row__main" onClick={() => selectSymbol(item.symbol)}>
+                                <span class="monitor-rank-row__order">{String(item.order + 1).padStart(2, "0")}</span>
+                                <span class="monitor-rank-row__name">
+                                  <strong>{item.name || item.symbol}</strong>
+                                  <small>#{item.symbol}</small>
+                                </span>
+                                <span class="monitor-rank-row__date">推荐日 {item.recommendDate}</span>
+                                <span class="monitor-rank-row__strategy">{item.strategy}</span>
+                                <span class="monitor-rank-row__score">分:{item.score}</span>
+                                <span class={riskBadgeClass(item)}>{item.risk || item.action}</span>
                               </button>
-                            </div>
-                          </article>
-                        )}
-                      </For>
+                              <div class="monitor-rank-row__facts">
+                                <Fact label="推荐日" value={item.recommendDate} strong />
+                                <Fact label="现价" value={item.price} />
+                                <Fact label="观察区间" value={item.entryRange} />
+                                <Fact label="买入信号" value={item.signal} strong />
+                                <Fact label="止损" value={item.stopLoss} />
+                                <Fact label="仓位" value={item.position || "--"} />
+                              </div>
+                              <div class="monitor-rank-row__detail">
+                                <span>{item.detailLines[0] || item.summary || item.keyLevel || "后端未返回更多说明"}</span>
+                                <button type="button" class="monitor-detail-btn" onClick={() => openAnalysis(item.symbol)}>
+                                  详情
+                                  <MonitorIcon name="chevron" />
+                                </button>
+                              </div>
+                            </article>
+                          )}
+                        </For>
+                      </Show>
+                    }>
+                      <LateSessionBoardPanel embedded />
                     </Show>
                   </div>
                 </div>
@@ -539,6 +548,20 @@ export function priorityEmptyText(lane: MonitorLane, total: number): string {
   return "暂无生产候选。";
 }
 
+export function monitorBoardTabOptions(counts: { total: number; observe: number; buyNow: number; risk: number }): MonitorBoardTabOption[] {
+  return [
+    { value: "all", label: `全部候选 ${counts.total}` },
+    { value: "late_session", label: "尾盘推荐" },
+    { value: "observe", label: `观察池 ${counts.observe}` },
+    { value: "buy_now", label: `可买入 ${counts.buyNow}` },
+    { value: "risk", label: `风险 ${counts.risk}` },
+  ];
+}
+
+function priorityLaneFromBoardTab(tab: MonitorBoardTab): MonitorLane {
+  return tab === "late_session" ? "all" : tab;
+}
+
 type MonitorIconName =
   | "activity"
   | "refresh"
@@ -566,7 +589,7 @@ function MonitorIcon(props: { name: MonitorIconName; spin?: boolean; rotate?: bo
   );
 }
 
-function tabClass(active: MonitorLane, tab: MonitorLane) {
+function tabClass(active: MonitorBoardTab, tab: MonitorBoardTab) {
   return `monitor-tab${active === tab ? " monitor-tab--active" : ""}`;
 }
 

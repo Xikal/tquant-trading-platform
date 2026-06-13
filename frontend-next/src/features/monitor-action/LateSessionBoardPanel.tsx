@@ -4,7 +4,7 @@ import { apiClient } from "../../shared/api/client";
 import { queryKeys } from "../../shared/api/queryKeys";
 import { createLateSessionBoardModel } from "./lateSessionBoardModel";
 
-export function LateSessionBoardPanel() {
+export function LateSessionBoardPanel(props: { embedded?: boolean }) {
   const query = createQuery(() => ({
     queryKey: queryKeys.lateSessionBoard("latest"),
     queryFn: ({ signal }) => apiClient.lateSessionBoard({ limit: 12, slot: "latest", refresh: "cache", signal }),
@@ -12,8 +12,10 @@ export function LateSessionBoardPanel() {
   }));
   const model = createMemo(() => createLateSessionBoardModel(query.data));
 
+  const className = () => (props.embedded ? "monitor-late-session monitor-late-session--embedded" : "monitor-card monitor-card--late-session");
+
   return (
-    <section class="monitor-card monitor-card--late-session" data-testid="late-session-board-panel">
+    <section class={className()} data-testid="late-session-board-panel">
       <header class="monitor-card__header">
         <div class="monitor-card__title-row">
           <span class="monitor-icon-chip monitor-icon-chip--blue">尾</span>

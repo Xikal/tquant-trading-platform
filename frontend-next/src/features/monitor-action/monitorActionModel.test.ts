@@ -1,6 +1,6 @@
 import { createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { priorityEmptyText } from "./MonitorActionPage";
+import { monitorBoardTabOptions, priorityEmptyText } from "./MonitorActionPage";
 import { createMonitorActionModel, priorityRowsForTable } from "./monitorActionModel";
 
 describe("monitor action priority board model", () => {
@@ -212,5 +212,13 @@ describe("monitor action priority board model", () => {
     expect(priorityEmptyText("buy_now", 10)).toContain("当前无确认买入信号");
     expect(priorityEmptyText("buy_now", 10)).toContain("全部候选仍有 10 只");
     expect(priorityEmptyText("all", 0)).toContain("榜单数据刷新中");
+  });
+
+  it("keeps late session board at the same tab level as all candidates", () => {
+    const tabs = monitorBoardTabOptions({ total: 12, observe: 4, buyNow: 1, risk: 2 });
+
+    expect(tabs.map((tab) => tab.value)).toEqual(["all", "late_session", "observe", "buy_now", "risk"]);
+    expect(tabs[0].label).toBe("全部候选 12");
+    expect(tabs[1].label).toBe("尾盘推荐");
   });
 });

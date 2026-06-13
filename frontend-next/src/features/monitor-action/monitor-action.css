@@ -548,6 +548,16 @@
   border-color: #dbeafe;
 }
 
+.monitor-late-session--embedded {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.monitor-late-session--embedded .monitor-card__header {
+  margin: 0;
+}
+
 .monitor-late-session__meta,
 .monitor-late-session__summary,
 .monitor-late-session-row,
