@@ -12,6 +12,7 @@ const StrategyTrackingPage = lazy(() => import("../features/strategy-tracking/St
 const AnalysisPage = lazy(() => import("../features/analysis/AnalysisPage").then((module) => ({ default: module.AnalysisPage })));
 const PlaybookPage = lazy(() => import("../features/playbook/PlaybookPage").then((module) => ({ default: module.PlaybookPage })));
 const DataConsolePage = lazy(() => import("../features/data-console/DataConsolePage").then((module) => ({ default: module.DataConsolePage })));
+const LocalDesktopStatusPage = lazy(() => import("../features/local-desktop/LocalDesktopStatusPage").then((module) => ({ default: module.LocalDesktopStatusPage })));
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 
 function routeBoundaryComponent(ComponentToRender: Component, routeLabel: string): Component {
@@ -126,6 +127,7 @@ const analysisRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "
 const playbookRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "playbook", component: guardedRouteComponent(PlaybookPage, "选股宝典") });
 const backtestRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "backtest", component: () => <Navigate to="/next/monitor" search={true} /> });
 const dataRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "data", component: adminRouteComponent(DataConsolePage, "数据中心") });
+const localStatusRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "local-status", component: routeBoundaryComponent(LocalDesktopStatusPage, "本机状态") });
 const settingsRoute = createRoute({ getParentRoute: () => nextRootRoute, path: "settings", component: guardedRouteComponent(SettingsPage, "系统设置") });
 
 const monitorLevel1CutoverRoute = createRoute({
@@ -169,6 +171,7 @@ export const routeTree = rootRoute.addChildren([
     playbookRoute,
     backtestRoute,
     dataRoute,
+    localStatusRoute,
     settingsRoute,
     emotionCompatRoute,
     lowBuyCompatRoute,

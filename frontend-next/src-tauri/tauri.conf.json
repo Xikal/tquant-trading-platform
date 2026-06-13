@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TQuant Local",
+  "version": "0.9.0",
+  "identifier": "cloud.weisilianghua.tquant.local",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "VITE_DESKTOP_APP=1 VITE_API_BASE_URL=http://127.0.0.1:8000 npm run build",
+    "devUrl": "http://127.0.0.1:5173/next/monitor",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "TQuant Local",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 1100,
+        "minHeight": 720
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"]
+  }
+}

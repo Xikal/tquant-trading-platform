@@ -281,6 +281,9 @@ export function LoginPage() {
                 <span>{loading() ? "DECIPHERING CODE..." : mode() === "login" ? "Connect & Synch Neural Link" : "Create Pilot Access"}</span>
                 <Show when={loading()}><i aria-hidden="true" /></Show>
               </button>
+              <button type="button" class="wise-nerv-local-status" onClick={() => void navigate({ to: "/next/local-status" })}>
+                打开本机状态
+              </button>
               <p>登录后请先确认数据状态；页面展示不构成交易建议。</p>
             </div>
           </form>

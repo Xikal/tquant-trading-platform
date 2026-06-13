@@ -19,6 +19,7 @@ from app.api.routes import (
     intraday,
     internal_scan_worker,
     key_levels,
+    local_desktop,
     market,
     market_data_sources,
     ml_signals,
@@ -47,6 +48,7 @@ api_router.include_router(admin_users.router, tags=["admin"])
 api_router.include_router(instruments.router, tags=["market"])
 api_router.include_router(intraday.router, tags=["intraday"])
 api_router.include_router(key_levels.router, tags=["key-levels"])
+api_router.include_router(local_desktop.router, tags=["local-desktop"])
 api_router.include_router(internal_scan_worker.router, tags=["internal"])
 api_router.include_router(watchlist.router, tags=["watchlist"])
 api_router.include_router(monitor.router, tags=["monitor"])

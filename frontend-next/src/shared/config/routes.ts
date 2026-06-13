@@ -5,6 +5,7 @@ export type NextPage =
   | "playbook"
   | "strategy-tracking"
   | "data"
+  | "local-status"
   | "settings";
 
 export interface NextRoute {
@@ -23,6 +24,7 @@ export const nextRoutes: NextRoute[] = [
   { page: "playbook", label: "选股宝典", shortLabel: "宝典页", path: "/next/playbook", legacyPath: "/playbook", commandIndex: 4 },
   { page: "strategy-tracking", label: "策略跟踪", shortLabel: "复盘页", path: "/next/strategy-tracking", legacyPath: "/strategy-tracking", commandIndex: 5 },
   { page: "data", label: "数据中心", shortLabel: "数据页", path: "/next/data", legacyPath: "/data", commandIndex: 6 },
+  { page: "local-status", label: "本机状态", shortLabel: "本机", path: "/next/local-status", legacyPath: "/local-status" },
   { page: "settings", label: "系统配置", shortLabel: "配置页", path: "/next/settings", legacyPath: "/settings" },
 ];
 

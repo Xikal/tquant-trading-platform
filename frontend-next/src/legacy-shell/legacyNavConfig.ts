@@ -14,6 +14,7 @@ const iconByPage: Record<NextPage, LegacyNavIcon> = {
   playbook: "read",
   "strategy-tracking": "aim",
   data: "database",
+  "local-status": "database",
   settings: "setting",
 };
 
@@ -29,5 +30,6 @@ export const legacyPageTitle: Record<NextPage, string> = {
   playbook: "选股宝典",
   "strategy-tracking": "策略跟踪",
   data: "数据中心",
+  "local-status": "本机状态",
   settings: "系统配置",
 };

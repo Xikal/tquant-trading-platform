@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 
 export default defineConfig(({ command }) => ({
-  base: command === "build" ? "/next/" : "/",
+  base: command === "build" ? (process.env.VITE_DESKTOP_APP === "1" ? "./" : "/next/") : "/",
   plugins: [solid()],
   server: {
     host: "127.0.0.1",
