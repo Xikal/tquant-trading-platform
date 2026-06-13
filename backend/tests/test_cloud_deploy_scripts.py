@@ -90,19 +90,34 @@ def test_mysql_compose_passes_data_quality_sla_flag_to_app_and_workers() -> None
         assert "DATA_QUALITY_SLA_ENABLED: ${DATA_QUALITY_SLA_ENABLED:-true}" in chunk
 
 
-def test_cloud_deploy_can_upsert_data_quality_sla_flag() -> None:
+def test_cloud_deploy_can_upsert_resource_stop_profile_flags() -> None:
     deploy_script = read_repo_file("scripts/deploy_cloud_server.sh")
     quick_script = read_repo_file("scripts/quick_cloud_deploy.sh")
+    flags = [
+        "PLATFORM_AUTOPILOT_ENABLED",
+        "RUNTIME_LOW_PRIORITY_TASKS_PAUSED",
+        "MARKET_REVIEW_ENABLED",
+        "DATA_QUALITY_SLA_ENABLED",
+        "RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED",
+        "RUNTIME_STARTUP_CACHE_PREWARM_ENABLED",
+        "RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED",
+        "RUNTIME_WORKER_RECYCLE_RSS_MB",
+    ]
 
-    assert 'DATA_QUALITY_SLA_ENABLED="${DATA_QUALITY_SLA_ENABLED:-}"' in deploy_script
-    assert deploy_script.count('DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED"') >= 2
-    assert deploy_script.count('upsert_env_value DATA_QUALITY_SLA_ENABLED "$DATA_QUALITY_SLA_ENABLED"') >= 2
-    assert 'if test -n "${DATA_QUALITY_SLA_ENABLED:-}"; then' in deploy_script
+    for flag in flags:
+        shell_default = f'{flag}="${{' + flag + ':-}"'
+        quick_if_non_empty = f'if [[ -n "${flag}" ]]; then'.replace("{flag}", f"${flag}")
+        remote_if_non_empty = 'if test -n "${' + flag + ':-}"; then'
 
-    assert 'DATA_QUALITY_SLA_ENABLED="${DATA_QUALITY_SLA_ENABLED:-}"' in quick_script
-    assert 'if [[ -n "$DATA_QUALITY_SLA_ENABLED" ]]; then' in quick_script
-    assert "export DATA_QUALITY_SLA_ENABLED" in quick_script
-    assert 'deploy_env_args+=(DATA_QUALITY_SLA_ENABLED="$DATA_QUALITY_SLA_ENABLED")' in quick_script
+        assert shell_default in deploy_script
+        assert deploy_script.count(f'{flag}="$' + flag + '"') >= 2
+        assert deploy_script.count(f'upsert_env_value {flag} "$' + flag + '"') >= 2
+        assert remote_if_non_empty in deploy_script
+
+        assert shell_default in quick_script
+        assert quick_if_non_empty in quick_script
+        assert f"export {flag}" in quick_script
+        assert f'deploy_env_args+=({flag}="$' + flag + '")' in quick_script
 
 
 def test_cloud_ssh_lib_retries_transient_scp_connection_resets() -> None:

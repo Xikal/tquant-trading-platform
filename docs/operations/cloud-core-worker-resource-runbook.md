@@ -43,6 +43,27 @@ Use this profile to reduce background pressure while keeping the core trading-re
 | `analytics-worker` | on demand | Runs only through the analytics profile when needed |
 | `backtest-worker` | not resident | Long backtests stay out of cloud steady state |
 
+## One-Click Cloud-Light Rollout
+
+Preferred rollout path for the local-plus-cloud deployment model:
+
+```bash
+PLATFORM_AUTOPILOT_ENABLED=false \
+RUNTIME_LOW_PRIORITY_TASKS_PAUSED=true \
+MARKET_REVIEW_ENABLED=false \
+DATA_QUALITY_SLA_ENABLED=false \
+RUNTIME_BACKGROUND_COMPACT_MODE_ENABLED=true \
+RUNTIME_STARTUP_CACHE_PREWARM_ENABLED=false \
+RUNTIME_STARTUP_HISTORY_PREWARM_ENABLED=false \
+RUNTIME_WORKER_RECYCLE_RSS_MB=0 \
+scripts/one_click_cloud_deploy.sh --scope all --full
+```
+
+The deploy chain writes only explicitly provided stop-profile values into the
+remote `.env`. Omit a value when the remote setting must be preserved. Keep
+`DEPLOY_WITH_ANALYTICS_WORKER=0`; start `analytics-worker` only for a planned
+local or cloud heavy-work window.
+
 ## Read-Only Baseline
 
 Run before any production write:
